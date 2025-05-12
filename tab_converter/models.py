@@ -1,5 +1,5 @@
 from dataclasses import dataclass
-from typing import List
+from typing import NamedTuple, List
 
 
 @dataclass
@@ -8,6 +8,15 @@ class TabEntry:
     time: float
     duration: float
 
+
 @dataclass
 class Tabs:
     tabs: List[TabEntry]
+
+
+class NoteEvent(NamedTuple):
+    start_time: float
+    end_time: float
+    pitch: int
+    confidence: float
+    activation: List[float]
