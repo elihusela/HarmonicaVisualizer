@@ -1,3 +1,5 @@
+import json
+from pathlib import Path
 from typing import Dict
 
 import mido
@@ -9,8 +11,9 @@ from utils.utils import get_tempo
 
 
 class TabMapper:
-    def __init__(self, harmonica_mapping: Dict[int, int]):
+    def __init__(self, harmonica_mapping: Dict[int, int], json_outputs_path: str):
         self._mapping = harmonica_mapping
+        self._json_outputs_path = json_outputs_path
         return
 
     def midi_to_tabs_with_timing(self, midi_path: str) -> Tabs:
@@ -39,3 +42,8 @@ class TabMapper:
                 if msg.note in self._mapping:
                     tab = self._mapping[msg.note]
                     tab_sequence.tabs.append(TabEntry(tab=tab, time=round(start_time, 3), duration=duration))
+
+    def save_tabs_to_json(self, tabs: Tabs, filename: str) -> None:
+        path = Path(self._json_outputs_path + filename)
+        with path.open("w") as f:
+            json.dump([tab.__dict__ for tab in tabs.tabs], f, indent=2)

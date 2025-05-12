@@ -5,7 +5,7 @@ from image_converter.animator import Animator
 from tab_converter.models import Tabs
 from tab_converter.tab_mapper import TabMapper
 from utils.audio_extractor import AudioExtractor
-from utils.utils import TEMP_DIR, clean_temp_folder, save_tabs_to_json
+from utils.utils import TEMP_DIR, clean_temp_folder
 
 
 class HarmonicaTabsPipeline:
@@ -15,7 +15,6 @@ class HarmonicaTabsPipeline:
         self._animator = animator
         self._audio_extractor = audio_extractor
         self.midi_path = TEMP_DIR + "extracted_audio_basic_pitch.mid"
-        self.tabs_json_path = TEMP_DIR + "tabs.json"
         self.melody = melody
         self._extracted_audio_path = ""
 
@@ -42,7 +41,7 @@ class HarmonicaTabsPipeline:
 
     def midi_to_tabs(self) -> Tabs:
         tabs = self._tab_mapper.midi_to_tabs_with_timing(str(self.midi_path))
-        save_tabs_to_json(tabs, str(self.tabs_json_path))
+        self._tab_mapper.save_tabs_to_json(tabs, "tabs.json")
         return tabs
 
     def render_animation(self, tabs: Tabs) -> None:
