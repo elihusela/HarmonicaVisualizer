@@ -1,4 +1,4 @@
-from typing import List, Dict
+from typing import List, Dict, Tuple
 
 from basic_pitch import ICASSP_2022_MODEL_PATH
 from basic_pitch.inference import predict
@@ -44,7 +44,7 @@ class HarmonicaTabsPipeline:
 
         return note_events
 
-    def _note_events_to_tabs(self, note_events: List[Dict]) -> Tabs:
+    def _note_events_to_tabs(self, note_events: List[Tuple]) -> Tabs:
         tabs = self._tab_mapper.note_events_to_tabs(note_events)
         self._tab_mapper.save_tabs_to_json(tabs, "tabs.json")
         return tabs
