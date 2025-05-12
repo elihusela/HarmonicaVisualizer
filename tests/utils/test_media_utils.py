@@ -1,4 +1,4 @@
-from utils.media_utils import extract_audio_from_video
+from utils.audio_extractor import extract_audio_from_video
 from unittest.mock import MagicMock, patch
 
 def test_extract_audio_from_video_mocks():

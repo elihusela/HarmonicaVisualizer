@@ -2,6 +2,8 @@ from harmonica_pipeline.harmonica_pipeline import HarmonicaTabsPipeline
 from image_converter.animator import Animator
 from tab_converter.consts import C_HARMONICA_MAPPING
 from tab_converter.tab_mapper import TabMapper
+from utils.audio_extractor import AudioExtractor
+from utils.utils import TEMP_DIR, VIDEO_FILES_DIR, OUTPUTS_DIR
 
 if __name__ == "__main__":
     import sys
@@ -10,7 +12,8 @@ if __name__ == "__main__":
         print("Usage: python main.py video.mp4 harmonica_image.png output_video.mp4")
     else:
         pipeline = HarmonicaTabsPipeline(TabMapper(C_HARMONICA_MAPPING), Animator("harmonica-models/" + sys.argv[2]),
-                                         video_path="video-files/" + sys.argv[1],
-                                         output_video="outputs/" + sys.argv[3]
+                                         AudioExtractor(VIDEO_FILES_DIR + sys.argv[1],
+                                                        TEMP_DIR + "extracted_audio.wav"),
+                                         output_video=OUTPUTS_DIR + sys.argv[3]
                                          )
         pipeline.run()

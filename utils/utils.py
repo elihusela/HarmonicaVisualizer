@@ -11,7 +11,8 @@ from tab_converter.consts import SET_TEMPO_MSG
 from tab_converter.models import Tabs
 
 TEMP_DIR = str(Path(__file__).parent.parent / "temp") + "/"
-
+VIDEO_FILES_DIR = str(Path(__file__).parent.parent / "video-files") + "/"
+OUTPUTS_DIR = str(Path(__file__).parent.parent / "outputs") + "/"
 
 def clean_temp_folder(path=TEMP_DIR):
     if os.path.exists(path):
