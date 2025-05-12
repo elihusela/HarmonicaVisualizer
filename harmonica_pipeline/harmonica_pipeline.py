@@ -16,10 +16,10 @@ class HarmonicaTabsPipeline:
         self._tab_mapper = tab_mapper
         self._animator = animator
         self._audio_extractor = audio_extractor
-        self._midi_path = TEMP_DIR + "extracted_audio_basic_pitch.mid"
         self.melody = melody
         self._extracted_audio_path = ""
         self._save_midi = save_midi
+        self._debug_midi_path = TEMP_DIR + "extracted_audio_basic_pitch.mid"
 
     def run(self) -> None:
         clean_temp_folder()
@@ -39,8 +39,8 @@ class HarmonicaTabsPipeline:
         )
 
         if self._save_midi:
-            print(f"💾 Saving debug MIDI to {self._midi_path}")
-            midi_data.write(self._midi_path)
+            print(f"💾 Saving debug MIDI to {self._debug_midi_path}")
+            midi_data.write(self._debug_midi_path)
 
         return note_events
 
