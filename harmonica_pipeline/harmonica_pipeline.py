@@ -12,11 +12,11 @@ from utils.utils import TEMP_DIR, clean_temp_folder
 
 class HarmonicaTabsPipeline:
     def __init__(self, tab_mapper: TabMapper, animator: Animator, audio_extractor: AudioExtractor,
-                 melody: bool = False, save_midi: bool = True):
+                 one_note_melody: bool = False, save_midi: bool = True):
         self._tab_mapper = tab_mapper
         self._animator = animator
         self._audio_extractor = audio_extractor
-        self.melody = melody
+        self._one_note_melody = one_note_melody
         self._extracted_audio_path = ""
         self._save_midi = save_midi
         self._debug_midi_path = TEMP_DIR + "extracted_audio_basic_pitch.mid"
