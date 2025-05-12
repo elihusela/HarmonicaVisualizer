@@ -1,0 +1,7 @@
+Y = 97
+FIRST_X = 77
+DISTANCE = 15
+
+
+OUT_COLOR = "#41dd65" # GREEN
+IN_COLOR = "#fd4444" # RED

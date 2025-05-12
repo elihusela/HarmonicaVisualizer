@@ -1,0 +1,24 @@
+# Python cache
+__pycache__/
+*.pyc
+
+# Virtualenvs
+.venv/
+env/
+venv/
+
+# IDE settings
+.idea/
+.vscode/
+
+# Mac system files
+.DS_Store
+
+# Output files
+*.mp4
+*.wav
+*.mid
+temp/
+outputs/
+video-files/
+basic-pitch/
