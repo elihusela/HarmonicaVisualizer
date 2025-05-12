@@ -11,9 +11,9 @@ if __name__ == "__main__":
     if len(sys.argv) < 4:
         print("Usage: python main.py video.mp4 harmonica_image.png output_video.mp4")
     else:
-        pipeline = HarmonicaTabsPipeline(TabMapper(C_HARMONICA_MAPPING), Animator("harmonica-models/" + sys.argv[2]),
+        pipeline = HarmonicaTabsPipeline(TabMapper(C_HARMONICA_MAPPING),
+                                         Animator("harmonica-models/" + sys.argv[2], OUTPUTS_DIR + sys.argv[3]),
                                          AudioExtractor(VIDEO_FILES_DIR + sys.argv[1],
-                                                        TEMP_DIR + "extracted_audio.wav"),
-                                         output_video=OUTPUTS_DIR + sys.argv[3]
+                                                        TEMP_DIR + "extracted_audio.wav")
                                          )
         pipeline.run()

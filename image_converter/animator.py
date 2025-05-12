@@ -12,15 +12,16 @@ from utils.utils import TEMP_DIR
 
 
 class Animator:
-    def __init__(self, harmonica_image_path: str):
+    def __init__(self, harmonica_image_path: str, outputs_path: str):
         self._harmonica_image_path = harmonica_image_path
+        self._outputs_path = outputs_path
         self._hole_positions = self._calc_hole_positions()
         self._text_objects = []
         self._arrows = []
         self._temp_video_path = TEMP_DIR + "temp_video.mp4"
         self._ax = None
 
-    def create_animation(self, tabs: Tabs, extracted_audio_path: str, output_path: str = 'outputs/final_video.mp4',
+    def create_animation(self, tabs: Tabs, extracted_audio_path: str,
                          fps: int = 30) -> None:
         img = Image.open(self._harmonica_image_path)
         fig, self._ax = plt.subplots(figsize=(12, 2))
@@ -41,9 +42,9 @@ class Animator:
         ani.save(self._temp_video_path, fps=fps, writer='ffmpeg')
 
         os.system(
-            f"ffmpeg -y -i {self._temp_video_path} -i {extracted_audio_path} -c:v copy -c:a aac -shortest {output_path}"
+            f"ffmpeg -y -i {self._temp_video_path} -i {extracted_audio_path} -c:v copy -c:a aac -shortest {self._outputs_path}"
         )
-        print(f"✅ Final video saved to {output_path}")
+        print(f"✅ Final video saved to {self._outputs_path}")
         os.remove(self._temp_video_path)
 
     def _update_frame(self, frame: int, tabs: Tabs, fps: int) -> List:

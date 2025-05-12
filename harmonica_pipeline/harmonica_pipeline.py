@@ -10,12 +10,10 @@ from utils.utils import TEMP_DIR, clean_temp_folder, save_tabs_to_json
 
 class HarmonicaTabsPipeline:
     def __init__(self, tab_mapper: TabMapper, animator: Animator, audio_extractor: AudioExtractor,
-                 output_video: str,
                  melody: bool = False):
         self._tab_mapper = tab_mapper
         self._animator = animator
         self._audio_extractor = audio_extractor
-        self.output_path = output_video
         self.midi_path = TEMP_DIR + "extracted_audio_basic_pitch.mid"
         self.tabs_json_path = TEMP_DIR + "tabs.json"
         self.melody = melody
@@ -48,4 +46,4 @@ class HarmonicaTabsPipeline:
         return tabs
 
     def render_animation(self, tabs: Tabs) -> None:
-        self._animator.create_animation(tabs, str(self._extracted_audio_path), self.output_path)
+        self._animator.create_animation(tabs, str(self._extracted_audio_path))
