@@ -1,22 +1,61 @@
-from image_converter.animator import create_animation
+from unittest.mock import patch, MagicMock
 
-def test_create_animation_with_fake_data(monkeypatch, tmp_path):
-    # Monkeypatch animation functions to avoid file output
-    import matplotlib.animation as animation
-    monkeypatch.setattr(animation.Animation, 'save', lambda *args, **kwargs: None)
+from tab_converter.models import TabEntry
 
-    tabs = [
-        {"tab": 4, "time": 0.0, "duration": 1.0},
-        {"tab": -5, "time": 1.0, "duration": 1.0},
-    ]
 
-    # Use a solid-color in-memory image
-    from PIL import Image
-    dummy_img = tmp_path / "fake_img.png"
-    Image.new('RGB', (600, 100)).save(dummy_img)
+class TestAnimator:
 
-    # Use a 2-second silent file (we won't read it — duration can be mocked)
-    dummy_audio = tmp_path / "silent.wav"
-    dummy_audio.write_bytes(b"RIFF....WAVEfmt ")  # minimal WAV header
+    @patch("image_converter.animator.os.remove")
+    @patch("image_converter.animator.os.system")
+    @patch("image_converter.animator.animation.FuncAnimation")
+    @patch("image_converter.animator.plt.subplots")
+    @patch("image_converter.animator.Image.open")
+    def test_create_animation_pipeline_runs(
+            self, mock_open, mock_subplots, mock_anim, mock_system, mock_remove,
+            dummy_animator, dummy_tabs, tmp_path
+    ):
+        fig_mock = MagicMock()
+        ax_mock = MagicMock()
+        mock_subplots.return_value = (fig_mock, ax_mock)
 
-    create_animation(tabs, str(dummy_img), str(dummy_audio), output_path=str(tmp_path / "out.mp4"))
+        dummy_audio_path = tmp_path / "fake.wav"
+        dummy_audio_path.write_bytes(b"FAKEAUDIO")
+
+        dummy_animator.create_animation(dummy_tabs, str(dummy_audio_path))
+
+        mock_open.assert_called_once()
+        mock_subplots.assert_called_once()
+        mock_anim.return_value.save.assert_called_once()
+        mock_system.assert_called_once()
+        mock_remove.assert_called_once_with(dummy_animator._temp_video_path)
+
+    def test_update_frame_blows_and_draws(self, dummy_animator, dummy_tabs):
+        dummy_animator._ax = MagicMock()
+        dummy_animator._hole_positions = {1: (100, 200), 2: (130, 200), 3: (160, 200)}
+
+        dummy_animator._text_objects = []
+        dummy_animator._arrows = []
+
+        # simulate a moment where both 1 and -2 are active
+        result = dummy_animator._update_frame(frame=15, tabs=dummy_tabs, fps=30)
+
+        assert len(result) == 4  # two text + two arrows
+        assert all(call.remove.called is False for call in result)
+
+    def test_update_frame_inactive_time(self, dummy_animator, dummy_tabs):
+        dummy_animator._ax = MagicMock()
+        dummy_animator._hole_positions = {1: (100, 200), 2: (130, 200), 3: (160, 200)}
+        dummy_animator._text_objects = []
+        dummy_animator._arrows = []
+
+        # at a time with no active notes
+        result = dummy_animator._update_frame(frame=100, tabs=dummy_tabs, fps=30)
+
+        assert result == []
+
+    def test_calc_direction_and_color(self, dummy_animator):
+        assert dummy_animator._calc_direction(TabEntry(4, 0, 1)) == "↓"
+        assert dummy_animator._calc_direction(TabEntry(-4, 0, 1)) == "↑"
+
+        assert dummy_animator._get_color(TabEntry(5, 0, 1)) == "#41dd65"
+        assert dummy_animator._get_color(TabEntry(-5, 0, 1)) == "#fd4444"
