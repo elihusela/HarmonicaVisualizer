@@ -1,4 +1,4 @@
-from typing import List, Dict, Tuple
+from typing import List, Tuple
 
 from basic_pitch import ICASSP_2022_MODEL_PATH
 from basic_pitch.inference import predict
@@ -11,8 +11,14 @@ from utils.utils import TEMP_DIR, clean_temp_folder
 
 
 class HarmonicaTabsPipeline:
-    def __init__(self, tab_mapper: TabMapper, animator: Animator, audio_extractor: AudioExtractor,
-                 one_note_melody: bool = False, save_midi: bool = True):
+    def __init__(
+        self,
+        tab_mapper: TabMapper,
+        animator: Animator,
+        audio_extractor: AudioExtractor,
+        one_note_melody: bool = False,
+        save_midi: bool = True,
+    ):
         self._tab_mapper = tab_mapper
         self._animator = animator
         self._audio_extractor = audio_extractor
@@ -35,7 +41,7 @@ class HarmonicaTabsPipeline:
         print("🎼 Running audio-to-MIDI prediction (in-memory)...")
         _, midi_data, note_events = predict(
             audio_path=self._extracted_audio_path,
-            model_or_model_path=ICASSP_2022_MODEL_PATH
+            model_or_model_path=ICASSP_2022_MODEL_PATH,
         )
 
         if self._save_midi:

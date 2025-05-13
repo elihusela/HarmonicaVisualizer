@@ -4,11 +4,7 @@ from tab_converter.tab_mapper import TabMapper
 
 @pytest.fixture
 def simple_mapping() -> dict[int, int]:
-    return {
-        60: 1,  # C
-        62: -1,  # D
-        64: 2  # E
-    }
+    return {60: 1, 62: -1, 64: 2}  # C  # D  # E
 
 
 @pytest.fixture

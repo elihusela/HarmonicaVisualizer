@@ -11,8 +11,15 @@ class TestAnimator:
     @patch("image_converter.animator.plt.subplots")
     @patch("image_converter.animator.Image.open")
     def test_create_animation_pipeline_runs(
-            self, mock_open, mock_subplots, mock_anim, mock_system, mock_remove,
-            dummy_animator, dummy_tabs, tmp_path
+        self,
+        mock_open,
+        mock_subplots,
+        mock_anim,
+        mock_system,
+        mock_remove,
+        dummy_animator,
+        dummy_tabs,
+        tmp_path,
     ):
         fig_mock = MagicMock()
         ax_mock = MagicMock()

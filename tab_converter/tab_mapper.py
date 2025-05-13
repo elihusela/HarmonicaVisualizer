@@ -21,7 +21,7 @@ class TabMapper:
         tempo = get_tempo(mid)
 
         time = 0.0
-        note_start_times = {}
+        note_start_times: dict[int, float] = {}
         tab_sequence = Tabs([])
 
         for msg in mid.merged_track:
@@ -43,11 +43,18 @@ class TabMapper:
 
         return Tabs(tab_entries)
 
-    def _handle_message(self, msg: Message, note_start_times: Dict[int, float], tab_sequence: Tabs,
-                        time: float) -> None:
+    def _handle_message(
+        self,
+        msg: Message,
+        note_start_times: Dict[int, float],
+        tab_sequence: Tabs,
+        time: float,
+    ) -> None:
         if msg.type == NOTE_ON_MSG and msg.velocity > 0:
             note_start_times[msg.note] = time
-        elif (msg.type == NOTE_OFF_MSG) or (msg.type == NOTE_ON_MSG and msg.velocity == 0):
+        elif (msg.type == NOTE_OFF_MSG) or (
+            msg.type == NOTE_ON_MSG and msg.velocity == 0
+        ):
             if msg.note in note_start_times:
                 start_time = note_start_times.pop(msg.note)
                 duration = round(time - start_time, 3)
