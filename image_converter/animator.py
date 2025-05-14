@@ -18,7 +18,7 @@ class Animator:
         self._outputs_path = outputs_path
         self._hole_positions = self._calc_hole_positions()
         self._text_objects: List[Text] = []
-        self._arrows: List[str] = []
+        self._arrows: List[Text] = []
         self._temp_video_path: str = TEMP_DIR + "temp_video.mp4"
         self._ax: Optional[Axes] = None
 

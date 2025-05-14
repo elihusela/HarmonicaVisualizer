@@ -10,12 +10,15 @@ class TestHarmonicaTabsPipeline:
         pipeline = configured_pipeline["pipeline"]
         pipeline._save_midi = save_midi
 
-        with patch("harmonica_pipeline.harmonica_pipeline.clean_temp_folder"), patch(
-            "harmonica_pipeline.harmonica_pipeline.predict",
-            return_value=(
-                None,
-                configured_pipeline["midi_data"],
-                configured_pipeline["note_events"],
+        with (
+            patch("harmonica_pipeline.harmonica_pipeline.clean_temp_folder"),
+            patch(
+                "harmonica_pipeline.harmonica_pipeline.predict",
+                return_value=(
+                    None,
+                    configured_pipeline["midi_data"],
+                    configured_pipeline["note_events"],
+                ),
             ),
         ):
             pipeline.run()
@@ -31,12 +34,15 @@ class TestHarmonicaTabsPipeline:
         pipeline = configured_pipeline["pipeline"]
         pipeline._save_midi = save_midi
 
-        with patch("harmonica_pipeline.harmonica_pipeline.clean_temp_folder"), patch(
-            "harmonica_pipeline.harmonica_pipeline.predict",
-            return_value=(
-                None,
-                configured_pipeline["midi_data"],
-                configured_pipeline["note_events"],
+        with (
+            patch("harmonica_pipeline.harmonica_pipeline.clean_temp_folder"),
+            patch(
+                "harmonica_pipeline.harmonica_pipeline.predict",
+                return_value=(
+                    None,
+                    configured_pipeline["midi_data"],
+                    configured_pipeline["note_events"],
+                ),
             ),
         ):
             pipeline.run()
@@ -50,10 +56,13 @@ class TestHarmonicaTabsPipeline:
         fake_note_events = [(0.0, 1.0, 60, 0.9, [])]
         fake_midi = MagicMock()
 
-        with patch("harmonica_pipeline.harmonica_pipeline.clean_temp_folder"), patch(
-            "harmonica_pipeline.harmonica_pipeline.predict",
-            return_value=(None, fake_midi, fake_note_events),
-        ) as mock_predict:
+        with (
+            patch("harmonica_pipeline.harmonica_pipeline.clean_temp_folder"),
+            patch(
+                "harmonica_pipeline.harmonica_pipeline.predict",
+                return_value=(None, fake_midi, fake_note_events),
+            ) as mock_predict,
+        ):
             dummy_pipeline._extracted_audio_path = "fake.wav"
             dummy_pipeline._audio_to_midi()
 
@@ -64,14 +73,17 @@ class TestHarmonicaTabsPipeline:
     def test_pipeline_call_order(self, configured_pipeline):
         pipeline = configured_pipeline["pipeline"]
 
-        with patch("harmonica_pipeline.harmonica_pipeline.clean_temp_folder"), patch(
-            "harmonica_pipeline.harmonica_pipeline.predict",
-            return_value=(
-                None,
-                configured_pipeline["midi_data"],
-                configured_pipeline["note_events"],
-            ),
-        ) as mock_predict:
+        with (
+            patch("harmonica_pipeline.harmonica_pipeline.clean_temp_folder"),
+            patch(
+                "harmonica_pipeline.harmonica_pipeline.predict",
+                return_value=(
+                    None,
+                    configured_pipeline["midi_data"],
+                    configured_pipeline["note_events"],
+                ),
+            ) as mock_predict,
+        ):
             pipeline.run()
 
             # Ensure order: audio → predict → tab mapping → save → animation
