@@ -10,7 +10,7 @@ if __name__ == "__main__":
 
     if len(sys.argv) < 4:
         print("Usage: python main.py video.mp4 harmonica_image.png output_video.mp4")
-        # print("Usage: python main.py ShanaTova.mov harmonica.jpeg output_video.mp4")
+        # print("Usage: python main.py ShanaTova.mov BasicModel.png output_video.mp4")
 
     else:
         pipeline = HarmonicaTabsPipeline(
