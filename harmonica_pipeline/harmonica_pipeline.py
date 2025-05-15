@@ -17,7 +17,7 @@ class HarmonicaTabsPipeline:
         animator: Animator,
         audio_extractor: AudioExtractor,
         one_note_melody: bool = False,
-        save_midi: bool = True,
+        save_midi: bool = False,
     ):
         self._tab_mapper = tab_mapper
         self._animator = animator

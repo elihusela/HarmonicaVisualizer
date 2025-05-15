@@ -13,9 +13,11 @@ if __name__ == "__main__":
         # print("Usage: python main.py ShanaTova.mov BasicModel.png output_video.mp4")
 
     else:
+        harmonica_image_path = "harmonica-models/" + sys.argv[2]
+        output_path = OUTPUTS_DIR + sys.argv[3]
         pipeline = HarmonicaTabsPipeline(
             TabMapper(C_HARMONICA_MAPPING, TEMP_DIR),
-            Animator("harmonica-models/" + sys.argv[2], OUTPUTS_DIR + sys.argv[3]),
+            Animator(harmonica_image_path, output_path),
             AudioExtractor(
                 VIDEO_FILES_DIR + sys.argv[1], TEMP_DIR + "extracted_audio.wav"
             ),
