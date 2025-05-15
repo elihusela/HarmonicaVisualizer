@@ -82,7 +82,9 @@ class Animator:
             end = start + tab_entry.duration
             if start <= current_time <= end:
                 hole = abs(tab_entry.tab)
-                x, y = self._harmonica_layout.hole_positions.get(hole, (0, 0))
+                x, y, width, height = self._harmonica_layout.hole_positions.get(
+                    hole
+                ).values()
                 direction = self._calc_direction(tab_entry)
                 color = self._get_color(tab_entry)
 

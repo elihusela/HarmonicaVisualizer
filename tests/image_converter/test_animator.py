@@ -48,9 +48,13 @@ class TestAnimator:
     ):
         dummy_animator._ax = MagicMock()
         dummy_harmonica_layout.hole_positions = {
-            1: (100, 200),
-            2: (130, 200),
-            3: (160, 200),
+            i: {
+                "x": 100 + (i - 1) * 30,
+                "y": 200,
+                "width": 100,
+                "height": 100,
+            }
+            for i in range(1, 3)
         }
         dummy_animator._text_objects = []
         dummy_animator._arrows = []

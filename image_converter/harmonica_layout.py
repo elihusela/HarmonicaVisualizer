@@ -1,6 +1,6 @@
 from typing import Tuple
 
-from image_converter.consts import FIRST_X, DISTANCE, Y
+from image_converter.consts import X_DISTANCE, START_X, Y, WIDTH, HEIGHT
 
 
 class HarmonicaLayout:
@@ -12,5 +12,13 @@ class HarmonicaLayout:
         return self.hole_positions.get(hole, (0, 0))
 
     @staticmethod
-    def _load_layout() -> dict[int, Tuple[int, int]]:
-        return {i: (FIRST_X + (i - 1) * DISTANCE, Y) for i in range(1, 11)}
+    def _load_layout():
+        return {
+            i: {
+                "x": START_X + (i - 1) * X_DISTANCE,
+                "y": Y,
+                "width": WIDTH,
+                "height": HEIGHT,
+            }
+            for i in range(1, 11)
+        }
