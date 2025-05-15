@@ -44,14 +44,27 @@ class Animator:
         )
 
         ani.save(self._temp_video_path, fps=fps, writer="ffmpeg")
+        print(f"🎥 Intermediate video saved to {self._temp_video_path}")
+
+        transparent_video_path = TEMP_DIR + "temp_transparent.mov"
+        os.system(
+            f"ffmpeg -y -i {self._temp_video_path} "
+            f"-vf colorkey=0xFF00FF:0.3:0.0,format=yuva444p10le "
+            f"-c:v prores_ks -profile:v 4 -pix_fmt yuva444p10le "
+            f"{transparent_video_path}"
+        )
+        print(
+            f"🟣 Background removed, transparent video saved to {transparent_video_path}"
+        )
 
         os.system(
-            f"ffmpeg -y -i {self._temp_video_path} -i "
-            f"{extracted_audio_path} -c:v copy -c:a aac -shortest "
-            f"{output_path}"
+            f"ffmpeg -y -i {transparent_video_path} -i {extracted_audio_path} "
+            f"-c:v copy -c:a aac -shortest {output_path}"
         )
-        print(f"✅ Final video saved to {output_path}")
+        print(f"✅ Final video with transparency + audio saved to {output_path}")
+
         os.remove(self._temp_video_path)
+        os.remove(transparent_video_path)
 
     def _update_frame(self, frame: int, tabs: Tabs, fps: int) -> List:
         current_time = frame / fps

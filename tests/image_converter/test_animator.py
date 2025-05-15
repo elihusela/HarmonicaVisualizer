@@ -1,6 +1,7 @@
 from unittest.mock import patch, MagicMock
 
 from tab_converter.models import TabEntry
+from utils.utils import TEMP_DIR
 
 
 class TestAnimator:
@@ -30,8 +31,17 @@ class TestAnimator:
         dummy_animator.create_animation(dummy_tabs, str(dummy_audio_path), output_path)
 
         mock_anim.return_value.save.assert_called_once()
-        mock_system.assert_called_once()
-        mock_remove.assert_called_once_with(dummy_animator._temp_video_path)
+        assert mock_system.call_count == 2
+        called_args = [call.args[0] for call in mock_system.call_args_list]
+        assert any(
+            "colorkey" in cmd for cmd in called_args
+        ), "Missing chroma key ffmpeg call"
+        assert any(
+            "aac" in cmd and "-shortest" in cmd for cmd in called_args
+        ), "Missing audio merge ffmpeg call"
+        assert mock_remove.call_count == 2
+        mock_remove.assert_any_call(dummy_animator._temp_video_path)
+        mock_remove.assert_any_call(TEMP_DIR + "temp_transparent.mov")
 
     def test_update_frame_blows_and_draws(
         self, dummy_animator, dummy_harmonica_layout, dummy_tabs

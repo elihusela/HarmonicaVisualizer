@@ -3,6 +3,8 @@ import matplotlib.pyplot as plt
 from matplotlib.axes import Axes
 from typing import Tuple
 
+REMOVABLE_BACKGROUND_COLOR = "#FF00FF"
+
 
 class FigureFactory:
     def __init__(self, harmonica_image_path: str):
@@ -13,6 +15,9 @@ class FigureFactory:
 
     def create(self) -> Tuple[plt.Figure, Axes]:
         fig, ax = plt.subplots(figsize=self._figsize, dpi=self._dpi)
+        fig.patch.set_facecolor(
+            REMOVABLE_BACKGROUND_COLOR
+        )  # Magenta background to be removed later
         ax.imshow(self._img)
         ax.axis("off")
         return fig, ax
