@@ -16,12 +16,14 @@ class HarmonicaTabsPipeline:
         tab_mapper: TabMapper,
         animator: Animator,
         audio_extractor: AudioExtractor,
+        output_path: str,
         one_note_melody: bool = False,
         save_midi: bool = False,
     ):
         self._tab_mapper = tab_mapper
         self._animator = animator
         self._audio_extractor = audio_extractor
+        self._output_path = output_path
         self._one_note_melody = one_note_melody
         self._extracted_audio_path = ""
         self._save_midi = save_midi
@@ -32,7 +34,7 @@ class HarmonicaTabsPipeline:
         self._extracted_audio_path = self._extract_audio()
         note_events = self._audio_to_midi()
         tabs = self._note_events_to_tabs(note_events)
-        self.render_animation(tabs)
+        self.render_animation(tabs, self._output_path)
 
     def _extract_audio(self) -> str:
         return self._audio_extractor.extract_audio_from_video()
@@ -55,5 +57,7 @@ class HarmonicaTabsPipeline:
         self._tab_mapper.save_tabs_to_json(tabs, "tabs.json")
         return tabs
 
-    def render_animation(self, tabs: Tabs) -> None:
-        self._animator.create_animation(tabs, str(self._extracted_audio_path))
+    def render_animation(self, tabs: Tabs, output_path: str) -> None:
+        self._animator.create_animation(
+            tabs, str(self._extracted_audio_path), output_path
+        )

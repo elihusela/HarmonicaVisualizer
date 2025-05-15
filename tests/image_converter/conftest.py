@@ -1,6 +1,10 @@
+from unittest.mock import MagicMock
+
 import pytest
 
 from image_converter.animator import Animator
+from image_converter.figure_factory import FigureFactory
+from image_converter.harmonica_layout import HarmonicaLayout
 from tab_converter.models import Tabs, TabEntry
 
 
@@ -15,9 +19,20 @@ def dummy_tabs() -> Tabs:
     )
 
 
+@pytest.fixture()
+def dummy_harmonica_layout() -> HarmonicaLayout:
+    mock = MagicMock(spec=HarmonicaLayout)
+    mock.hole_positions = MagicMock()
+    return mock
+
+
+@pytest.fixture()
+def dummy_figure_factory() -> FigureFactory:
+    return MagicMock(spec=FigureFactory)
+
+
 @pytest.fixture
-def dummy_animator(tmp_path) -> Animator:
+def dummy_animator(dummy_harmonica_layout, dummy_figure_factory, tmp_path) -> Animator:
     image_path = tmp_path / "dummy.png"
     image_path.write_bytes(b"FAKE_IMAGE")  # so Image.open doesn't fail
-    output_path = tmp_path / "final.mp4"
-    return Animator(str(image_path), str(output_path))
+    return Animator(dummy_harmonica_layout, dummy_figure_factory)

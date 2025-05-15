@@ -8,38 +8,40 @@ class TestAnimator:
     @patch("image_converter.animator.os.remove")
     @patch("image_converter.animator.os.system")
     @patch("image_converter.animator.animation.FuncAnimation")
-    @patch("image_converter.animator.plt.subplots")
-    @patch("image_converter.animator.Image.open")
     def test_create_animation_pipeline_runs(
         self,
-        mock_open,
-        mock_subplots,
         mock_anim,
         mock_system,
         mock_remove,
+        dummy_figure_factory,
+        dummy_harmonica_layout,
         dummy_animator,
         dummy_tabs,
         tmp_path,
     ):
         fig_mock = MagicMock()
         ax_mock = MagicMock()
-        mock_subplots.return_value = (fig_mock, ax_mock)
+        dummy_figure_factory.create.return_value = (fig_mock, ax_mock)
 
         dummy_audio_path = tmp_path / "fake.wav"
         dummy_audio_path.write_bytes(b"FAKEAUDIO")
+        output_path = str(tmp_path / "final.mp4")
 
-        dummy_animator.create_animation(dummy_tabs, str(dummy_audio_path))
+        dummy_animator.create_animation(dummy_tabs, str(dummy_audio_path), output_path)
 
-        mock_open.assert_called_once()
-        mock_subplots.assert_called_once()
         mock_anim.return_value.save.assert_called_once()
         mock_system.assert_called_once()
         mock_remove.assert_called_once_with(dummy_animator._temp_video_path)
 
-    def test_update_frame_blows_and_draws(self, dummy_animator, dummy_tabs):
+    def test_update_frame_blows_and_draws(
+        self, dummy_animator, dummy_harmonica_layout, dummy_tabs
+    ):
         dummy_animator._ax = MagicMock()
-        dummy_animator._hole_positions = {1: (100, 200), 2: (130, 200), 3: (160, 200)}
-
+        dummy_harmonica_layout.hole_positions = {
+            1: (100, 200),
+            2: (130, 200),
+            3: (160, 200),
+        }
         dummy_animator._text_objects = []
         dummy_animator._arrows = []
 

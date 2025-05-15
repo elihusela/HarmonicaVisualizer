@@ -100,5 +100,7 @@ class TestHarmonicaTabsPipeline:
             configured_pipeline[
                 "pipeline"
             ]._animator.create_animation.assert_called_once_with(
-                configured_pipeline["tabs"], "audio.wav"
+                configured_pipeline["tabs"],
+                "audio.wav",
+                configured_pipeline["output_path"],
             )

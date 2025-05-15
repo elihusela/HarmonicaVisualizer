@@ -1,5 +1,7 @@
 from harmonica_pipeline.harmonica_pipeline import HarmonicaTabsPipeline
 from image_converter.animator import Animator
+from image_converter.figure_factory import FigureFactory
+from image_converter.harmonica_layout import HarmonicaLayout
 from tab_converter.consts import C_HARMONICA_MAPPING
 from tab_converter.tab_mapper import TabMapper
 from utils.audio_extractor import AudioExtractor
@@ -17,9 +19,13 @@ if __name__ == "__main__":
         output_path = OUTPUTS_DIR + sys.argv[3]
         pipeline = HarmonicaTabsPipeline(
             TabMapper(C_HARMONICA_MAPPING, TEMP_DIR),
-            Animator(harmonica_image_path, output_path),
+            Animator(
+                HarmonicaLayout(harmonica_image_path),
+                FigureFactory(harmonica_image_path),
+            ),
             AudioExtractor(
                 VIDEO_FILES_DIR + sys.argv[1], TEMP_DIR + "extracted_audio.wav"
             ),
+            output_path=output_path,
         )
         pipeline.run()
