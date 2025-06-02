@@ -1,11 +1,22 @@
 IMAGE_WIDTH = 1536
 IMAGE_HEIGHT = 512
 
-START_X = 238
-X_DISTANCE = 103
-Y = 393
-WIDTH = 74
-HEIGHT = 84
+C_BASIC_MODEL_WIDTH = 40
+C_BASIC_MODEL_HEIGHT = 84
 
 OUT_COLOR = "#41dd65"  # GREEN
 IN_COLOR = "#fd4444"  # RED
+
+
+C_BASIC_MODEL_HOLE_MAPPING = {
+    1: {"top_left": {"x": 330, "y": 347}, "bottom_right": {"x": 390, "y": 413}},
+    2: {"top_left": {"x": 417, "y": 347}, "bottom_right": {"x": 476, "y": 410}},
+    3: {"top_left": {"x": 504, "y": 346}, "bottom_right": {"x": 561, "y": 409}},
+    4: {"top_left": {"x": 591, "y": 342}, "bottom_right": {"x": 650, "y": 411}},
+    5: {"top_left": {"x": 679, "y": 340}, "bottom_right": {"x": 739, "y": 410}},
+    6: {"top_left": {"x": 768, "y": 340}, "bottom_right": {"x": 823, "y": 408}},
+    7: {"top_left": {"x": 856, "y": 340}, "bottom_right": {"x": 913, "y": 411}},
+    8: {"top_left": {"x": 943, "y": 346}, "bottom_right": {"x": 999, "y": 408}},
+    9: {"top_left": {"x": 1031, "y": 345}, "bottom_right": {"x": 1085, "y": 411}},
+    10: {"top_left": {"x": 1117, "y": 346}, "bottom_right": {"x": 1170, "y": 412}},
+}

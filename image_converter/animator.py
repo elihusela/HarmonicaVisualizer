@@ -2,6 +2,7 @@ import os
 from typing import List, Optional
 
 import matplotlib.animation as animation
+from matplotlib import pyplot as plt
 from matplotlib.axes import Axes
 from matplotlib.text import Text
 from matplotlib.patches import Rectangle
@@ -71,11 +72,10 @@ class Animator:
     def _update_frame(self, frame: int, tabs: Tabs, fps: int) -> List:
         current_time = frame / fps
 
-        for obj in self._text_objects + self._arrows + self._squares:
+        for obj in self._text_objects + self._arrows:
             obj.remove()
         self._text_objects.clear()
         self._arrows.clear()
-        self._squares.clear()
 
         assert self._ax is not None
 
@@ -84,45 +84,41 @@ class Animator:
             end = start + tab_entry.duration
             if start <= current_time <= end:
                 hole = abs(tab_entry.tab)
-                layout = self._harmonica_layout.hole_positions.get(hole, {})
-                x, y, width, height = (
-                    layout["x"],
-                    layout["y"],
-                    layout["width"],
-                    layout["height"],
+                center_x, center_y = self._harmonica_layout.get_position(hole)
+                rect_x, rect_y, rect_width, rect_height = (
+                    self._harmonica_layout.get_rectangle(hole)
                 )
                 direction = self._calc_direction(tab_entry)
                 color = self._get_color(tab_entry)
 
-                # Draw rectangle
-                rect = Rectangle(
-                    (x - width // 2, y - height // 2),
-                    width,
-                    height,
-                    # linewidth=2,
-                    # edgecolor="black",
-                    facecolor=color,
-                    alpha=0.9,
+                # Draw the colored rectangle
+                rect = self._ax.add_patch(
+                    plt.Rectangle(
+                        (rect_x, rect_y),
+                        rect_width,
+                        rect_height,
+                        linewidth=0,
+                        edgecolor=None,
+                        facecolor=color,
+                        alpha=0.85,
+                    )
                 )
-                self._ax.add_patch(rect)
-                self._squares.append(rect)
 
-                # Draw text and arrow
                 txt = self._ax.text(
-                    x,
-                    y - 10,
+                    center_x,
+                    center_y - 10,
                     f"{hole}",
-                    color="white",
+                    color="black",
                     fontsize=18,
                     ha="center",
                     va="center",
                     weight="bold",
                 )
                 arr = self._ax.text(
-                    x,
-                    y + 15,
+                    center_x,
+                    center_y + 15,
                     direction,
-                    color="white",
+                    color="black",
                     fontsize=20,
                     ha="center",
                     va="center",
@@ -130,8 +126,9 @@ class Animator:
 
                 self._text_objects.append(txt)
                 self._arrows.append(arr)
+                self._text_objects.append(rect)  # include rectangle in the cleanup
 
-        return self._text_objects + self._arrows + self._squares
+        return self._text_objects + self._arrows
 
     @staticmethod
     def _get_color(tab_entry: TabEntry) -> str:

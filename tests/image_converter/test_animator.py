@@ -47,15 +47,10 @@ class TestAnimator:
         self, dummy_animator, dummy_harmonica_layout, dummy_tabs
     ):
         dummy_animator._ax = MagicMock()
-        dummy_harmonica_layout.hole_positions = {
-            i: {
-                "x": 100 + (i - 1) * 30,
-                "y": 200,
-                "width": 100,
-                "height": 100,
-            }
-            for i in range(1, 3)
-        }
+        dummy_harmonica_layout.get_position = MagicMock(return_value=(100, 200))
+        dummy_harmonica_layout.get_rectangle = MagicMock(
+            return_value=(100, 200, 300, 400)
+        )
         dummy_animator._text_objects = []
         dummy_animator._arrows = []
 
