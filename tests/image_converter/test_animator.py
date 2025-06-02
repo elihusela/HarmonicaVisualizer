@@ -62,8 +62,8 @@ class TestAnimator:
         # simulate a moment where both 1 and -2 are active
         result = dummy_animator._update_frame(frame=15, tabs=dummy_tabs, fps=30)
 
-        assert len(result) == 4  # two text + two arrows
-        assert all(call.remove.called is False for call in result)
+        assert len(result) == 6  # two text + two arrows + two rectangles
+        assert all(call.remove.called is False for call in result[:4])
 
     def test_update_frame_inactive_time(self, dummy_animator, dummy_tabs):
         dummy_animator._ax = MagicMock()
