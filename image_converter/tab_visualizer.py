@@ -33,12 +33,20 @@ class TabVisualizer:
             f"{hole}",
             color=color,
             fontsize=18,
+            fontname="Fredoka",
             ha="center",
             va="center",
             weight="bold",
         )
         arr = self._ax.text(
-            x, y + 15, direction, color=color, fontsize=20, ha="center", va="center"
+            x,
+            y + 15,
+            direction,
+            color=color,
+            fontsize=20,
+            fontname="Fredoka",
+            ha="center",
+            va="center",
         )
 
         self._text_objects.append(txt)

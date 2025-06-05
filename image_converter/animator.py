@@ -1,5 +1,6 @@
 import os
 from typing import List, Optional
+import time
 
 import matplotlib.animation as animation
 from matplotlib import pyplot as plt
@@ -18,6 +19,7 @@ class Animator:
     def __init__(
         self, harmonica_layoout: HarmonicaLayout, figure_factory: FigureFactory
     ):
+        self._frame_timings: List[float] = []
         self._harmonica_layout = harmonica_layoout
         self._figure_factory = figure_factory
         self._text_objects: List[Text] = []
@@ -40,7 +42,7 @@ class Animator:
 
         ani = animation.FuncAnimation(
             fig,
-            lambda frame: self._update_frame(frame, tabs, fps),
+            lambda frame: self._timed_update_frame(frame, tabs, fps),
             frames=total_frames,
             blit=False,
             interval=1000 / fps,
@@ -48,6 +50,12 @@ class Animator:
 
         ani.save(self._temp_video_path, fps=fps, writer="ffmpeg")
         print(f"🎥 Intermediate video saved to {self._temp_video_path}")
+
+        if self._frame_timings:
+            avg_frame_time = sum(self._frame_timings) / len(self._frame_timings)
+            print(
+                f"⏱ Average frame update time: {avg_frame_time:.4f}s over {len(self._frame_timings)} samples"
+            )
 
         transparent_video_path = TEMP_DIR + "temp_transparent.mov"
         os.system(
@@ -68,6 +76,14 @@ class Animator:
 
         os.remove(self._temp_video_path)
         os.remove(transparent_video_path)
+
+    def _timed_update_frame(self, frame: int, tabs: Tabs, fps: int) -> List:
+        start = time.perf_counter()
+        output = self._update_frame(frame, tabs, fps)
+        elapsed = time.perf_counter() - start
+        if frame % 30 == 0:  # log every 30th frame
+            self._frame_timings.append(elapsed)
+        return output
 
     def _update_frame(self, frame: int, tabs: Tabs, fps: int) -> List:
         current_time = frame / fps
@@ -91,7 +107,6 @@ class Animator:
                 direction = self._calc_direction(tab_entry)
                 color = self._get_color(tab_entry)
 
-                # Draw the colored rectangle
                 rect = self._ax.add_patch(
                     plt.Rectangle(
                         (rect_x, rect_y),
@@ -126,7 +141,7 @@ class Animator:
 
                 self._text_objects.append(txt)
                 self._arrows.append(arr)
-                self._text_objects.append(rect)  # include rectangle in the cleanup
+                self._text_objects.append(rect)
 
         return self._text_objects + self._arrows
 
@@ -136,7 +151,7 @@ class Animator:
 
     @staticmethod
     def _calc_direction(tab_entry: TabEntry) -> str:
-        return "↓" if tab_entry.tab > 0 else "↑"
+        return "↑" if tab_entry.tab > 0 else "↓"
 
     @staticmethod
     def _get_total_duration(tabs: Tabs) -> float:

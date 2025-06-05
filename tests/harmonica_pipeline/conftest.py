@@ -16,6 +16,11 @@ def mock_animator() -> MagicMock:
 
 
 @pytest.fixture
+def mock_tabs_animator() -> MagicMock:
+    return MagicMock()
+
+
+@pytest.fixture
 def mock_audio_extractor() -> MagicMock:
     return MagicMock()
 
@@ -28,7 +33,11 @@ def dummy_output_path() -> str:
 # Combined pipeline fixture
 @pytest.fixture
 def dummy_pipeline(
-    mock_tab_mapper, mock_animator, mock_audio_extractor, dummy_output_path
+    mock_tab_mapper,
+    mock_animator,
+    mock_tabs_animator,
+    mock_audio_extractor,
+    dummy_output_path,
 ) -> HarmonicaTabsPipeline:
     return HarmonicaTabsPipeline(
         tab_mapper=mock_tab_mapper,
@@ -36,7 +45,9 @@ def dummy_pipeline(
         audio_extractor=mock_audio_extractor,
         one_note_melody=True,
         save_midi=True,
-        output_path=dummy_output_path,
+        harmonica_vid_output_path=dummy_output_path,
+        tabs_output_path=dummy_output_path,
+        tab_phrase_animator=mock_tabs_animator,
     )
 
 

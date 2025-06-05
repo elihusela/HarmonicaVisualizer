@@ -72,8 +72,8 @@ class TestAnimator:
         assert result == []
 
     def test_calc_direction_and_color(self, dummy_animator):
-        assert dummy_animator._calc_direction(TabEntry(4, 0, 1)) == "↓"
-        assert dummy_animator._calc_direction(TabEntry(-4, 0, 1)) == "↑"
+        assert dummy_animator._calc_direction(TabEntry(4, 0, 1)) == "↑"
+        assert dummy_animator._calc_direction(TabEntry(-4, 0, 1)) == "↓"
 
         assert dummy_animator._get_color(TabEntry(5, 0, 1)) == "#41dd65"
         assert dummy_animator._get_color(TabEntry(-5, 0, 1)) == "#fd4444"
