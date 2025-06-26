@@ -1,17 +1,17 @@
 import os
-from typing import List, Optional
 import time
+from typing import List, Optional, Dict
 
 import matplotlib.animation as animation
 from matplotlib import pyplot as plt
 from matplotlib.axes import Axes
-from matplotlib.text import Text
 from matplotlib.patches import Rectangle
+from matplotlib.text import Text
 
 from image_converter.consts import IN_COLOR, OUT_COLOR
 from image_converter.figure_factory import FigureFactory
 from image_converter.harmonica_layout import HarmonicaLayout
-from tab_converter.models import Tabs, TabEntry
+from tab_converter.models import TabEntry
 from utils.utils import TEMP_DIR
 
 
@@ -27,22 +27,32 @@ class Animator:
         self._temp_video_path: str = TEMP_DIR + "temp_video.mp4"
         self._ax: Optional[Axes] = None
         self._squares: List[Rectangle] = []
+        self._flat_entries: List[TabEntry] = []
 
     def create_animation(
         self,
-        tabs: Tabs,
+        all_pages: Dict[str, List[List[Optional[List[TabEntry]]]]],
         extracted_audio_path: str,
         output_path: str,
-        fps: int = 30,
+        fps: int = 15,
     ) -> None:
-        total_duration = self._get_total_duration(tabs)
+        self._flat_entries = [
+            entry
+            for page in all_pages.values()
+            for line in page
+            for chord in line
+            if chord
+            for entry in chord
+        ]
+
+        total_duration = self._get_total_duration()
         total_frames = self._get_total_frames(fps, total_duration)
 
         fig, self._ax = self._figure_factory.create()
 
         ani = animation.FuncAnimation(
             fig,
-            lambda frame: self._timed_update_frame(frame, tabs, fps),
+            lambda frame: self._timed_update_frame(frame, fps),
             frames=total_frames,
             blit=False,
             interval=1000 / fps,
@@ -77,15 +87,15 @@ class Animator:
         os.remove(self._temp_video_path)
         os.remove(transparent_video_path)
 
-    def _timed_update_frame(self, frame: int, tabs: Tabs, fps: int) -> List:
+    def _timed_update_frame(self, frame: int, fps: int) -> List:
         start = time.perf_counter()
-        output = self._update_frame(frame, tabs, fps)
+        output = self._update_frame(frame, fps)
         elapsed = time.perf_counter() - start
         if frame % 30 == 0:  # log every 30th frame
             self._frame_timings.append(elapsed)
         return output
 
-    def _update_frame(self, frame: int, tabs: Tabs, fps: int) -> List:
+    def _update_frame(self, frame: int, fps: int) -> List:
         current_time = frame / fps
 
         for obj in self._text_objects + self._arrows:
@@ -95,7 +105,7 @@ class Animator:
 
         assert self._ax is not None
 
-        for tab_entry in tabs.tabs:
+        for tab_entry in self._flat_entries:
             start = tab_entry.time
             end = start + tab_entry.duration
             if start <= current_time <= end:
@@ -153,10 +163,8 @@ class Animator:
     def _calc_direction(tab_entry: TabEntry) -> str:
         return "↑" if tab_entry.tab > 0 else "↓"
 
-    @staticmethod
-    def _get_total_duration(tabs: Tabs) -> float:
-        return max(tab.time + (tab.duration or 0.5) for tab in tabs.tabs)
+    def _get_total_duration(self) -> float:
+        return max(tab.time + (tab.duration or 0.5) for tab in self._flat_entries)
 
-    @staticmethod
-    def _get_total_frames(fps: int, total_duration: float) -> int:
+    def _get_total_frames(self, fps: int, total_duration: float) -> int:
         return int(total_duration * fps)

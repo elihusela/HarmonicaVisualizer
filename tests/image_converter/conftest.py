@@ -5,18 +5,23 @@ import pytest
 from image_converter.animator import Animator
 from image_converter.figure_factory import FigureFactory
 from image_converter.harmonica_layout import HarmonicaLayout
-from tab_converter.models import Tabs, TabEntry
+from tab_converter.models import TabEntry
 
 
 @pytest.fixture
-def dummy_tabs() -> Tabs:
-    return Tabs(
-        [
-            TabEntry(tab=1, time=0.0, duration=1.0),  # blow
-            TabEntry(tab=-2, time=0.5, duration=1.0),  # draw
-            TabEntry(tab=3, time=2.0, duration=0.3),  # future
+def dummy_tabs() -> dict:
+    return {
+        "page 1": [
+            [  # line 1
+                [TabEntry(tab=1, time=0.0, duration=1.0)],  # chord 1
+                [TabEntry(tab=-2, time=0.5, duration=1.0)],  # chord 2
+            ],
+            [  # line 2
+                [TabEntry(tab=3, time=2.0, duration=0.3)],  # chord 3
+                None,  # unmatched chord
+            ],
         ]
-    )
+    }
 
 
 @pytest.fixture()

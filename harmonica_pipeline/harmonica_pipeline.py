@@ -46,9 +46,10 @@ class HarmonicaTabsPipeline:
         self._extracted_audio_path = self._extract_audio()
         note_events = self._audio_to_midi()
         tabs = self._note_events_to_tabs(note_events)
+        matched_tabs = self._tab_matcher.match(tabs, self._tabs_text_parser.get_pages())
         start = time.perf_counter()
         self._animator.create_animation(
-            tabs, str(self._extracted_audio_path), self._output_path
+            matched_tabs, str(self._extracted_audio_path), self._output_path
         )
         print(f"⏱ Animator finished in {time.perf_counter() - start:.2f}s")
 
@@ -66,6 +67,8 @@ class HarmonicaTabsPipeline:
         _, midi_data, note_events = predict(
             audio_path=self._extracted_audio_path,
             model_or_model_path=ICASSP_2022_MODEL_PATH,
+            onset_threshold=0.3,
+            frame_threshold=0.3,
         )
 
         if self._save_midi:

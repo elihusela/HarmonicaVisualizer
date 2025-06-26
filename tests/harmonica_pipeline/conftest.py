@@ -71,6 +71,7 @@ def configured_pipeline(
     mock_tab_mapper,
     mock_animator,
     mock_audio_extractor,
+    mock_tabs_matcher,
     dummy_output_path,
 ):
     fake_tabs = Tabs([TabEntry(tab=1, time=0.0, duration=1.0)])
@@ -79,6 +80,7 @@ def configured_pipeline(
 
     mock_audio_extractor.extract_audio_from_video.return_value = "audio.wav"
     mock_tab_mapper.note_events_to_tabs.return_value = fake_tabs
+    mock_tabs_matcher.match.return_value = fake_tabs
 
     return {
         "pipeline": dummy_pipeline,
