@@ -8,6 +8,7 @@ from image_converter.animator import Animator
 from tab_converter.models import Tabs
 from tab_converter.tab_mapper import TabMapper
 from tab_phrase_animator.tab_phrase_animator import TabPhraseAnimator
+from tab_phrase_animator.tab_text_parser import TabTextParser
 from utils.audio_extractor import AudioExtractor
 from utils.utils import TEMP_DIR, clean_temp_folder
 
@@ -19,7 +20,7 @@ class HarmonicaTabsPipeline:
         animator: Animator,
         tab_phrase_animator: TabPhraseAnimator,
         audio_extractor: AudioExtractor,
-        tabs_file_path: str,
+        tabs_text_parser: TabTextParser,
         harmonica_vid_output_path: str,
         tabs_output_path: str,
         one_note_melody: bool = True,
@@ -29,7 +30,7 @@ class HarmonicaTabsPipeline:
         self._animator = animator
         self._tab_phrase_animator = tab_phrase_animator
         self._audio_extractor = audio_extractor
-        self._tabs_file_path = tabs_file_path
+        self._tabs_text_parser: TabTextParser = tabs_text_parser
         self._output_path = harmonica_vid_output_path
         self._tabs_output_path = tabs_output_path
         self._one_note_melody = one_note_melody
@@ -42,7 +43,6 @@ class HarmonicaTabsPipeline:
         self._extracted_audio_path = self._extract_audio()
         note_events = self._audio_to_midi()
         tabs = self._note_events_to_tabs(note_events)
-
         start = time.perf_counter()
         self._animator.create_animation(
             tabs, str(self._extracted_audio_path), self._output_path

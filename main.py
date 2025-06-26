@@ -6,6 +6,7 @@ from image_converter.harmonica_layout import HarmonicaLayout
 from tab_converter.consts import C_HARMONICA_MAPPING
 from tab_converter.tab_mapper import TabMapper
 from tab_phrase_animator.tab_phrase_animator import TabPhraseAnimator
+from tab_phrase_animator.tab_text_parser import TabTextParser
 from utils.audio_extractor import AudioExtractor
 from utils.utils import TEMP_DIR, VIDEO_FILES_DIR, OUTPUTS_DIR, TAB_FILES_DIR
 
@@ -33,7 +34,7 @@ if __name__ == "__main__":
             AudioExtractor(
                 VIDEO_FILES_DIR + sys.argv[1], TEMP_DIR + "extracted_audio.wav"
             ),
-            tabs_file_path=tab_file_path,
+            TabTextParser(tab_file_path),
             harmonica_vid_output_path=output_video_path,
             tabs_output_path=output_tabs_path,
         )
