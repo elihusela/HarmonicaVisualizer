@@ -125,7 +125,7 @@ class Animator:
                         linewidth=0,
                         edgecolor=None,
                         facecolor=color,
-                        alpha=0.85,
+                        alpha=tab_entry.confidence,
                     )
                 )
 
@@ -141,10 +141,10 @@ class Animator:
                 )
                 arr = self._ax.text(
                     center_x,
-                    center_y + 15,
+                    center_y + 20,
                     direction,
                     color="black",
-                    fontsize=20,
+                    fontsize=18,
                     ha="center",
                     va="center",
                 )
@@ -166,5 +166,6 @@ class Animator:
     def _get_total_duration(self) -> float:
         return max(tab.time + (tab.duration or 0.5) for tab in self._flat_entries)
 
-    def _get_total_frames(self, fps: int, total_duration: float) -> int:
+    @staticmethod
+    def _get_total_frames(fps: int, total_duration: float) -> int:
         return int(total_duration * fps)

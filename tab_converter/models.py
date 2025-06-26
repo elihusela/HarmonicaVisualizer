@@ -7,6 +7,7 @@ class TabEntry:
     tab: int
     time: float
     duration: float
+    confidence: float
 
 
 @dataclass

@@ -13,11 +13,11 @@ def dummy_tabs() -> dict:
     return {
         "page 1": [
             [  # line 1
-                [TabEntry(tab=1, time=0.0, duration=1.0)],  # chord 1
-                [TabEntry(tab=-2, time=0.5, duration=1.0)],  # chord 2
+                [TabEntry(tab=1, time=0.0, duration=1.0, confidence=0.5)],  # chord 1
+                [TabEntry(tab=-2, time=0.5, duration=1.0, confidence=0.5)],  # chord 2
             ],
             [  # line 2
-                [TabEntry(tab=3, time=2.0, duration=0.3)],  # chord 3
+                [TabEntry(tab=3, time=2.0, duration=0.3, confidence=0.5)],  # chord 3
                 None,  # unmatched chord
             ],
         ]

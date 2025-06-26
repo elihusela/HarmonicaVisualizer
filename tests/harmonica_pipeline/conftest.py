@@ -74,7 +74,7 @@ def configured_pipeline(
     mock_tabs_matcher,
     dummy_output_path,
 ):
-    fake_tabs = Tabs([TabEntry(tab=1, time=0.0, duration=1.0)])
+    fake_tabs = Tabs([TabEntry(tab=1, time=0.0, duration=1.0, confidence=0.5)])
     fake_note_events = [(0.0, 1.0, 60, 0.9, [])]
     fake_midi = MagicMock()
 

@@ -36,6 +36,7 @@ class TabMatcher:
                                         tab=note,
                                         time=entry.time,
                                         duration=entry.duration,
+                                        confidence=entry.confidence,
                                     )
                                 )
                                 midi_entries.pop(idx)
@@ -53,6 +54,7 @@ class TabMatcher:
                                         tab=note,
                                         time=closest_entry.time,
                                         duration=closest_entry.duration,
+                                        confidence=closest_entry.confidence,
                                     )
                                 )
                             else:
