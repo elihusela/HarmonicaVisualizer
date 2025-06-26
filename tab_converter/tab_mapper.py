@@ -41,7 +41,10 @@ class TabMapper:
                 duration = round(event.end_time - event.start_time, 3)
                 tab_entries.append(TabEntry(tab=tab, time=start, duration=duration))
 
-        return Tabs(tab_entries)
+        tabs = Tabs(tab_entries)
+        tabs.tabs.sort(key=lambda e: e.time)
+
+        return tabs
 
     def _handle_message(
         self,

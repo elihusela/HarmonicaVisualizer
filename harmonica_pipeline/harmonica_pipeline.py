@@ -7,6 +7,7 @@ from basic_pitch.inference import predict
 from image_converter.animator import Animator
 from tab_converter.models import Tabs
 from tab_converter.tab_mapper import TabMapper
+from tab_phrase_animator.tab_matcher import TabMatcher
 from tab_phrase_animator.tab_phrase_animator import TabPhraseAnimator
 from tab_phrase_animator.tab_text_parser import TabTextParser
 from utils.audio_extractor import AudioExtractor
@@ -21,6 +22,7 @@ class HarmonicaTabsPipeline:
         tab_phrase_animator: TabPhraseAnimator,
         audio_extractor: AudioExtractor,
         tabs_text_parser: TabTextParser,
+        tab_matcher: TabMatcher,
         harmonica_vid_output_path: str,
         tabs_output_path: str,
         one_note_melody: bool = True,
@@ -31,6 +33,7 @@ class HarmonicaTabsPipeline:
         self._tab_phrase_animator = tab_phrase_animator
         self._audio_extractor = audio_extractor
         self._tabs_text_parser: TabTextParser = tabs_text_parser
+        self._tab_matcher: TabMatcher = tab_matcher
         self._output_path = harmonica_vid_output_path
         self._tabs_output_path = tabs_output_path
         self._one_note_melody = one_note_melody

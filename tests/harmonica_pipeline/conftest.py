@@ -30,6 +30,11 @@ def mock_tabs_text_parser() -> MagicMock:
     return MagicMock()
 
 
+@pytest.fixture
+def mock_tabs_matcher() -> MagicMock:
+    return MagicMock()
+
+
 @pytest.fixture()
 def dummy_output_path() -> str:
     return "TEST"
@@ -44,6 +49,7 @@ def dummy_pipeline(
     mock_audio_extractor,
     dummy_output_path,
     mock_tabs_text_parser,
+    mock_tabs_matcher,
 ) -> HarmonicaTabsPipeline:
     return HarmonicaTabsPipeline(
         tab_mapper=mock_tab_mapper,
@@ -55,6 +61,7 @@ def dummy_pipeline(
         harmonica_vid_output_path=dummy_output_path,
         tabs_output_path=dummy_output_path,
         tab_phrase_animator=mock_tabs_animator,
+        tab_matcher=mock_tabs_matcher,
     )
 
 
