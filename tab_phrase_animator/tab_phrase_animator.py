@@ -1,5 +1,5 @@
 import os
-from typing import List, Optional
+from typing import List, Optional, Dict
 
 import matplotlib.animation as animation
 import matplotlib.pyplot as plt
@@ -7,7 +7,7 @@ from matplotlib.axes import Axes
 from matplotlib.patches import FancyBboxPatch
 from matplotlib.text import Text
 
-from tab_converter.models import Tabs
+from tab_converter.models import TabEntry
 from utils.utils import TEMP_DIR
 import matplotlib.font_manager as fm
 
@@ -19,7 +19,7 @@ class TabPhraseAnimator:
 
     def create_animation(
         self,
-        tabs: Tabs,
+        tabs: Dict[str, List[List[Optional[List[TabEntry]]]]],
         audio_path: str,
         output_path: str,
         fps: int = 30,
@@ -32,10 +32,19 @@ class TabPhraseAnimator:
         fig, self._ax = plt.subplots(figsize=(16, 9))
         self._ax.axis("off")
 
-        # Extract tab phrase as string
-        tab_entries = sorted(tabs.tabs, key=lambda x: x.time)
-        tab_text = [self._tab_to_str(t.tab) for t in tab_entries]
+        # Flatten all TabEntry instances and sort
+        tab_entries: List[TabEntry] = [
+            entry
+            for page in tabs.values()
+            for line in page
+            for chord in line
+            if chord
+            for entry in chord
+        ]
+        tab_entries.sort(key=lambda t: t.time)
 
+        # Extract tab text
+        tab_text = [self._tab_to_str(t.tab) for t in tab_entries]
         lines = [
             tab_text[i : i + line_limit] for i in range(0, len(tab_text), line_limit)
         ]
@@ -49,7 +58,6 @@ class TabPhraseAnimator:
             if self._ax is None:
                 return
 
-            # Draw background rounded box based on lines
             longest_line_len = max(len(line) for line in lines)
             text_width = 0.06 * longest_line_len
             text_height = 0.12 * num_lines
@@ -72,8 +80,8 @@ class TabPhraseAnimator:
 
             for i, line in enumerate(lines):
                 for j, char in enumerate(line):
-                    xpos = 0.5 - text_width / 2 + j * 0.06
-                    ypos = 0.5 + text_height / 2 - (i + 1) * 0.12
+                    xpos = x + j * 0.06
+                    ypos = y + text_height - (i + 1) * 0.12
                     text = self._ax.text(
                         xpos,
                         ypos,
@@ -97,7 +105,7 @@ class TabPhraseAnimator:
                 if (
                     tab_entry.time
                     <= current_time
-                    <= tab_entry.time + tab_entry.duration
+                    <= tab_entry.time + (tab_entry.duration or 0.5)
                 ):
                     text_obj.set_color(highlight_color)
 
@@ -125,7 +133,7 @@ class TabPhraseAnimator:
             f"-c:v prores_ks -profile:v 4 -pix_fmt yuva444p10le "
             f"{transparent_path}"
         )
-        print(f"🟣 Background removed, transparent video saved to {transparent_path}")
+        print(f"🕓 Background removed, transparent video saved to {transparent_path}")
 
         os.system(
             f"ffmpeg -y -i {transparent_path} -i {audio_path} "

@@ -55,7 +55,7 @@ class HarmonicaTabsPipeline:
 
         start = time.perf_counter()
         self._tab_phrase_animator.create_animation(
-            tabs, self._extracted_audio_path, self._tabs_output_path
+            matched_tabs, self._extracted_audio_path, self._tabs_output_path
         )
         print(f"⏱ TabPhraseAnimator finished in {time.perf_counter() - start:.2f}s")
 
