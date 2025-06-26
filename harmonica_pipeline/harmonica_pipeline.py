@@ -19,6 +19,7 @@ class HarmonicaTabsPipeline:
         animator: Animator,
         tab_phrase_animator: TabPhraseAnimator,
         audio_extractor: AudioExtractor,
+        tabs_file_path: str,
         harmonica_vid_output_path: str,
         tabs_output_path: str,
         one_note_melody: bool = True,
@@ -28,6 +29,7 @@ class HarmonicaTabsPipeline:
         self._animator = animator
         self._tab_phrase_animator = tab_phrase_animator
         self._audio_extractor = audio_extractor
+        self._tabs_file_path = tabs_file_path
         self._output_path = harmonica_vid_output_path
         self._tabs_output_path = tabs_output_path
         self._one_note_melody = one_note_melody

@@ -9,6 +9,7 @@ from tab_converter.consts import SET_TEMPO_MSG
 
 TEMP_DIR = str(Path(__file__).parent.parent / "temp") + "/"
 VIDEO_FILES_DIR = str(Path(__file__).parent.parent / "video-files") + "/"
+TAB_FILES_DIR = str(Path(__file__).parent.parent / "tab-files") + "/"
 OUTPUTS_DIR = str(Path(__file__).parent.parent / "outputs") + "/"
 
 

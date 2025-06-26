@@ -30,6 +30,11 @@ def dummy_output_path() -> str:
     return "TEST"
 
 
+@pytest.fixture()
+def dummy_tabs_text_path() -> str:
+    return "TEST"
+
+
 # Combined pipeline fixture
 @pytest.fixture
 def dummy_pipeline(
@@ -38,6 +43,7 @@ def dummy_pipeline(
     mock_tabs_animator,
     mock_audio_extractor,
     dummy_output_path,
+    dummy_tabs_text_path,
 ) -> HarmonicaTabsPipeline:
     return HarmonicaTabsPipeline(
         tab_mapper=mock_tab_mapper,
@@ -46,6 +52,7 @@ def dummy_pipeline(
         one_note_melody=True,
         save_midi=True,
         harmonica_vid_output_path=dummy_output_path,
+        tabs_file_path=dummy_tabs_text_path,
         tabs_output_path=dummy_output_path,
         tab_phrase_animator=mock_tabs_animator,
     )
