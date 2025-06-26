@@ -17,10 +17,10 @@ from utils.utils import TEMP_DIR
 
 class Animator:
     def __init__(
-        self, harmonica_layoout: HarmonicaLayout, figure_factory: FigureFactory
+        self, harmonica_layout: HarmonicaLayout, figure_factory: FigureFactory
     ):
         self._frame_timings: List[float] = []
-        self._harmonica_layout = harmonica_layoout
+        self._harmonica_layout = harmonica_layout
         self._figure_factory = figure_factory
         self._text_objects: List[Text] = []
         self._arrows: List[Text] = []
