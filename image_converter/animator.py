@@ -70,7 +70,7 @@ class Animator:
         transparent_video_path = TEMP_DIR + "temp_transparent.mov"
         os.system(
             f"ffmpeg -y -i {self._temp_video_path} "
-            f"-vf colorkey=0xFF00FF:0.3:0.0,format=yuva444p10le "
+            f"-vf colorkey=0xFF00FF:0.4:0.0,format=yuva444p10le "
             f"-c:v prores_ks -profile:v 4 -pix_fmt yuva444p10le "
             f"{transparent_video_path}"
         )
