@@ -1,6 +1,6 @@
 from harmonica_pipeline.harmonica_pipeline import HarmonicaTabsPipeline
 from image_converter.animator import Animator
-from image_converter.consts import C_BASIC_MODEL_HOLE_MAPPING
+from image_converter.consts import C_NEW_MODEL_HOLE_MAPPING
 from image_converter.figure_factory import FigureFactory
 from image_converter.harmonica_layout import HarmonicaLayout
 from tab_converter.consts import C_HARMONICA_MAPPING
@@ -28,7 +28,7 @@ if __name__ == "__main__":
         pipeline = HarmonicaTabsPipeline(
             TabMapper(C_HARMONICA_MAPPING, TEMP_DIR),
             Animator(
-                HarmonicaLayout(harmonica_image_path, C_BASIC_MODEL_HOLE_MAPPING),
+                HarmonicaLayout(harmonica_image_path, C_NEW_MODEL_HOLE_MAPPING),
                 FigureFactory(harmonica_image_path),
             ),
             TabPhraseAnimator(),

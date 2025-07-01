@@ -7,7 +7,6 @@ C_BASIC_MODEL_HEIGHT = 84
 OUT_COLOR = "#41dd65"  # GREEN
 IN_COLOR = "#fd4444"  # RED
 
-
 C_BASIC_MODEL_HOLE_MAPPING = {
     1: {"top_left": {"x": 330, "y": 347}, "bottom_right": {"x": 390, "y": 413}},
     2: {"top_left": {"x": 417, "y": 347}, "bottom_right": {"x": 476, "y": 410}},
@@ -19,4 +18,17 @@ C_BASIC_MODEL_HOLE_MAPPING = {
     8: {"top_left": {"x": 943, "y": 346}, "bottom_right": {"x": 999, "y": 408}},
     9: {"top_left": {"x": 1031, "y": 345}, "bottom_right": {"x": 1085, "y": 411}},
     10: {"top_left": {"x": 1117, "y": 346}, "bottom_right": {"x": 1170, "y": 412}},
+}
+
+C_NEW_MODEL_HOLE_MAPPING = {
+    1: {"top_left": {"x": 281, "y": 338}, "bottom_right": {"x": 341, "y": 400}},
+    2: {"top_left": {"x": 379, "y": 337}, "bottom_right": {"x": 433, "y": 401}},
+    3: {"top_left": {"x": 470, "y": 335}, "bottom_right": {"x": 527, "y": 402}},
+    4: {"top_left": {"x": 566, "y": 337}, "bottom_right": {"x": 623, "y": 401}},
+    5: {"top_left": {"x": 659, "y": 335}, "bottom_right": {"x": 717, "y": 402}},
+    6: {"top_left": {"x": 756, "y": 336}, "bottom_right": {"x": 812, "y": 401}},
+    7: {"top_left": {"x": 848, "y": 333}, "bottom_right": {"x": 908, "y": 401}},
+    8: {"top_left": {"x": 944, "y": 336}, "bottom_right": {"x": 1001, "y": 399}},
+    9: {"top_left": {"x": 1041, "y": 333}, "bottom_right": {"x": 1097, "y": 403}},
+    10: {"top_left": {"x": 1135, "y": 333}, "bottom_right": {"x": 1187, "y": 399}},
 }
