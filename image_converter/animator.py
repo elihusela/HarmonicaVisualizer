@@ -15,6 +15,20 @@ from tab_converter.models import TabEntry
 from utils.utils import TEMP_DIR
 
 
+def adjust_consecutive_identical_notes(
+    flat_entries: List[TabEntry], gap: float = 0.1
+) -> List[TabEntry]:
+    for i in range(len(flat_entries) - 1):
+        current = flat_entries[i]
+        next_entry = flat_entries[i + 1]
+
+        if current.tab == next_entry.tab:
+            end_time = current.time + current.duration
+            if end_time >= next_entry.time:
+                current.duration = max(0, next_entry.time - current.time - gap)
+    return flat_entries
+
+
 class Animator:
     def __init__(
         self, harmonica_layout: HarmonicaLayout, figure_factory: FigureFactory
@@ -44,6 +58,9 @@ class Animator:
             if chord
             for entry in chord
         ]
+
+        # ONLY PATCH ADDED:
+        self._flat_entries = adjust_consecutive_identical_notes(self._flat_entries)
 
         total_duration = self._get_total_duration()
         total_frames = self._get_total_frames(fps, total_duration)
