@@ -9,9 +9,9 @@ class TestTabMapper:
 
     def test_note_events_to_tabs_valid(self, tab_mapper):
         note_events = [
-            NoteEvent(0.0, 1.0, 60, 0.95, []),
-            NoteEvent(1.0, 1.5, 62, 0.85, []),
-            NoteEvent(2.0, 2.6, 64, 0.88, []),
+            NoteEvent(60, 0.0, 1.0, 0.95, []),
+            NoteEvent(62, 1.0, 1.5, 0.85, []),
+            NoteEvent(64, 2.0, 2.6, 0.88, []),
         ]
 
         result = tab_mapper.note_events_to_tabs(note_events)
@@ -23,8 +23,8 @@ class TestTabMapper:
 
     def test_ignores_unmapped_pitches(self, tab_mapper):
         note_events = [
-            NoteEvent(0.0, 1.0, 999, 0.9, []),
-            NoteEvent(0.0, 1.0, 60, 0.9, []),
+            NoteEvent(999, 0.0, 1.0, 0.9, []),
+            NoteEvent(60, 0.0, 1.0, 0.9, []),
         ]
         result = tab_mapper.note_events_to_tabs(note_events)
         assert result.tabs == [TabEntry(tab=1, time=0.0, duration=1.0, confidence=0.9)]
@@ -35,17 +35,17 @@ class TestTabMapper:
         assert result.tabs == []
 
     def test_zero_duration(self, tab_mapper):
-        note_events = [NoteEvent(1.0, 1.0, 60, 0.9, [])]
+        note_events = [NoteEvent(60, 1.0, 1.0, 0.9, [])]
         result = tab_mapper.note_events_to_tabs(note_events)
         assert result.tabs == [TabEntry(tab=1, time=1.0, duration=0.0, confidence=0.9)]
 
     def test_negative_duration(self, tab_mapper):
-        note_events = [NoteEvent(2.0, 1.5, 60, 0.9, [])]
+        note_events = [NoteEvent(60, 2.0, 1.5, 0.9, [])]
         result = tab_mapper.note_events_to_tabs(note_events)
         assert result.tabs == [TabEntry(tab=1, time=2.0, duration=-0.5, confidence=0.9)]
 
     def test_rounding_precision(self, tab_mapper):
-        note_events = [NoteEvent(0.00001, 0.99999, 60, 0.9, [])]
+        note_events = [NoteEvent(60, 0.00001, 0.99999, 0.9, [])]
         result = tab_mapper.note_events_to_tabs(note_events)
         assert result.tabs == [TabEntry(tab=1, time=0.0, duration=1.0, confidence=0.9)]
 

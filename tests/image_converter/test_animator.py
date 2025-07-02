@@ -37,7 +37,7 @@ class TestAnimator:
             "colorkey" in cmd for cmd in called_args
         ), "Missing chroma key ffmpeg call"
         assert any(
-            "aac" in cmd and "-shortest" in cmd for cmd in called_args
+            "aac" in cmd for cmd in called_args
         ), "Missing audio merge ffmpeg call"
         assert mock_remove.call_count == 2
         mock_remove.assert_any_call(dummy_animator._temp_video_path)

@@ -24,7 +24,7 @@ class TabPhraseAnimator:
         audio_path: str,
         output_path: str,
         fps: int = 30,
-        font_color: str = "black",
+        font_color: str = "white",
         box_alpha: float = 0.4,
         line_limit: int = 4,
     ) -> None:
@@ -87,7 +87,7 @@ class TabPhraseAnimator:
                         ypos,
                         char,
                         transform=self._ax.transAxes,
-                        ha="left",
+                        ha="center",
                         va="center",
                         fontsize=32,
                         fontname="Ploni Round AAA",
@@ -140,7 +140,7 @@ class TabPhraseAnimator:
 
         os.system(
             f"ffmpeg -y -i {transparent_path} -i {audio_path} "
-            f"-c:v copy -c:a aac -shortest {output_path}"
+            f"-c:v copy -c:a aac {output_path}"
         )
         print(f"✅ Final video with transparency + audio saved to {output_path}")
 

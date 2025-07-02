@@ -97,7 +97,7 @@ class Animator:
 
         os.system(
             f"ffmpeg -y -i {transparent_video_path} -i {extracted_audio_path} "
-            f"-c:v copy -c:a aac -shortest {output_path}"
+            f"-c:v copy -c:a aac {output_path}"
         )
         print(f"✅ Final video with transparency + audio saved to {output_path}")
 

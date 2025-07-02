@@ -39,5 +39,6 @@ if __name__ == "__main__":
             TabMatcher(),
             harmonica_vid_output_path=output_video_path,
             tabs_output_path=output_tabs_path,
+            existing_midi_path="/Users/elihu.sela/Downloads/fixed.mid",
         )
         pipeline.run()

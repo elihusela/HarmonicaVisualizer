@@ -28,7 +28,6 @@ class TabMatcher:
                     matched_entries: List[TabEntry] = []
 
                     for note in chord:
-                        match_found = False
                         for idx, entry in enumerate(midi_entries):
                             if entry.tab == note:
                                 matched_entries.append(
@@ -40,23 +39,8 @@ class TabMatcher:
                                     )
                                 )
                                 midi_entries.pop(idx)
-                                match_found = True
                                 break
 
-                        if not match_found:
-                            if midi_entries:
-                                closest_entry = midi_entries.pop(0)
-                                print(
-                                    f"Replacing note {note} with closest available MIDI timing {closest_entry.tab}"
-                                )
-                                matched_entries.append(
-                                    TabEntry(
-                                        tab=note,
-                                        time=closest_entry.time,
-                                        duration=closest_entry.duration,
-                                        confidence=closest_entry.confidence,
-                                    )
-                                )
                             else:
                                 print(f"No MIDI entries left to match note {note}")
 
