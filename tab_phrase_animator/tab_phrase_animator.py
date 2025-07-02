@@ -7,6 +7,7 @@ from matplotlib.axes import Axes
 from matplotlib.patches import FancyBboxPatch
 from matplotlib.text import Text
 
+from image_converter.consts import OUT_COLOR, IN_COLOR
 from tab_converter.models import TabEntry
 from utils.utils import TEMP_DIR
 import matplotlib.font_manager as fm
@@ -23,12 +24,11 @@ class TabPhraseAnimator:
         audio_path: str,
         output_path: str,
         fps: int = 30,
-        highlight_color: str = "yellow",
         font_color: str = "black",
         box_alpha: float = 0.4,
-        line_limit: int = 7,
+        line_limit: int = 4,
     ) -> None:
-        fm.fontManager.addfont("Fredoka-VariableFont_wdth,wght.ttf")
+        fm.fontManager.addfont("ploni-round-bold-aaa.ttf")
         fig, self._ax = plt.subplots(figsize=(16, 9))
         self._ax.axis("off")
 
@@ -90,7 +90,7 @@ class TabPhraseAnimator:
                         ha="left",
                         va="center",
                         fontsize=32,
-                        fontname="Fredoka",
+                        fontname="Ploni Round AAA",
                         color=font_color,
                         weight="bold",
                     )
@@ -107,7 +107,10 @@ class TabPhraseAnimator:
                     <= current_time
                     <= tab_entry.time + (tab_entry.duration or 0.5)
                 ):
-                    text_obj.set_color(highlight_color)
+                    if tab_entry.tab > 0:
+                        text_obj.set_color(OUT_COLOR)
+                    else:
+                        text_obj.set_color(IN_COLOR)
 
             return text_objects
 
