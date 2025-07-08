@@ -31,7 +31,10 @@ if __name__ == "__main__":
                 HarmonicaLayout(harmonica_image_path, C_NEW_MODEL_HOLE_MAPPING),
                 FigureFactory(harmonica_image_path),
             ),
-            TabPhraseAnimator(),
+            TabPhraseAnimator(
+                HarmonicaLayout(harmonica_image_path, C_NEW_MODEL_HOLE_MAPPING),
+                FigureFactory(harmonica_image_path),
+            ),
             AudioExtractor(
                 VIDEO_FILES_DIR + sys.argv[1], TEMP_DIR + "extracted_audio.wav"
             ),
@@ -39,6 +42,6 @@ if __name__ == "__main__":
             TabMatcher(),
             harmonica_vid_output_path=output_video_path,
             tabs_output_path=output_tabs_path,
-            existing_midi_path="/Users/elihu.sela/Downloads/fixed.mid",
+            existing_midi_path="fixed_midis/PCN_fixed.mid",
         )
         pipeline.run()

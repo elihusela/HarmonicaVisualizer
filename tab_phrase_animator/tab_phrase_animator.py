@@ -2,150 +2,144 @@ import os
 from typing import List, Optional, Dict
 
 import matplotlib.animation as animation
+import matplotlib.font_manager as fm
 import matplotlib.pyplot as plt
 from matplotlib.axes import Axes
 from matplotlib.patches import FancyBboxPatch
-from matplotlib.text import Text
 
-from image_converter.consts import OUT_COLOR, IN_COLOR
+from image_converter.consts import IN_COLOR, OUT_COLOR
+from image_converter.figure_factory import FigureFactory
+from image_converter.harmonica_layout import HarmonicaLayout
 from tab_converter.models import TabEntry
 from utils.utils import TEMP_DIR
-import matplotlib.font_manager as fm
 
 
 class TabPhraseAnimator:
-    def __init__(self):
-        self._ax: Optional[Axes] = None
-        self._temp_video_path: str = TEMP_DIR + "temp_phrase.mp4"
+    def __init__(
+        self, harmonica_layout: HarmonicaLayout, figure_factory: FigureFactory
+    ):
+        self._harmonica_layout = harmonica_layout
+        self._figure_factory = figure_factory
+        self._flat_entries: List[TabEntry] = []
+        self._text_lines: List[List[str]] = []
+        self._line_entries: List[List[TabEntry]] = []
 
-    def create_animation(
+    def create_animations(
         self,
-        tabs: Dict[str, List[List[Optional[List[TabEntry]]]]],
-        audio_path: str,
-        output_path: str,
+        all_pages: Dict[str, List[List[Optional[List[TabEntry]]]]],
+        extracted_audio_path: str,
+        output_path_text: str,
         fps: int = 30,
-        font_color: str = "white",
-        box_alpha: float = 0.4,
-        line_limit: int = 4,
     ) -> None:
+        # Build text lines
+        self._text_lines = []
+        self._line_entries = []
+        for page in all_pages.values():
+            for line in page:
+                line_texts = []
+                line_tab_entries = []
+                for chord in line:
+                    if chord:
+                        for entry in chord:
+                            line_texts.append(self._tab_to_str(entry.tab))
+                            line_tab_entries.append(entry)
+                if line_texts:
+                    self._text_lines.append(line_texts)
+                    self._line_entries.append(line_tab_entries)
+
+        total_duration = max(
+            e.time + (e.duration or 0.5) for line in self._line_entries for e in line
+        )
+        total_frames = int(float(total_duration) * fps)
+
+        # === Figure ===
+        fig, ax = plt.subplots(figsize=(16, 9))
         fm.fontManager.addfont("ploni-round-bold-aaa.ttf")
-        fig, self._ax = plt.subplots(figsize=(16, 9))
-        self._ax.axis("off")
-
-        # Flatten all TabEntry instances and sort
-        tab_entries: List[TabEntry] = [
-            entry
-            for page in tabs.values()
-            for line in page
-            for chord in line
-            if chord
-            for entry in chord
-        ]
-        tab_entries.sort(key=lambda t: t.time)
-
-        # Extract tab text
-        tab_text = [self._tab_to_str(t.tab) for t in tab_entries]
-        lines = [
-            tab_text[i : i + line_limit] for i in range(0, len(tab_text), line_limit)
-        ]
-        num_lines = len(lines)
-
-        text_objects: List[Text] = []
-        bbox: Optional[FancyBboxPatch] = None
-
-        def init():
-            nonlocal bbox
-            if self._ax is None:
-                return
-
-            longest_line_len = max(len(line) for line in lines)
-            text_width = 0.06 * longest_line_len
-            text_height = 0.12 * num_lines
-
-            x = 0.5 - text_width / 2
-            y = 0.5 - text_height / 2
-
-            bbox = FancyBboxPatch(
-                (x, y),
-                text_width,
-                text_height,
-                boxstyle="round,pad=0.05",
-                linewidth=0,
-                facecolor="white",
-                edgecolor=None,
-                alpha=box_alpha,
-                transform=self._ax.transAxes,
-            )
-            self._ax.add_patch(bbox)
-
-            for i, line in enumerate(lines):
-                for j, char in enumerate(line):
-                    xpos = x + j * 0.06
-                    ypos = y + text_height - (i + 1) * 0.12
-                    text = self._ax.text(
-                        xpos,
-                        ypos,
-                        char,
-                        transform=self._ax.transAxes,
-                        ha="center",
-                        va="center",
-                        fontsize=32,
-                        fontname="Ploni Round AAA",
-                        color=font_color,
-                        weight="bold",
-                    )
-                    text_objects.append(text)
-
-        def update(frame: int):
-            current_time = frame / fps
-            for obj in text_objects:
-                obj.set_color(font_color)
-
-            for tab_entry, text_obj in zip(tab_entries, text_objects):
-                if (
-                    tab_entry.time
-                    <= current_time
-                    <= tab_entry.time + (tab_entry.duration or 0.5)
-                ):
-                    if tab_entry.tab > 0:
-                        text_obj.set_color(OUT_COLOR)
-                    else:
-                        text_obj.set_color(IN_COLOR)
-
-            return text_objects
-
-        total_duration = max(tab.time + (tab.duration or 0.5) for tab in tab_entries)
-        total_frames = int(total_duration * fps)
+        ax.axis("off")
 
         ani = animation.FuncAnimation(
             fig,
-            update,
-            init_func=init,
+            lambda frame: self._update_text_frame(frame, ax, fps),
             frames=total_frames,
             interval=1000 / fps,
             blit=False,
         )
+        text_temp_path = TEMP_DIR + "temp_text.mp4"
+        ani.save(text_temp_path, fps=fps, writer="ffmpeg")
 
-        ani.save(self._temp_video_path, fps=fps, writer="ffmpeg")
-        print(f"🎥 Intermediate video saved to {self._temp_video_path}")
-
-        transparent_path = TEMP_DIR + "temp_phrase_transparent.mov"
+        transparent_path = TEMP_DIR + "text_transparent.mov"
         os.system(
-            f"ffmpeg -y -i {self._temp_video_path} "
-            f"-vf colorkey=0xFFFFFF:0.3:0.0,format=yuva444p10le "
-            f"-c:v prores_ks -profile:v 4 -pix_fmt yuva444p10le "
-            f"{transparent_path}"
+            f"ffmpeg -y -i {text_temp_path} "
+            f"-vf colorkey=0x000000:0.3:0.0,format=yuva444p10le "
+            f"-c:v prores_ks -profile:v 4 -pix_fmt yuva444p10le {transparent_path}"
         )
-        print(f"🕓 Background removed, transparent video saved to {transparent_path}")
-
         os.system(
-            f"ffmpeg -y -i {transparent_path} -i {audio_path} "
-            f"-c:v copy -c:a aac {output_path}"
+            f"ffmpeg -y -i {transparent_path} -i {extracted_audio_path} "
+            f"-c:v copy -c:a aac -shortest {output_path_text}"
         )
-        print(f"✅ Final video with transparency + audio saved to {output_path}")
 
-        os.remove(self._temp_video_path)
+        os.remove(text_temp_path)
         os.remove(transparent_path)
+
+    def _update_text_frame(self, frame: int, ax: Axes, fps: int) -> List:
+        current_time = frame / fps
+        elements = []
+        ax.clear()
+        ax.axis("off")
+
+        # Layout settings
+        char_spacing = 0.08
+        line_spacing = 0.12
+        total_height = (len(self._text_lines) - 1) * line_spacing
+        y_start = 0.5 + total_height / 2
+
+        # Compute bounding box dimensions
+        max_line_len = max((len(line) for line in self._text_lines), default=0)
+        box_width = 0.06 * max_line_len + 0.04
+        box_height = 0.12 * len(self._text_lines) + 0.04
+        box_x = 0.5 - box_width / 2
+        box_y = 0.5 - box_height / 2
+
+        # Draw rounded box first
+        bbox = FancyBboxPatch(
+            (box_x, box_y),
+            box_width,
+            box_height,
+            boxstyle="round,pad=0.05, rounding_size=0.2",
+            linewidth=0,
+            facecolor="#888888",
+            edgecolor=None,
+            transform=ax.transAxes,
+            alpha=0.5,
+        )
+        ax.add_patch(bbox)
+        elements.append(bbox)
+
+        # Then add the text lines
+        for i, (line_texts, line_tab_entries) in enumerate(
+            zip(self._text_lines, self._line_entries)
+        ):
+            ypos = y_start - i * line_spacing
+            line_len = len(line_texts)
+            for j, (char, entry) in enumerate(zip(line_texts, line_tab_entries)):
+                xpos = 0.5 + (j - (line_len - 1) / 2) * char_spacing
+                color = "white"
+                if entry.time <= current_time <= entry.time + (entry.duration or 0.5):
+                    color = OUT_COLOR if entry.tab > 0 else IN_COLOR
+                txt = ax.text(
+                    xpos,
+                    ypos,
+                    char,
+                    transform=ax.transAxes,
+                    ha="center",
+                    va="center",
+                    fontsize=32,
+                    fontname="Ploni Round AAA",
+                    color=color,
+                    weight="bold",
+                )
+                elements.append(txt)
+        return elements
 
     @staticmethod
     def _tab_to_str(tab: int) -> str:
