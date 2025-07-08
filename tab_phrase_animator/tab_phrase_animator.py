@@ -55,6 +55,8 @@ class TabPhraseAnimator:
         # === Figure ===
         fig, ax = plt.subplots(figsize=(16, 9))
         fm.fontManager.addfont("ploni-round-bold-aaa.ttf")
+        fig.patch.set_facecolor("#FF00FF")  # ✅ MAGENTA BACKGROUND for chromakey
+        ax.set_facecolor("#FF00FF")  # ✅ MAGENTA BACKGROUND
         ax.axis("off")
 
         ani = animation.FuncAnimation(
@@ -70,7 +72,7 @@ class TabPhraseAnimator:
         transparent_path = TEMP_DIR + "text_transparent.mov"
         os.system(
             f"ffmpeg -y -i {text_temp_path} "
-            f"-vf colorkey=0x000000:0.3:0.0,format=yuva444p10le "
+            f"-vf colorkey=0xFF00FF:0.3:0.0,format=yuva444p10le "
             f"-c:v prores_ks -profile:v 4 -pix_fmt yuva444p10le {transparent_path}"
         )
         os.system(
@@ -86,6 +88,7 @@ class TabPhraseAnimator:
         elements = []
         ax.clear()
         ax.axis("off")
+        ax.set_facecolor("#FF00FF")  # ✅ MAGENTA on each frame clear
 
         # Layout settings
         char_spacing = 0.08
