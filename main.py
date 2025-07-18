@@ -42,6 +42,7 @@ if __name__ == "__main__":
             TabMatcher(),
             harmonica_vid_output_path=output_video_path,
             tabs_output_path=output_tabs_path,
-            existing_midi_path="fixed_midis/PCN_fixed.mid",
+            save_midi=True,
+            existing_midi_path="fixed_midis/SNF_fixed.mid",
         )
         pipeline.run()
