@@ -16,8 +16,8 @@ class Tabs:
 
 
 class NoteEvent(NamedTuple):
-    pitch: int
     start_time: float
     end_time: float
+    pitch: int
     confidence: float
     activation: List[float]

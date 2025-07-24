@@ -21,3 +21,5 @@ venv/
 temp/
 outputs/
 video-files/
+/tab-files/
+/fixed_midis/

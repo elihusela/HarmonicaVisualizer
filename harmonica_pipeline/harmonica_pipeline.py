@@ -101,7 +101,7 @@ class HarmonicaTabsPipeline:
         for instrument in midi_data.instruments:
             for note in instrument.notes:
                 note_events.append(
-                    (note.pitch, note.start, note.end, note.velocity / 127.0, 1.0)
+                    (note.start, note.end, note.pitch, note.velocity / 127.0, 1.0)
                 )
         print(
             f"🎵 Extracted {len(note_events)} note events from MIDI file without pitch bends."
