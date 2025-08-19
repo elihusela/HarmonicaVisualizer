@@ -9,14 +9,14 @@ from tab_phrase_animator.tab_matcher import TabMatcher
 from tab_phrase_animator.tab_phrase_animator import TabPhraseAnimator
 from tab_phrase_animator.tab_text_parser import TabTextParser
 from utils.audio_extractor import AudioExtractor
-from utils.utils import TEMP_DIR, VIDEO_FILES_DIR, OUTPUTS_DIR, TAB_FILES_DIR
+from utils.utils import TEMP_DIR, VIDEO_FILES_DIR, OUTPUTS_DIR, TAB_FILES_DIR, MIDI_DIR
 
 if __name__ == "__main__":
     import sys
 
     if len(sys.argv) < 6:
         print(
-            "Usage: python main.py video.mp4 PCN.txt harmonica_image.png output_video.mov output_tabs.mov"
+            "Usage: python main.py video.mp4 PCN.txt harmonica_image.png output_video.mov output_tabs.mov midi.mid"
         )
         # print("Usage: python main.py ShanaTova.mov tabs.txt BasicModel.png output_video.mov output_tabs.mov")
 
@@ -25,6 +25,7 @@ if __name__ == "__main__":
         tab_file_path = TAB_FILES_DIR + sys.argv[2]
         output_video_path = OUTPUTS_DIR + sys.argv[4]
         output_tabs_path = OUTPUTS_DIR + sys.argv[5]
+        existing_midi_path = MIDI_DIR + sys.argv[6]
         pipeline = HarmonicaTabsPipeline(
             TabMapper(C_HARMONICA_MAPPING, TEMP_DIR),
             Animator(
@@ -43,6 +44,7 @@ if __name__ == "__main__":
             harmonica_vid_output_path=output_video_path,
             tabs_output_path=output_tabs_path,
             save_midi=True,
-            existing_midi_path="fixed_midis/SNF_fixed.mid",
+            existing_midi_path=existing_midi_path,
+            produce_tabs=False,
         )
         pipeline.run()

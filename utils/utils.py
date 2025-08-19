@@ -11,6 +11,7 @@ TEMP_DIR = str(Path(__file__).parent.parent / "temp") + "/"
 VIDEO_FILES_DIR = str(Path(__file__).parent.parent / "video-files") + "/"
 TAB_FILES_DIR = str(Path(__file__).parent.parent / "tab-files") + "/"
 OUTPUTS_DIR = str(Path(__file__).parent.parent / "outputs") + "/"
+MIDI_DIR = str(Path(__file__).parent.parent / "fixed_midis") + "/"
 
 
 def clean_temp_folder(path=TEMP_DIR):
