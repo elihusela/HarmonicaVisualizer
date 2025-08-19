@@ -1,3 +1,5 @@
+import os
+
 from harmonica_pipeline.harmonica_pipeline import HarmonicaTabsPipeline
 from image_converter.animator import Animator
 from image_converter.consts import C_NEW_MODEL_HOLE_MAPPING
@@ -25,7 +27,11 @@ if __name__ == "__main__":
         tab_file_path = TAB_FILES_DIR + sys.argv[2]
         output_video_path = OUTPUTS_DIR + sys.argv[4]
         output_tabs_path = OUTPUTS_DIR + sys.argv[5]
-        existing_midi_path = MIDI_DIR + sys.argv[6]
+        existing_midi: str = sys.argv[6] if len(sys.argv) > 6 else ""
+        existing_midi_path: str = (
+            os.path.join(MIDI_DIR, existing_midi) if existing_midi else ""
+        )
+
         pipeline = HarmonicaTabsPipeline(
             TabMapper(C_HARMONICA_MAPPING, TEMP_DIR),
             Animator(
