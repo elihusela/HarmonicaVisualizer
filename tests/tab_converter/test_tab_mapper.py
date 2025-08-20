@@ -47,7 +47,9 @@ class TestTabMapper:
     def test_rounding_precision(self, tab_mapper):
         note_events = [NoteEvent(0.00001, 0.99999, 60, 0.9, [])]
         result = tab_mapper.note_events_to_tabs(note_events)
-        assert result.tabs == [TabEntry(tab=1, time=0.0, duration=1.0, confidence=0.9)]
+        assert result.tabs == [
+            TabEntry(tab=1, time=1e-05, duration=0.99998, confidence=0.9)
+        ]
 
     def test_save_tabs_to_json_calls_open(self, tab_mapper):
         tabs = Tabs(

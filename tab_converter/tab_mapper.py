@@ -17,8 +17,8 @@ class TabMapper:
             event = NoteEvent(*event_tuple)
             if event.pitch in self._mapping:
                 tab = self._mapping[event.pitch]
-                start = round(event.start_time, 3)
-                duration = round(event.end_time - event.start_time, 3)
+                start = round(event.start_time, 5)
+                duration = round(event.end_time - event.start_time, 5)
                 confidence = round(event.confidence, 5)
                 tab_entries.append(
                     TabEntry(

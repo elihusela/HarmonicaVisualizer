@@ -24,7 +24,7 @@ C_NEW_MODEL_HOLE_MAPPING = {
     1: {"top_left": {"x": 290, "y": 333}, "bottom_right": {"x": 341, "y": 400}},
     2: {"top_left": {"x": 380, "y": 333}, "bottom_right": {"x": 433, "y": 401}},
     3: {"top_left": {"x": 470, "y": 333}, "bottom_right": {"x": 527, "y": 402}},
-    4: {"top_left": {"x": 568, "y": 333}, "bottom_right": {"x": 625, "y": 404}},
+    4: {"top_left": {"x": 564, "y": 333}, "bottom_right": {"x": 625, "y": 404}},
     5: {"top_left": {"x": 657, "y": 333}, "bottom_right": {"x": 719, "y": 404}},
     6: {"top_left": {"x": 754, "y": 333}, "bottom_right": {"x": 814, "y": 401}},
     7: {"top_left": {"x": 848, "y": 333}, "bottom_right": {"x": 908, "y": 401}},
