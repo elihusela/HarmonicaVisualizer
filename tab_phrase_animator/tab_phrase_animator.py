@@ -28,7 +28,6 @@ class TabPhraseAnimator:
         output_path_base: str,
         fps: int = 30,
     ) -> None:
-        # Calculate overall total duration
         all_entries = [
             entry
             for page in all_pages.values()
@@ -53,14 +52,20 @@ class TabPhraseAnimator:
                 line_tab_entries = []
                 for chord in line:
                     if chord:
-                        for entry in chord:
-                            line_texts.append(self._tab_to_str(entry.tab))
-                            line_tab_entries.append(entry)
+                        # Format the entire chord visually
+                        tabs = [entry.tab for entry in chord]
+                        if all(n < 0 for n in tabs):
+                            chord_str = "-" + "".join(str(abs(n)) for n in tabs)
+                        else:
+                            chord_str = "".join(str(abs(n)) for n in tabs)
+
+                        line_texts.append(chord_str)
+                        line_tab_entries.append(chord[0])  # one timing anchor per chord
+
                 if line_texts:
                     text_lines.append(line_texts)
                     line_entries.append(line_tab_entries)
 
-            # === Build figure for this page ===
             fig, ax = plt.subplots(figsize=(16, 9))
             ax.axis("off")
             fig.patch.set_facecolor("#FF00FF")
@@ -110,9 +115,8 @@ class TabPhraseAnimator:
         elements = []
         ax.clear()
         ax.axis("off")
-        ax.set_facecolor("#FF00FF")  # ✅ MAGENTA on each frame clear
+        ax.set_facecolor("#FF00FF")
 
-        # Layout
         char_spacing = 0.08
         line_spacing = 0.12
         total_height = (len(text_lines) - 1) * line_spacing
@@ -124,7 +128,6 @@ class TabPhraseAnimator:
         box_x = 0.5 - box_width / 2
         box_y = 0.5 - box_height / 2
 
-        # Gray rounded box
         if text_lines:
             bbox = FancyBboxPatch(
                 (box_x, box_y),
@@ -140,7 +143,6 @@ class TabPhraseAnimator:
             ax.add_patch(bbox)
             elements.append(bbox)
 
-        # Text lines
         for i, (line_texts, line_tab_entries) in enumerate(
             zip(text_lines, line_entries)
         ):
@@ -165,7 +167,3 @@ class TabPhraseAnimator:
                 )
                 elements.append(txt)
         return elements
-
-    @staticmethod
-    def _tab_to_str(tab: int) -> str:
-        return f"{'-' if tab < 0 else ''}{abs(tab)}"
