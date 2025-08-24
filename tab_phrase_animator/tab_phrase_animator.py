@@ -28,40 +28,38 @@ class TabPhraseAnimator:
         output_path_base: str,
         fps: int = 30,
     ) -> None:
-        all_entries = [
-            entry
-            for page in all_pages.values()
-            for line in page
-            for chord in line
-            if chord
-            for entry in chord
-        ]
-        total_duration = max(
-            entry.time + (entry.duration or 0.5) for entry in all_entries
-        )
-        total_frames = int(float(total_duration) * fps)
-
         fm.fontManager.addfont("ploni-round-bold-aaa.ttf")
 
         for page_idx, (page_name, page) in enumerate(all_pages.items(), start=1):
             text_lines: List[List[str]] = []
             line_entries: List[List[TabEntry]] = []
 
+            # Flatten and gather timing
+            all_entries = [
+                entry for line in page for chord in line if chord for entry in chord
+            ]
+            if not all_entries:
+                continue
+
+            raw_start = min(entry.time for entry in all_entries)
+            raw_end = max(entry.time + (entry.duration or 0.5) for entry in all_entries)
+            start_time = max(0.0, raw_start - 0.5)
+            end_time = raw_end + 0.5
+            total_frames = int(float(end_time - start_time) * fps)
+
             for line in page:
                 line_texts = []
                 line_tab_entries = []
                 for chord in line:
                     if chord:
-                        # Format the entire chord visually
+                        # Visual formatting for full chord
                         tabs = [entry.tab for entry in chord]
                         if all(n < 0 for n in tabs):
                             chord_str = "-" + "".join(str(abs(n)) for n in tabs)
                         else:
                             chord_str = "".join(str(abs(n)) for n in tabs)
-
                         line_texts.append(chord_str)
-                        line_tab_entries.append(chord[0])  # one timing anchor per chord
-
+                        line_tab_entries.append(chord[0])  # Anchor on first note
                 if line_texts:
                     text_lines.append(line_texts)
                     line_entries.append(line_tab_entries)
@@ -74,7 +72,12 @@ class TabPhraseAnimator:
             ani = animation.FuncAnimation(
                 fig,
                 lambda frame: self._update_text_frame(
-                    frame, ax, fps, text_lines, line_entries
+                    frame,
+                    ax,
+                    fps,
+                    text_lines,
+                    line_entries,
+                    start_time,
                 ),
                 frames=total_frames,
                 interval=1000 / fps,
@@ -92,14 +95,23 @@ class TabPhraseAnimator:
                 f"-vf colorkey=0xFF00FF:0.3:0.0,format=yuva444p10le "
                 f"-c:v prores_ks -profile:v 4 -pix_fmt yuva444p10le {transparent_path}"
             )
+
+            # Extract matching audio slice with buffer
+            audio_trimmed = os.path.join(TEMP_DIR, f"audio_page_{page_idx}.m4a")
+            os.system(
+                f"ffmpeg -y -i {extracted_audio_path} -ss {start_time:.3f} -to {end_time:.3f} "
+                f"-c:a aac {audio_trimmed}"
+            )
+
             final_output = f"{output_path_base}_page{page_idx}.mov"
             os.system(
-                f"ffmpeg -y -i {transparent_path} -i {extracted_audio_path} "
+                f"ffmpeg -y -i {transparent_path} -i {audio_trimmed} "
                 f"-c:v copy -c:a aac -shortest {final_output}"
             )
 
             os.remove(temp_path)
             os.remove(transparent_path)
+            os.remove(audio_trimmed)
 
             print(f"✅ Saved page {page_idx} video to {final_output}")
 
@@ -110,8 +122,9 @@ class TabPhraseAnimator:
         fps: int,
         text_lines: List[List[str]],
         line_entries: List[List[TabEntry]],
+        offset: float,
     ) -> List:
-        current_time = frame / fps
+        current_time = offset + (frame / fps)
         elements = []
         ax.clear()
         ax.axis("off")
