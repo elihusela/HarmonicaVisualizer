@@ -17,40 +17,38 @@ if __name__ == "__main__":
     import sys
 
     if len(sys.argv) < 6:
+        # TODO: use argparser
         print(
             "Usage: python main.py video.mp4 PCN.txt harmonica_image.png output_video.mov output_tabs.mov midi.mid"
         )
-        # print("Usage: python main.py ShanaTova.mov tabs.txt BasicModel.png output_video.mov output_tabs.mov")
+        sys.exit(0)
 
-    else:
-        harmonica_image_path = "harmonica-models/" + sys.argv[3]
-        tab_file_path = TAB_FILES_DIR + sys.argv[2]
-        output_video_path = OUTPUTS_DIR + sys.argv[4]
-        output_tabs_path = OUTPUTS_DIR + sys.argv[5]
-        existing_midi: str = sys.argv[6] if len(sys.argv) > 6 else ""
-        existing_midi_path: str = (
-            os.path.join(MIDI_DIR, existing_midi) if existing_midi else ""
-        )
+    harmonica_image_path = "harmonica-models/" + sys.argv[3]
+    tab_file_path = TAB_FILES_DIR + sys.argv[2]
+    output_video_path = OUTPUTS_DIR + sys.argv[4]
+    output_tabs_path = OUTPUTS_DIR + sys.argv[5]
+    existing_midi: str = sys.argv[6] if len(sys.argv) > 6 else ""
+    existing_midi_path: str = (
+        os.path.join(MIDI_DIR, existing_midi) if existing_midi else ""
+    )
 
-        pipeline = HarmonicaTabsPipeline(
-            TabMapper(C_HARMONICA_MAPPING, TEMP_DIR),
-            Animator(
-                HarmonicaLayout(harmonica_image_path, C_NEW_MODEL_HOLE_MAPPING),
-                FigureFactory(harmonica_image_path),
-            ),
-            TabPhraseAnimator(
-                HarmonicaLayout(harmonica_image_path, C_NEW_MODEL_HOLE_MAPPING),
-                FigureFactory(harmonica_image_path),
-            ),
-            AudioExtractor(
-                VIDEO_FILES_DIR + sys.argv[1], TEMP_DIR + "extracted_audio.wav"
-            ),
-            TabTextParser(tab_file_path),
-            TabMatcher(),
-            harmonica_vid_output_path=output_video_path,
-            tabs_output_path=output_tabs_path,
-            save_midi=True,
-            existing_midi_path=existing_midi_path,
-            produce_tabs=False,
-        )
-        pipeline.run()
+    pipeline = HarmonicaTabsPipeline(
+        TabMapper(C_HARMONICA_MAPPING, TEMP_DIR),
+        Animator(
+            HarmonicaLayout(harmonica_image_path, C_NEW_MODEL_HOLE_MAPPING),
+            FigureFactory(harmonica_image_path),
+        ),
+        TabPhraseAnimator(
+            HarmonicaLayout(harmonica_image_path, C_NEW_MODEL_HOLE_MAPPING),
+            FigureFactory(harmonica_image_path),
+        ),
+        AudioExtractor(VIDEO_FILES_DIR + sys.argv[1], TEMP_DIR + "extracted_audio.wav"),
+        TabTextParser(tab_file_path),
+        TabMatcher(),
+        harmonica_vid_output_path=output_video_path,
+        tabs_output_path=output_tabs_path,
+        save_midi=True,
+        existing_midi_path=existing_midi_path,
+        produce_tabs=False,
+    )
+    pipeline.run()

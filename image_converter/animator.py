@@ -59,7 +59,6 @@ class Animator:
             for entry in chord
         ]
 
-        # ONLY PATCH ADDED:
         self._flat_entries = adjust_consecutive_identical_notes(self._flat_entries)
 
         total_duration = self._get_total_duration()
@@ -73,6 +72,7 @@ class Animator:
             frames=total_frames,
             blit=False,
             interval=1000 / fps,
+            cache_frame_data=False,
         )
 
         ani.save(self._temp_video_path, fps=fps, writer="ffmpeg")
