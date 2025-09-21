@@ -1,0 +1,60 @@
+commands:
+  - name: harp-test
+    description: "Test the harmonica pipeline with BW.wav"
+    command: |
+      echo "🎵 Testing HarmonicaTabs pipeline..."
+      python cli.py generate-midi BW.wav --output-name test
+      echo "✅ MIDI generated! Check temp/test_generated.mid"
+      echo "📝 Next: Copy to fixed_midis/test_fixed.mid and run create-video"
+
+  - name: harp-status
+    description: "Check HarmonicaTabs project status"
+    command: |
+      echo "📊 HarmonicaTabs Project Status"
+      echo "================================"
+      echo "📁 Video files:"
+      ls -la video-files/ | grep -E '\.(mov|mp4|wav)$' | wc -l
+      echo "🎼 Fixed MIDI files:"
+      ls -la fixed_midis/ | grep '\.mid$' | wc -l
+      echo "📄 Tab files:"
+      ls -la tab-files/ | grep '\.txt$' | wc -l
+      echo "🎥 Output videos:"
+      ls -la outputs/ | grep -E '\.(mov|mp4)$' | wc -l 2>/dev/null || echo "0"
+      echo "🗂️ Temp files:"
+      ls -la temp/ 2>/dev/null | wc -l || echo "0"
+
+  - name: harp-clean
+    description: "Clean temporary files"
+    command: |
+      echo "🧹 Cleaning HarmonicaTabs temp files..."
+      rm -rf temp/*
+      echo "✅ Temp directory cleaned"
+
+  - name: harp-help
+    description: "Show HarmonicaTabs commands and workflow"
+    command: |
+      echo "🎵 HarmonicaTabs Workflow Guide"
+      echo "=============================="
+      echo ""
+      echo "📋 Two-Phase Pipeline:"
+      echo "  1. python cli.py generate-midi <video/audio>"
+      echo "  2. Edit MIDI in DAW, save to fixed_midis/"
+      echo "  3. python cli.py create-video <video> <tabs.txt>"
+      echo ""
+      echo "🎛️ Available Commands:"
+      echo "  /harp-test    - Test pipeline with BW.wav"
+      echo "  /harp-status  - Check project file counts"
+      echo "  /harp-clean   - Clean temp files"
+      echo "  /harp-help    - Show this help"
+      echo ""
+      echo "📁 Key Directories:"
+      echo "  video-files/  - Input videos/audio"
+      echo "  tab-files/    - Harmonica tab notation"
+      echo "  fixed_midis/  - Manually edited MIDI files"
+      echo "  outputs/      - Generated videos"
+      echo "  temp/         - Temporary processing files"
+      echo ""
+      echo "🎵 Recent Features:"
+      echo "  ✅ WAV file support"
+      echo "  ✅ Audio frequency filtering (250-2200Hz)"
+      echo "  ✅ Modular AudioFilter class"

@@ -1,0 +1,17 @@
+hooks:
+  user-prompt-submit:
+    command: |
+      # Auto-remind about HarmonicaTabs context
+      if [[ "$CLAUDE_USER_PROMPT" == *"harmonica"* ]] || [[ "$CLAUDE_USER_PROMPT" == *"midi"* ]] || [[ "$CLAUDE_USER_PROMPT" == *"audio"* ]]; then
+        echo "💡 Tip: Use the harmonica-dev subagent for HarmonicaTabs-specific tasks!"
+        echo "💡 Available: /harp-test, /harp-status, /harp-clean, /harp-help"
+      fi
+
+  post-tool-use:
+    command: |
+      # Remind about testing after code changes
+      if [[ "$CLAUDE_TOOL_NAME" == "Edit" ]] || [[ "$CLAUDE_TOOL_NAME" == "MultiEdit" ]] || [[ "$CLAUDE_TOOL_NAME" == "Write" ]]; then
+        if [[ "$CLAUDE_TOOL_FILE_PATH" == *"harmonica"* ]] || [[ "$CLAUDE_TOOL_FILE_PATH" == *"midi"* ]] || [[ "$CLAUDE_TOOL_FILE_PATH" == *"audio"* ]]; then
+          echo "🧪 Consider testing with: /harp-test"
+        fi
+      fi
