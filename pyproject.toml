@@ -26,3 +26,6 @@ black = "^25.1.0"
 pytest = "^8.3.5"
 pre-commit = "^4.2.0"
 mypy = "^1.15.0"
+
+[tool.mypy]
+exclude = "deprecated/"

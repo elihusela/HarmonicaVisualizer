@@ -4,11 +4,12 @@ Video Creator - Phase 2 of the HarmonicaTabs pipeline.
 Creates harmonica animation videos from fixed MIDI files and tab notation.
 """
 
+import os
 import time
-from typing import List, Tuple, Optional, Dict
+from typing import List, Tuple, Optional, Dict, Union
 
-import pretty_midi
-
+from harmonica_pipeline.midi_processor import MidiProcessor, MidiProcessorError
+from harmonica_pipeline.video_creator_config import VideoCreatorConfig
 from image_converter.animator import Animator
 from image_converter.consts import C_NEW_MODEL_HOLE_MAPPING
 from image_converter.figure_factory import FigureFactory
@@ -23,16 +24,22 @@ from utils.audio_extractor import AudioExtractor
 from utils.utils import TEMP_DIR
 
 
+class VideoCreatorError(Exception):
+    """Custom exception for video creation errors."""
+
+    pass
+
+
 class VideoCreator:
     """Handles video creation from fixed MIDI files and tab notation."""
 
     def __init__(
         self,
-        video_path: str,
-        tabs_path: str,
-        harmonica_path: str,
-        midi_path: str,
-        output_video_path: str,
+        config_or_video_path: Union[VideoCreatorConfig, str],
+        tabs_path: Optional[str] = None,
+        harmonica_path: Optional[str] = None,
+        midi_path: Optional[str] = None,
+        output_video_path: Optional[str] = None,
         tabs_output_path: Optional[str] = None,
         produce_tabs: bool = True,
     ):
@@ -40,37 +47,128 @@ class VideoCreator:
         Initialize video creator.
 
         Args:
-            video_path: Path to original video file
-            tabs_path: Path to tab text file
-            harmonica_path: Path to harmonica model image
-            midi_path: Path to fixed MIDI file
-            output_video_path: Path for output harmonica video
+            config_or_video_path: Either VideoCreatorConfig object or video file path (for backwards compatibility)
+            tabs_path: Path to tab text file (only if using old-style initialization)
+            harmonica_path: Path to harmonica model image (only if using old-style initialization)
+            midi_path: Path to fixed MIDI file (only if using old-style initialization)
+            output_video_path: Path for output harmonica video (only if using old-style initialization)
             tabs_output_path: Optional path for tab phrase video
             produce_tabs: Whether to generate tab phrase animations
+
+        Raises:
+            VideoCreatorError: If any input files are missing or invalid
         """
-        self.video_path = video_path
-        self.tabs_path = tabs_path
-        self.harmonica_path = harmonica_path
-        self.midi_path = midi_path
-        self.output_video_path = output_video_path
-        self.tabs_output_path = tabs_output_path
-        self.produce_tabs = produce_tabs
+        # Support both config object and legacy parameter style
+        if isinstance(config_or_video_path, VideoCreatorConfig):
+            config = config_or_video_path
+        else:
+            # Legacy initialization - create config from parameters
+            if any(
+                param is None
+                for param in [tabs_path, harmonica_path, midi_path, output_video_path]
+            ):
+                raise VideoCreatorError(
+                    "When using legacy initialization, all path parameters are required"
+                )
 
-        # Audio extraction setup
-        self.extracted_audio_path = TEMP_DIR + "extracted_audio.wav"
-        self.audio_extractor = AudioExtractor(video_path, self.extracted_audio_path)
+            config = VideoCreatorConfig.from_cli_args(
+                video_path=config_or_video_path,
+                tabs_path=tabs_path,  # type: ignore[arg-type]
+                harmonica_path=harmonica_path,  # type: ignore[arg-type]
+                midi_path=midi_path,  # type: ignore[arg-type]
+                output_video_path=output_video_path,  # type: ignore[arg-type]
+                tabs_output_path=tabs_output_path,
+                produce_tabs=produce_tabs,
+            )
 
-        # Tab processing setup
-        self.tab_mapper = TabMapper(C_HARMONICA_MAPPING, TEMP_DIR)
-        self.tabs_text_parser = TabTextParser(tabs_path)
-        self.tab_matcher = TabMatcher()
+        # Validate input files
+        self._validate_input_files(
+            config.video_path, config.tabs_path, config.harmonica_path, config.midi_path
+        )
 
-        # Animation setup
-        harmonica_layout = HarmonicaLayout(harmonica_path, C_NEW_MODEL_HOLE_MAPPING)
-        figure_factory = FigureFactory(harmonica_path)
+        # Store configuration
+        self.config = config
+        self.video_path = config.video_path
+        self.tabs_path = config.tabs_path
+        self.harmonica_path = config.harmonica_path
+        self.midi_path = config.midi_path
+        self.output_video_path = config.output_video_path
+        self.tabs_output_path = config.tabs_output_path
+        self.produce_tabs = config.produce_tabs
 
-        self.animator = Animator(harmonica_layout, figure_factory)
-        self.tab_phrase_animator = TabPhraseAnimator(harmonica_layout, figure_factory)
+        try:
+            # Audio extraction setup
+            self.extracted_audio_path = TEMP_DIR + "extracted_audio.wav"
+            self.audio_extractor = AudioExtractor(
+                config.video_path, self.extracted_audio_path
+            )
+
+            # MIDI and tab processing setup
+            self.midi_processor = MidiProcessor(config.midi_path)
+            self.tab_mapper = TabMapper(C_HARMONICA_MAPPING, TEMP_DIR)
+            self.tabs_text_parser = TabTextParser(config.tabs_path)
+            self.tab_matcher = TabMatcher()
+
+            # Animation setup
+            harmonica_layout = HarmonicaLayout(
+                config.harmonica_path, C_NEW_MODEL_HOLE_MAPPING
+            )
+            figure_factory = FigureFactory(config.harmonica_path)
+
+            self.animator = Animator(harmonica_layout, figure_factory)
+            self.tab_phrase_animator = TabPhraseAnimator(
+                harmonica_layout, figure_factory
+            )
+
+        except MidiProcessorError as e:
+            raise VideoCreatorError(f"MIDI processing error: {e}")
+        except Exception as e:
+            raise VideoCreatorError(f"Failed to initialize video creator: {e}")
+
+    @classmethod
+    def from_config(cls, config: VideoCreatorConfig) -> "VideoCreator":
+        """
+        Create VideoCreator from configuration object.
+
+        Args:
+            config: VideoCreatorConfig object
+
+        Returns:
+            VideoCreator instance
+        """
+        return cls(config)
+
+    def _validate_input_files(
+        self, video_path: str, tabs_path: str, harmonica_path: str, midi_path: str
+    ) -> None:
+        """
+        Validate that all required input files exist.
+
+        Raises:
+            VideoCreatorError: If any required files are missing
+        """
+        files_to_check = [
+            (video_path, "Video file"),
+            (tabs_path, "Tab file"),
+            (harmonica_path, "Harmonica model image"),
+            (midi_path, "MIDI file"),
+        ]
+
+        for file_path, file_type in files_to_check:
+            if not os.path.exists(file_path):
+                raise VideoCreatorError(f"{file_type} not found: {file_path}")
+
+        # Validate file extensions
+        if not video_path.lower().endswith((".mp4", ".mov", ".avi", ".wav")):
+            raise VideoCreatorError(f"Unsupported video format: {video_path}")
+
+        if not tabs_path.lower().endswith(".txt"):
+            raise VideoCreatorError(f"Tab file must be .txt format: {tabs_path}")
+
+        if not harmonica_path.lower().endswith((".png", ".jpg", ".jpeg")):
+            raise VideoCreatorError(
+                f"Harmonica image must be PNG/JPG format: {harmonica_path}"
+            )
 
     def create(self) -> None:
         """Run the complete video creation process."""
@@ -99,23 +197,7 @@ class VideoCreator:
 
     def _load_midi_note_events(self) -> List[Tuple[float, float, int, float, float]]:
         """Load note events from the fixed MIDI file."""
-        print(f"🎹 Loading MIDI file: {self.midi_path}")
-
-        midi_data = pretty_midi.PrettyMIDI(self.midi_path)
-
-        # Remove pitch bends (as done in original pipeline)
-        for instrument in midi_data.instruments:
-            instrument.pitch_bends = []
-
-        note_events = []
-        for instrument in midi_data.instruments:
-            for note in instrument.notes:
-                note_events.append(
-                    (note.start, note.end, note.pitch, note.velocity / 127.0, 1.0)
-                )
-
-        print(f"🎵 Loaded {len(note_events)} note events from MIDI")
-        return note_events
+        return self.midi_processor.load_note_events()
 
     def _note_events_to_tabs(self, note_events: List[Tuple]) -> Tabs:
         """Convert note events to harmonica tabs."""
