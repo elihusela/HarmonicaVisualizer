@@ -4,7 +4,6 @@ MIDI Generator - Phase 1 of the HarmonicaTabs pipeline.
 Extracts audio from video and generates MIDI using basic_pitch.
 """
 
-
 from basic_pitch import ICASSP_2022_MODEL_PATH
 from basic_pitch.inference import predict
 
@@ -16,8 +15,12 @@ from utils.utils import TEMP_DIR, VIDEO_FILES_DIR, clean_temp_folder
 class MidiGenerator:
     """Handles audio extraction and MIDI generation from video files."""
 
-    def __init__(self, video_path: str, output_midi_path: str,
-                 enable_audio_processing: bool = True):
+    def __init__(
+        self,
+        video_path: str,
+        output_midi_path: str,
+        enable_audio_processing: bool = True,
+    ):
         """
         Initialize MIDI generator.
 
@@ -33,7 +36,7 @@ class MidiGenerator:
 
         # Audio processing settings
         self.enable_audio_processing = enable_audio_processing
-        self.is_video_input = not video_path.lower().endswith('.wav')
+        self.is_video_input = not video_path.lower().endswith(".wav")
 
         # Initialize audio processing components
         self.audio_extractor = AudioExtractor(video_path, self.extracted_audio_path)
@@ -79,8 +82,7 @@ class MidiGenerator:
     def _process_audio_for_midi(self) -> None:
         """Process audio using AudioProcessor class with kaki.sh logic."""
         success = self.audio_processor.process_for_midi(
-            self.extracted_audio_path,
-            self.processed_audio_path
+            self.extracted_audio_path, self.processed_audio_path
         )
 
         if not success:
@@ -117,7 +119,9 @@ class MidiGenerator:
             # Copy extracted audio to video-files/ with video base name
             shutil.copy2(self.extracted_audio_path, reusable_wav_path)
             print(f"💾 Extracted WAV saved for reuse: {reusable_wav_path}")
-            print(f"   Use for Phase 2: python cli.py create-video {video_base}.wav <tabs.txt>")
+            print(
+                f"   Use for Phase 2: python cli.py create-video {video_base}.wav <tabs.txt>"
+            )
         except Exception as e:
             print(f"⚠️ Could not save extracted WAV: {e}")
             print(f"   Manual copy: cp {self.extracted_audio_path} {reusable_wav_path}")

@@ -81,8 +81,8 @@ class HarmonicaTabsPipeline:
         _, midi_data, note_events = predict(
             audio_path=self._extracted_audio_path,
             model_or_model_path=ICASSP_2022_MODEL_PATH,
-            onset_threshold=0.2,
-            frame_threshold=0.2,
+            onset_threshold=0.3,
+            frame_threshold=0.3,
         )
 
         if self._save_midi:

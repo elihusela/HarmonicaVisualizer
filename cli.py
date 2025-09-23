@@ -43,7 +43,10 @@ Examples:
     midi_parser = subparsers.add_parser(
         "generate-midi", help="Extract audio and generate MIDI file"
     )
-    midi_parser.add_argument("video", help="Input video or audio file (in video-files/ or current directory for .wav files)")
+    midi_parser.add_argument(
+        "video",
+        help="Input video or audio file (in video-files/ or current directory for .wav files)",
+    )
     midi_parser.add_argument(
         "--output-name", help="Custom name for generated MIDI (default: video name)"
     )
@@ -98,7 +101,7 @@ def generate_midi_phase(video: str, output_name: Optional[str] = None) -> str:
     from harmonica_pipeline.midi_generator import MidiGenerator
 
     # For WAV files, check current directory first, then video-files directory
-    if video.endswith('.wav'):
+    if video.endswith(".wav"):
         if os.path.exists(video):
             video_path = video
         else:
@@ -106,14 +109,14 @@ def generate_midi_phase(video: str, output_name: Optional[str] = None) -> str:
     else:
         video_path = os.path.join(VIDEO_FILES_DIR, video)
 
-    file_type = "Audio file" if video.endswith('.wav') else "Video"
+    file_type = "Audio file" if video.endswith(".wav") else "Video"
     validate_file_exists(video_path, file_type)
 
     base_name = output_name or get_video_base_name(video)
     output_midi_path = os.path.join(TEMP_DIR, f"{base_name}_generated.mid")
 
     print("🎬 Starting Phase 1: MIDI Generation")
-    emoji = "🎵" if video.endswith('.wav') else "📹"
+    emoji = "🎵" if video.endswith(".wav") else "📹"
     print(f"{emoji} Input: {video_path}")
     print(f"🎼 Output MIDI: {output_midi_path}")
 
@@ -126,7 +129,7 @@ def generate_midi_phase(video: str, output_name: Optional[str] = None) -> str:
     print("📝 Next steps:")
     print(f"   1. Open {output_midi_path} in your DAW (Ableton, etc.)")
     print(f"   2. Fix the MIDI and save to: fixed_midis/{base_name}_fixed.mid")
-    if video.lower().endswith(('.mov', '.mp4', '.avi')):
+    if video.lower().endswith((".mov", ".mp4", ".avi")):
         wav_name = f"{base_name}.wav"
         print(f"   3. Run Phase 2: python cli.py create-video {wav_name} <tabs.txt>")
     else:
