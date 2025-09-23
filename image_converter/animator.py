@@ -181,7 +181,11 @@ class Animator:
         return "↑" if tab_entry.tab > 0 else "↓"
 
     def _get_total_duration(self) -> float:
-        return max(tab.time + (tab.duration or 0.5) for tab in self._flat_entries)
+        max_end_time = max(
+            tab.time + (tab.duration or 0.5) for tab in self._flat_entries
+        )
+        # Add a small buffer to ensure the last note fades out properly
+        return max_end_time + 0.5
 
     @staticmethod
     def _get_total_frames(fps: int, total_duration: float) -> int:

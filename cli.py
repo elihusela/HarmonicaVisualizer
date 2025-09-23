@@ -12,7 +12,7 @@ import sys
 from pathlib import Path
 from typing import Optional
 
-from utils.utils import TEMP_DIR, VIDEO_FILES_DIR, OUTPUTS_DIR, TAB_FILES_DIR, MIDI_DIR
+from utils.utils import VIDEO_FILES_DIR, OUTPUTS_DIR, TAB_FILES_DIR, MIDI_DIR
 
 # Configuration constants
 DEFAULT_HARMONICA_MODEL = "CNewModel.png"
@@ -113,7 +113,8 @@ def generate_midi_phase(video: str, output_name: Optional[str] = None) -> str:
     validate_file_exists(video_path, file_type)
 
     base_name = output_name or get_video_base_name(video)
-    output_midi_path = os.path.join(TEMP_DIR, f"{base_name}_generated.mid")
+    # Save directly to fixed_midis directory for in-place editing
+    output_midi_path = os.path.join(MIDI_DIR, f"{base_name}_fixed.mid")
 
     print("🎬 Starting Phase 1: MIDI Generation")
     emoji = "🎵" if video.endswith(".wav") else "📹"
@@ -127,8 +128,8 @@ def generate_midi_phase(video: str, output_name: Optional[str] = None) -> str:
     print(f"🎼 Generated MIDI saved to: {output_midi_path}")
     print()
     print("📝 Next steps:")
-    print(f"   1. Open {output_midi_path} in your DAW (Ableton, etc.)")
-    print(f"   2. Fix the MIDI and save to: fixed_midis/{base_name}_fixed.mid")
+    print(f"   1. Open {output_midi_path} in your DAW to edit")
+    print("   2. Save the fixed MIDI in the same location (overwrites original)")
     if video.lower().endswith((".mov", ".mp4", ".avi")):
         wav_name = f"{base_name}.wav"
         print(f"   3. Run Phase 2: python cli.py create-video {wav_name} <tabs.txt>")
@@ -202,21 +203,14 @@ def full_pipeline(
     """Run complete pipeline for testing (no manual MIDI editing)."""
     print("🎬 Starting Full Pipeline (Testing Mode)")
 
-    # Phase 1: Generate MIDI
+    # Phase 1: Generate MIDI (already saves to fixed_midis directory)
     base_name = get_video_base_name(video)
     generated_midi_path = generate_midi_phase(video, base_name)
 
     print("⚠️  Continuing with unedited MIDI (testing mode)")
+    print(f"📋 MIDI ready at: {generated_midi_path}")
 
-    # Copy generated MIDI to fixed_midis for Phase 2
-    import shutil
-
-    fixed_midi_name = f"{base_name}{MIDI_SUFFIX}"
-    fixed_midi_path = os.path.join(MIDI_DIR, fixed_midi_name)
-    shutil.copy2(generated_midi_path, fixed_midi_path)
-    print(f"📋 Copied unedited MIDI to: {fixed_midi_path}")
-
-    # Phase 2: Create video
+    # Phase 2: Create video (MIDI is already in the right location)
     create_video_phase(video, tabs, harmonica_model, produce_tabs)
 
 
