@@ -24,6 +24,7 @@ class VideoCreatorConfig:
 
     # Options
     produce_tabs: bool = True
+    enable_tab_matching: bool = False  # Tab matching with text files (experimental)
 
     def __post_init__(self) -> None:
         """Validate configuration after initialization."""

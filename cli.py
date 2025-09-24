@@ -180,7 +180,7 @@ def create_video_phase(
     print(f"🎥 Output: {output_video_path}")
 
     creator = VideoCreator(
-        video_path=video_path,
+        video_path,  # First positional parameter is config_or_video_path
         tabs_path=tabs_path,
         harmonica_path=harmonica_path,
         midi_path=midi_path,

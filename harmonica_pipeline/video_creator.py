@@ -16,8 +16,8 @@ from image_converter.figure_factory import FigureFactory
 from image_converter.harmonica_layout import HarmonicaLayout
 from tab_converter.consts import C_HARMONICA_MAPPING
 from tab_converter.models import Tabs, TabEntry
-from tab_converter.tab_mapper import TabMapper
-from tab_phrase_animator.tab_matcher import TabMatcher
+from tab_converter.tab_mapper import TabMapper, TabMapperError
+from tab_phrase_animator.tab_matcher import TabMatcher, TabMatcherError
 from tab_phrase_animator.tab_phrase_animator import TabPhraseAnimator
 from tab_phrase_animator.tab_text_parser import TabTextParser
 from utils.audio_extractor import AudioExtractor
@@ -106,8 +106,15 @@ class VideoCreator:
             # MIDI and tab processing setup
             self.midi_processor = MidiProcessor(config.midi_path)
             self.tab_mapper = TabMapper(C_HARMONICA_MAPPING, TEMP_DIR)
-            self.tabs_text_parser = TabTextParser(config.tabs_path)
-            self.tab_matcher = TabMatcher()
+
+            # Tab matching setup (optional)
+            if config.enable_tab_matching:
+                self.tabs_text_parser = TabTextParser(config.tabs_path)
+                self.tab_matcher = TabMatcher(enable_debug=False)
+                print("🔍 Tab matching enabled (experimental)")
+            else:
+                self.tabs_text_parser = None
+                self.tab_matcher = None
 
             # Animation setup
             harmonica_layout = HarmonicaLayout(
@@ -179,8 +186,13 @@ class VideoCreator:
         note_events = self._load_midi_note_events()
         tabs = self._note_events_to_tabs(note_events)
 
-        print("🎯 Matching tabs with text notation...")
-        matched_tabs = self._match_tabs(tabs)
+        # Tab matching (optional)
+        if self.config.enable_tab_matching:
+            print("🎯 Matching tabs with text notation...")
+            matched_tabs = self._match_tabs(tabs)
+        else:
+            print("⏭️  Skipping tab matching (using direct MIDI-to-animation)")
+            matched_tabs = self._create_direct_tabs_structure(tabs)
 
         print("🎬 Creating harmonica animation...")
         self._create_harmonica_animation(matched_tabs)
@@ -209,8 +221,29 @@ class VideoCreator:
         self, tabs: Tabs
     ) -> Dict[str, List[List[Optional[List[TabEntry]]]]]:
         """Match generated tabs with parsed text notation."""
+        if not self.tabs_text_parser or not self.tab_matcher:
+            raise VideoCreatorError("Tab matching is disabled but _match_tabs was called")
         parsed_pages = self.tabs_text_parser.get_pages()
         return self.tab_matcher.match(tabs, parsed_pages)
+
+    def _create_direct_tabs_structure(
+        self, tabs: Tabs
+    ) -> Dict[str, List[List[Optional[List[TabEntry]]]]]:
+        """
+        Create a simple animation structure directly from MIDI tabs.
+
+        Bypasses tab matching and creates a single page/line structure
+        that the animator can use directly.
+        """
+        # Create a simple structure: single page, single line, individual notes
+        tab_entries = tabs.tabs if hasattr(tabs, 'tabs') else tabs
+        direct_structure = {
+            "page_1": [
+                # Single line with each tab entry as its own "chord"
+                [[entry] for entry in tab_entries]
+            ]
+        }
+        return direct_structure
 
     def _create_harmonica_animation(
         self, matched_tabs: Dict[str, List[List[Optional[List[TabEntry]]]]]
