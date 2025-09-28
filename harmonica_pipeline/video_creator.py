@@ -107,13 +107,20 @@ class VideoCreator:
             self.midi_processor = MidiProcessor(config.midi_path)
             self.tab_mapper = TabMapper(C_HARMONICA_MAPPING, TEMP_DIR)
 
+            # Tab text parsing setup (always load if producing tabs)
+            if config.produce_tabs or config.enable_tab_matching:
+                self.tabs_text_parser = TabTextParser(config.tabs_path)
+                print(f"📖 Loaded tab text file: {config.tabs_path}")
+            else:
+                self.tabs_text_parser = None
+
             # Tab matching setup (optional)
             if config.enable_tab_matching:
-                self.tabs_text_parser = TabTextParser(config.tabs_path)
+                if not self.tabs_text_parser:
+                    self.tabs_text_parser = TabTextParser(config.tabs_path)
                 self.tab_matcher = TabMatcher(enable_debug=False)
                 print("🔍 Tab matching enabled (experimental)")
             else:
-                self.tabs_text_parser = None
                 self.tab_matcher = None
 
             # Animation setup
@@ -198,12 +205,15 @@ class VideoCreator:
         note_events = self._load_midi_note_events()
         tabs = self._note_events_to_tabs(note_events)
 
-        # Tab matching (optional)
-        if self.config.enable_tab_matching:
+        # Tab matching - use .txt file structure when available for tab phrase animations
+        if create_tabs and self.tabs_output_path and self.tabs_text_parser:
+            print("🎯 Using .txt file structure for tab phrase animations...")
+            matched_tabs = self._create_text_based_structure(tabs)
+        elif self.config.enable_tab_matching and self.tabs_text_parser and self.tab_matcher:
             print("🎯 Matching tabs with text notation...")
             matched_tabs = self._match_tabs(tabs)
         else:
-            print("⏭️  Skipping tab matching (using direct MIDI-to-animation)")
+            print("⏭️  Using direct MIDI-to-animation structure")
             matched_tabs = self._create_direct_tabs_structure(tabs)
 
         if create_harmonica:
@@ -290,6 +300,111 @@ class VideoCreator:
 
         print(f"📄 Created {len(pages)} tab phrase pages from MIDI timing")
         return direct_structure
+
+    def _create_text_based_structure(
+        self, tabs: Tabs
+    ) -> Dict[str, List[List[Optional[List[TabEntry]]]]]:
+        """
+        Create animation structure based on .txt file page/line definitions.
+
+        Uses the parsed .txt file structure to maintain proper page breaks
+        and line organization as specified in the text file, while using
+        MIDI timing for note synchronization in chronological order.
+        """
+        if not self.tabs_text_parser:
+            raise VideoCreatorError("Tab text parser not available")
+
+        # Get parsed page structure from .txt file
+        parsed_pages = self.tabs_text_parser.get_pages()
+        tab_entries = tabs.tabs if hasattr(tabs, "tabs") else tabs
+
+        if not tab_entries:
+            print("⚠️  No MIDI tab entries found, using text structure only")
+            return self._create_text_only_structure(parsed_pages)
+
+        # Sort MIDI entries by time to maintain chronological order
+        sorted_midi_entries = sorted(tab_entries, key=lambda e: e.time)
+        midi_index = 0
+
+        # Build structure following .txt file organization with sequential MIDI timing
+        animation_structure: Dict[str, List[List[Optional[List[TabEntry]]]]] = {}
+
+        for page_name, page_lines in parsed_pages.items():
+            animation_lines = []
+
+            for line_chords in page_lines:
+                animation_chords = []
+
+                for chord_tabs in line_chords:
+                    if not chord_tabs:
+                        animation_chords.append(None)
+                        continue
+
+                    # Find next matching MIDI entries for this chord in chronological order
+                    chord_entries = []
+                    for tab_value in chord_tabs:
+                        # Search for the next MIDI entry that matches this tab value
+                        found_entry = None
+                        for i in range(midi_index, len(sorted_midi_entries)):
+                            if sorted_midi_entries[i].tab == tab_value:
+                                found_entry = sorted_midi_entries[i]
+                                midi_index = i + 1  # Move to next entry for next search
+                                break
+
+                        if found_entry:
+                            chord_entries.append(found_entry)
+                        else:
+                            # If no more MIDI entries match, create a fallback entry
+                            last_time = sorted_midi_entries[-1].time if sorted_midi_entries else 0.0
+                            fallback_entry = TabEntry(
+                                tab=tab_value, time=last_time + 0.5, duration=0.5, confidence=0.5
+                            )
+                            chord_entries.append(fallback_entry)
+
+                    if chord_entries:
+                        animation_chords.append(chord_entries)
+                    else:
+                        animation_chords.append(None)
+
+                animation_lines.append(animation_chords)
+
+            animation_structure[page_name] = animation_lines
+
+        print(f"📖 Created {len(animation_structure)} pages using .txt file structure")
+        print(f"🎵 Mapped {midi_index}/{len(sorted_midi_entries)} MIDI entries to text structure")
+        return animation_structure
+
+    def _create_text_only_structure(
+        self, parsed_pages: Dict[str, List[List[List[int]]]]
+    ) -> Dict[str, List[List[Optional[List[TabEntry]]]]]:
+        """
+        Create structure from text file only (fallback when no MIDI available).
+        """
+        animation_structure: Dict[str, List[List[Optional[List[TabEntry]]]]] = {}
+
+        for page_name, page_lines in parsed_pages.items():
+            animation_lines = []
+
+            for line_chords in page_lines:
+                animation_chords = []
+
+                for chord_tabs in line_chords:
+                    if not chord_tabs:
+                        animation_chords.append(None)
+                        continue
+
+                    # Create dummy TabEntry objects with 0.5 second duration
+                    chord_entries = [
+                        TabEntry(tab=tab_value, time=0.0, duration=0.5, confidence=1.0)
+                        for tab_value in chord_tabs
+                    ]
+                    animation_chords.append(chord_entries)
+
+                animation_lines.append(animation_chords)
+
+            animation_structure[page_name] = animation_lines
+
+        return animation_structure
 
     def _create_harmonica_animation(
         self, matched_tabs: Dict[str, List[List[Optional[List[TabEntry]]]]]
