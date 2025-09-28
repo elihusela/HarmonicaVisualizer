@@ -218,3 +218,82 @@ python cli.py create-video MySong.wav MySong.txt --only-tabs --only-harmonica
 - **Git commit**: Save all Phase 1 improvements
 - **Branch strategy**: Consider feature branches for Phase 2 work
 - **Changelog**: Document breaking changes and new features
+
+## Testing Strategy - Bottom-Up Implementation Plan
+
+### 🧪 **Current Status: Ready to Start Phase 1**
+- ✅ Cleaned all existing tests for fresh start
+- ✅ Designed 1:1 project structure mirroring
+- ✅ Created test directory structure matching source code
+- 🚧 **NEXT SESSION STARTS HERE** 🚧
+
+### 📁 **Test Structure (1:1 Source Mapping)**
+```
+Source Structure                Test Structure
+─────────────────              ──────────────────
+tab_converter/                  tests/tab_converter/
+├── models.py          →        ├── test_models.py        [Phase 1 - START HERE]
+├── tab_mapper.py      →        ├── test_tab_mapper.py    [Phase 2]
+├── consts.py          →        └── conftest.py
+
+harmonica_pipeline/             tests/harmonica_pipeline/
+├── video_creator.py   →        ├── test_video_creator.py [Phase 3 - Our recent changes]
+├── midi_generator.py  →        ├── test_midi_generator.py[Phase 2]
+└── midi_processor.py  →        └── conftest.py
+
+utils/                          tests/utils/
+├── audio_extractor.py →        ├── test_audio_extractor.py [Phase 2]
+├── audio_processor.py →        ├── test_audio_processor.py [Phase 2]
+└── utils.py          →         └── conftest.py
+
+tab_phrase_animator/            tests/tab_phrase_animator/
+├── tab_text_parser.py →        ├── test_tab_text_parser.py [Phase 2]
+├── tab_phrase_animator.py →    └── conftest.py
+└── (skip tab_matcher.py)
+
+./                              tests/
+                                ├── conftest.py (global fixtures)
+                                └── [integration tests later]
+```
+
+### 🎯 **Bottom-Up Implementation Plan**
+
+#### **Phase 1: Data Models (1 commit) - START NEXT SESSION**
+1. **tests/conftest.py** - Global fixtures (TabEntry, Tabs, NoteEvent samples)
+2. **tests/tab_converter/test_models.py** - Test TabEntry constructor fix, Tabs, NoteEvent
+   - Focus: TabEntry with confidence parameter (our recent fix)
+   - Simple dataclass validation and edge cases
+
+#### **Phase 2: Core Business Logic (3-4 commits)**
+3. **tests/tab_converter/test_tab_mapper.py** - MIDI→Tab conversion core
+4. **tests/harmonica_pipeline/test_midi_generator.py** - Audio→MIDI pipeline
+5. **tests/utils/test_audio_processor.py** - Audio processing workflow
+6. **tests/tab_phrase_animator/test_tab_text_parser.py** - .txt file parsing ✨
+
+#### **Phase 3: Complex Integration (2-3 commits)**
+7. **tests/harmonica_pipeline/test_video_creator.py** - Text-based structure ✨ (our major changes)
+8. **tests/utils/test_audio_extractor.py** - Audio extraction
+9. **Integration tests** - End-to-end workflow validation
+
+### 🚀 **Commit Strategy (Small & Focused)**
+```bash
+1. test: Add global fixtures and data models tests (TabEntry, Tabs, NoteEvent)
+2. test: Add TabMapper MIDI conversion tests
+3. test: Add MidiGenerator audio-to-MIDI tests
+4. test: Add AudioProcessor workflow tests
+5. test: Add TabTextParser file parsing tests
+6. test: Add VideoCreator text-based structure tests
+7. test: Add AudioExtractor and integration tests
+```
+
+### 📝 **Next Session Action Items**
+1. **Create tests/conftest.py** with global fixtures (TabEntry samples, file paths, etc.)
+2. **Create tests/tab_converter/test_models.py** starting with TabEntry confidence parameter
+3. **Run tests and make first commit**
+4. **Continue with tab_mapper.py testing**
+
+### 🎨 **Conftest Architecture Strategy**
+- **Global fixtures**: Core data structures, common utilities
+- **Module fixtures**: Specific to each source module in their conftest.py
+- **Hierarchical inheritance**: Module conftest inherits global automatically
+- **DRY principle**: Shared fixtures prevent duplication across test files
