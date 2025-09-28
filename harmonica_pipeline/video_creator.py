@@ -16,8 +16,8 @@ from image_converter.figure_factory import FigureFactory
 from image_converter.harmonica_layout import HarmonicaLayout
 from tab_converter.consts import C_HARMONICA_MAPPING
 from tab_converter.models import Tabs, TabEntry
-from tab_converter.tab_mapper import TabMapper, TabMapperError
-from tab_phrase_animator.tab_matcher import TabMatcher, TabMatcherError
+from tab_converter.tab_mapper import TabMapper
+from tab_phrase_animator.tab_matcher import TabMatcher
 from tab_phrase_animator.tab_phrase_animator import TabPhraseAnimator
 from tab_phrase_animator.tab_text_parser import TabTextParser
 from utils.audio_extractor import AudioExtractor
@@ -177,8 +177,20 @@ class VideoCreator:
                 f"Harmonica image must be PNG/JPG format: {harmonica_path}"
             )
 
-    def create(self) -> None:
-        """Run the complete video creation process."""
+    def create(
+        self, create_harmonica: bool = True, create_tabs: Optional[bool] = None
+    ) -> None:
+        """
+        Run the complete video creation process.
+
+        Args:
+            create_harmonica: Whether to create harmonica animation (default: True)
+            create_tabs: Whether to create tab phrase animations (default: uses self.produce_tabs)
+        """
+        # Use defaults if not specified
+        if create_tabs is None:
+            create_tabs = self.produce_tabs
+
         print("🎵 Extracting audio from video...")
         self._extract_audio()
 
@@ -194,12 +206,17 @@ class VideoCreator:
             print("⏭️  Skipping tab matching (using direct MIDI-to-animation)")
             matched_tabs = self._create_direct_tabs_structure(tabs)
 
-        print("🎬 Creating harmonica animation...")
-        self._create_harmonica_animation(matched_tabs)
+        if create_harmonica:
+            print("🎬 Creating harmonica animation...")
+            self._create_harmonica_animation(matched_tabs)
+        else:
+            print("⏭️  Skipping harmonica animation")
 
-        if self.produce_tabs and self.tabs_output_path:
+        if create_tabs and self.tabs_output_path:
             print("📄 Creating tab phrase animations...")
             self._create_tab_animations(matched_tabs)
+        elif not create_tabs:
+            print("⏭️  Skipping tab phrase animations")
 
         print("✅ Video creation complete!")
 
@@ -222,7 +239,9 @@ class VideoCreator:
     ) -> Dict[str, List[List[Optional[List[TabEntry]]]]]:
         """Match generated tabs with parsed text notation."""
         if not self.tabs_text_parser or not self.tab_matcher:
-            raise VideoCreatorError("Tab matching is disabled but _match_tabs was called")
+            raise VideoCreatorError(
+                "Tab matching is disabled but _match_tabs was called"
+            )
         parsed_pages = self.tabs_text_parser.get_pages()
         return self.tab_matcher.match(tabs, parsed_pages)
 
@@ -232,17 +251,44 @@ class VideoCreator:
         """
         Create a simple animation structure directly from MIDI tabs.
 
-        Bypasses tab matching and creates a single page/line structure
-        that the animator can use directly.
+        Bypasses tab matching and creates multiple pages based on timing gaps
+        to generate multiple tab phrase animations instead of just one.
         """
-        # Create a simple structure: single page, single line, individual notes
-        tab_entries = tabs.tabs if hasattr(tabs, 'tabs') else tabs
-        direct_structure = {
-            "page_1": [
+        tab_entries = tabs.tabs if hasattr(tabs, "tabs") else tabs
+
+        if not tab_entries:
+            return {"page_1": [[]]}
+
+        # Sort entries by time
+        sorted_entries = sorted(tab_entries, key=lambda e: e.time)
+
+        # Split into pages based on timing gaps (> 2 seconds indicates new phrase/page)
+        pages: List[List[TabEntry]] = []
+        current_page: List[TabEntry] = []
+        last_time = sorted_entries[0].time
+
+        for entry in sorted_entries:
+            # If there's a gap of more than 2 seconds, start a new page
+            if entry.time - last_time > 2.0 and current_page:
+                pages.append(current_page)
+                current_page = []
+
+            current_page.append(entry)
+            last_time = entry.time
+
+        # Add the last page if it has content
+        if current_page:
+            pages.append(current_page)
+
+        # Create structure with multiple pages
+        direct_structure: Dict[str, List[List[Optional[List[TabEntry]]]]] = {}
+        for i, page_entries in enumerate(pages, 1):
+            direct_structure[f"page_{i}"] = [
                 # Single line with each tab entry as its own "chord"
-                [[entry] for entry in tab_entries]
+                [[entry] for entry in page_entries]
             ]
-        }
+
+        print(f"📄 Created {len(pages)} tab phrase pages from MIDI timing")
         return direct_structure
 
     def _create_harmonica_animation(

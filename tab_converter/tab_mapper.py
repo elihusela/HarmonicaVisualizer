@@ -14,6 +14,7 @@ from tab_converter.models import TabEntry, Tabs, NoteEvent
 
 class TabMapperError(Exception):
     """Custom exception for tab mapping errors."""
+
     pass
 
 
@@ -71,7 +72,9 @@ class TabMapper:
                 skipped_notes += 1
 
         if not tab_entries:
-            raise TabMapperError("No valid harmonica tabs could be created from note events")
+            raise TabMapperError(
+                "No valid harmonica tabs could be created from note events"
+            )
 
         # Create and sort tabs by time
         tabs = Tabs(tab_entries)
@@ -108,10 +111,7 @@ class TabMapper:
         confidence = round(event.confidence, 5)
 
         return TabEntry(
-            tab=tab_hole,
-            time=start_time,
-            duration=duration,
-            confidence=confidence
+            tab=tab_hole, time=start_time, duration=duration, confidence=confidence
         )
 
     def save_tabs_to_json(self, tabs: Tabs, filename: str) -> None:
@@ -131,7 +131,7 @@ class TabMapper:
                     "tab": entry.tab,
                     "time": entry.time,
                     "duration": entry.duration,
-                    "confidence": entry.confidence
+                    "confidence": entry.confidence,
                 }
                 for entry in tabs.tabs
             ]
@@ -156,5 +156,5 @@ class TabMapper:
             "pitch_range_min": min(self._mapping.keys()) if self._mapping else 0,
             "pitch_range_max": max(self._mapping.keys()) if self._mapping else 0,
             "blow_holes": len([v for v in self._mapping.values() if v > 0]),
-            "draw_holes": len([v for v in self._mapping.values() if v < 0])
+            "draw_holes": len([v for v in self._mapping.values() if v < 0]),
         }

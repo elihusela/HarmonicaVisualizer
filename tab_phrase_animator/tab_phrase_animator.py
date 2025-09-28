@@ -26,6 +26,7 @@ from utils.utils import TEMP_DIR
 @dataclass
 class AnimationConfig:
     """Configuration for tab phrase animation."""
+
     fps: int = 30
     figure_size: tuple[float, float] = (16, 9)
     background_color: str = "#FF00FF"  # Magenta for chroma key
@@ -45,6 +46,7 @@ class AnimationConfig:
 @dataclass
 class PageStatistics:
     """Statistics for a single animated page."""
+
     page_name: str
     total_entries: int
     start_time: float
@@ -58,6 +60,7 @@ class PageStatistics:
 
 class TabPhraseAnimatorError(Exception):
     """Custom exception for tab phrase animation errors."""
+
     pass
 
 
@@ -73,7 +76,7 @@ class TabPhraseAnimator:
         self,
         harmonica_layout: HarmonicaLayout,
         figure_factory: FigureFactory,
-        config: Optional[AnimationConfig] = None
+        config: Optional[AnimationConfig] = None,
     ):
         """
         Initialize tab phrase animator.
@@ -117,7 +120,9 @@ class TabPhraseAnimator:
             raise TabPhraseAnimatorError("No pages provided for animation")
 
         if not os.path.exists(extracted_audio_path):
-            raise TabPhraseAnimatorError(f"Audio file not found: {extracted_audio_path}")
+            raise TabPhraseAnimatorError(
+                f"Audio file not found: {extracted_audio_path}"
+            )
 
         actual_fps = fps or self._config.fps
         self._page_statistics.clear()
@@ -129,13 +134,20 @@ class TabPhraseAnimator:
         for page_idx, (page_name, page) in enumerate(all_pages.items(), start=1):
             try:
                 stats = self._create_single_page_animation(
-                    page_idx, page_name, page, extracted_audio_path, output_path_base, actual_fps
+                    page_idx,
+                    page_name,
+                    page,
+                    extracted_audio_path,
+                    output_path_base,
+                    actual_fps,
                 )
                 self._page_statistics.append(stats)
                 print(f"✅ Page {page_idx}/{len(all_pages)}: {stats.output_file}")
 
             except Exception as e:
-                error_msg = f"Failed to create animation for page {page_idx} ({page_name}): {e}"
+                error_msg = (
+                    f"Failed to create animation for page {page_idx} ({page_name}): {e}"
+                )
                 print(f"❌ {error_msg}")
                 if not isinstance(e, TabPhraseAnimatorError):
                     raise TabPhraseAnimatorError(error_msg) from e
@@ -161,7 +173,11 @@ class TabPhraseAnimator:
             Dict with animation properties and statistics
         """
         if not self._page_statistics:
-            return {"total_pages": 0, "total_duration": 0, "config": self._config.__dict__}
+            return {
+                "total_pages": 0,
+                "total_duration": 0,
+                "config": self._config.__dict__,
+            }
 
         total_duration = sum(stat.duration for stat in self._page_statistics)
         total_frames = sum(stat.total_frames for stat in self._page_statistics)
@@ -173,15 +189,18 @@ class TabPhraseAnimator:
             "total_frames": total_frames,
             "total_entries": total_entries,
             "average_page_duration": total_duration / len(self._page_statistics),
-            "pages": [{
-                "name": stat.page_name,
-                "duration": stat.duration,
-                "entries": stat.total_entries,
-                "lines": stat.lines_count,
-                "chords": stat.chords_count,
-                "output": stat.output_file,
-            } for stat in self._page_statistics],
-            "config": self._config.__dict__
+            "pages": [
+                {
+                    "name": stat.page_name,
+                    "duration": stat.duration,
+                    "entries": stat.total_entries,
+                    "lines": stat.lines_count,
+                    "chords": stat.chords_count,
+                    "output": stat.output_file,
+                }
+                for stat in self._page_statistics
+            ],
+            "config": self._config.__dict__,
         }
 
     def _load_font(self) -> None:
@@ -196,7 +215,9 @@ class TabPhraseAnimator:
                 fm.fontManager.addfont(self._config.font_file)
                 print(f"📝 Loaded font: {self._config.font_file}")
             else:
-                print(f"⚠️  Font file not found: {self._config.font_file}, using system default")
+                print(
+                    f"⚠️  Font file not found: {self._config.font_file}, using system default"
+                )
         except Exception as e:
             print(f"⚠️  Warning: Could not load font {self._config.font_file}: {e}")
 
@@ -207,7 +228,7 @@ class TabPhraseAnimator:
         page: List[List[Optional[List[TabEntry]]]],
         extracted_audio_path: str,
         output_path_base: str,
-        fps: int
+        fps: int,
     ) -> PageStatistics:
         """
         Create animation for a single page.
@@ -246,7 +267,9 @@ class TabPhraseAnimator:
         text_lines, line_entries = self._prepare_text_data(page)
 
         if not text_lines:
-            raise TabPhraseAnimatorError(f"No valid text lines found for page {page_name}")
+            raise TabPhraseAnimatorError(
+                f"No valid text lines found for page {page_name}"
+            )
 
         # Create animation
         fig, ax = plt.subplots(figsize=self._config.figure_size)
@@ -266,7 +289,13 @@ class TabPhraseAnimator:
 
         # Save and process video
         final_output = self._process_animation_video(
-            ani, page_idx, fps, start_time, end_time, extracted_audio_path, output_path_base
+            ani,
+            page_idx,
+            fps,
+            start_time,
+            end_time,
+            extracted_audio_path,
+            output_path_base,
         )
 
         # Create and return statistics
@@ -279,10 +308,12 @@ class TabPhraseAnimator:
             total_frames=total_frames,
             lines_count=len(text_lines),
             chords_count=sum(len(line) for line in text_lines),
-            output_file=final_output
+            output_file=final_output,
         )
 
-    def _prepare_text_data(self, page: List[List[Optional[List[TabEntry]]]]) -> tuple[List[List[str]], List[List[TabEntry]]]:
+    def _prepare_text_data(
+        self, page: List[List[Optional[List[TabEntry]]]]
+    ) -> tuple[List[List[str]], List[List[TabEntry]]]:
         """
         Prepare text data for animation rendering.
 
@@ -325,7 +356,7 @@ class TabPhraseAnimator:
         start_time: float,
         end_time: float,
         extracted_audio_path: str,
-        output_path_base: str
+        output_path_base: str,
     ) -> str:
         """
         Process and save the animation video with transparency and audio.
@@ -353,14 +384,18 @@ class TabPhraseAnimator:
             ani.save(temp_path, fps=fps, writer="ffmpeg")
 
             # Create transparent video
-            transparent_path = os.path.join(TEMP_DIR, f"page_{page_idx}_transparent.mov")
+            transparent_path = os.path.join(
+                TEMP_DIR, f"page_{page_idx}_transparent.mov"
+            )
             temp_files.append(transparent_path)
             self._create_transparent_video(temp_path, transparent_path)
 
             # Extract audio slice
             audio_trimmed = os.path.join(TEMP_DIR, f"audio_page_{page_idx}.m4a")
             temp_files.append(audio_trimmed)
-            self._extract_audio_slice(extracted_audio_path, audio_trimmed, start_time, end_time)
+            self._extract_audio_slice(
+                extracted_audio_path, audio_trimmed, start_time, end_time
+            )
 
             # Combine video and audio
             final_output = f"{output_path_base}_page{page_idx}.mov"
@@ -369,7 +404,9 @@ class TabPhraseAnimator:
             return final_output
 
         except Exception as e:
-            raise TabPhraseAnimatorError(f"Video processing failed for page {page_idx}: {e}")
+            raise TabPhraseAnimatorError(
+                f"Video processing failed for page {page_idx}: {e}"
+            )
         finally:
             # Cleanup temporary files
             if self._config.cleanup_temp_files:
@@ -392,18 +429,29 @@ class TabPhraseAnimator:
             TabPhraseAnimatorError: If FFmpeg processing fails
         """
         cmd = [
-            "ffmpeg", "-y", "-i", input_path,
-            "-vf", "colorkey=0xFF00FF:0.3:0.0,format=yuva444p10le",
-            "-c:v", "prores_ks", "-profile:v", "4",
-            "-pix_fmt", "yuva444p10le", output_path
+            "ffmpeg",
+            "-y",
+            "-i",
+            input_path,
+            "-vf",
+            "colorkey=0xFF00FF:0.3:0.0,format=yuva444p10le",
+            "-c:v",
+            "prores_ks",
+            "-profile:v",
+            "4",
+            "-pix_fmt",
+            "yuva444p10le",
+            output_path,
         ]
 
         try:
-            result = subprocess.run(cmd, capture_output=True, text=True, check=True)
+            subprocess.run(cmd, capture_output=True, text=True, check=True)
         except subprocess.CalledProcessError as e:
             raise TabPhraseAnimatorError(f"Transparency processing failed: {e.stderr}")
 
-    def _extract_audio_slice(self, input_audio: str, output_audio: str, start_time: float, end_time: float) -> None:
+    def _extract_audio_slice(
+        self, input_audio: str, output_audio: str, start_time: float, end_time: float
+    ) -> None:
         """
         Extract audio slice for the current page timing.
 
@@ -417,17 +465,27 @@ class TabPhraseAnimator:
             TabPhraseAnimatorError: If audio extraction fails
         """
         cmd = [
-            "ffmpeg", "-y", "-i", input_audio,
-            "-ss", f"{start_time:.3f}", "-to", f"{end_time:.3f}",
-            "-c:a", "aac", output_audio
+            "ffmpeg",
+            "-y",
+            "-i",
+            input_audio,
+            "-ss",
+            f"{start_time:.3f}",
+            "-to",
+            f"{end_time:.3f}",
+            "-c:a",
+            "aac",
+            output_audio,
         ]
 
         try:
-            result = subprocess.run(cmd, capture_output=True, text=True, check=True)
+            subprocess.run(cmd, capture_output=True, text=True, check=True)
         except subprocess.CalledProcessError as e:
             raise TabPhraseAnimatorError(f"Audio extraction failed: {e.stderr}")
 
-    def _combine_video_audio(self, video_path: str, audio_path: str, output_path: str) -> None:
+    def _combine_video_audio(
+        self, video_path: str, audio_path: str, output_path: str
+    ) -> None:
         """
         Combine transparent video with audio.
 
@@ -440,12 +498,22 @@ class TabPhraseAnimator:
             TabPhraseAnimatorError: If video/audio combination fails
         """
         cmd = [
-            "ffmpeg", "-y", "-i", video_path, "-i", audio_path,
-            "-c:v", "copy", "-c:a", "aac", "-shortest", output_path
+            "ffmpeg",
+            "-y",
+            "-i",
+            video_path,
+            "-i",
+            audio_path,
+            "-c:v",
+            "copy",
+            "-c:a",
+            "aac",
+            "-shortest",
+            output_path,
         ]
 
         try:
-            result = subprocess.run(cmd, capture_output=True, text=True, check=True)
+            subprocess.run(cmd, capture_output=True, text=True, check=True)
         except subprocess.CalledProcessError as e:
             raise TabPhraseAnimatorError(f"Video/audio combination failed: {e.stderr}")
 
@@ -488,7 +556,9 @@ class TabPhraseAnimator:
             elements.append(bbox)
 
         # Render text with highlighting
-        for i, (line_texts, line_tab_entries) in enumerate(zip(text_lines, line_entries)):
+        for i, (line_texts, line_tab_entries) in enumerate(
+            zip(text_lines, line_entries)
+        ):
             ypos = y_start - i * self._config.line_spacing
             line_len = len(line_texts)
 
@@ -501,18 +571,24 @@ class TabPhraseAnimator:
                     color = OUT_COLOR if entry.tab > 0 else IN_COLOR
 
                 txt = ax.text(
-                    xpos, ypos, char,
+                    xpos,
+                    ypos,
+                    char,
                     transform=ax.transAxes,
-                    ha="center", va="center",
+                    ha="center",
+                    va="center",
                     fontsize=self._config.font_size,
                     fontname=self._config.font_family,
-                    color=color, weight="bold",
+                    color=color,
+                    weight="bold",
                 )
                 elements.append(txt)
 
         return elements
 
-    def _create_background_box(self, text_lines: List[List[str]], ax: Axes) -> FancyBboxPatch:
+    def _create_background_box(
+        self, text_lines: List[List[str]], ax: Axes
+    ) -> FancyBboxPatch:
         """
         Create background box for text rendering.
 
@@ -530,7 +606,9 @@ class TabPhraseAnimator:
         box_y = 0.5 - box_height / 2
 
         return FancyBboxPatch(
-            (box_x, box_y), box_width, box_height,
+            (box_x, box_y),
+            box_width,
+            box_height,
             boxstyle=f"round,pad={self._config.box_padding},rounding_size={self._config.box_rounding}",
             linewidth=0,
             facecolor=self._config.box_color,

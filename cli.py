@@ -65,6 +65,16 @@ Examples:
     video_parser.add_argument(
         "--no-produce-tabs", action="store_true", help="Skip tab phrase generation"
     )
+    video_parser.add_argument(
+        "--only-tabs",
+        action="store_true",
+        help="Only create tab phrase animations (skip harmonica)",
+    )
+    video_parser.add_argument(
+        "--only-harmonica",
+        action="store_true",
+        help="Only create harmonica animation (skip tabs)",
+    )
 
     # Full pipeline (for testing)
     full_parser = subparsers.add_parser(
@@ -79,6 +89,16 @@ Examples:
     )
     full_parser.add_argument(
         "--no-produce-tabs", action="store_true", help="Skip tab phrase generation"
+    )
+    full_parser.add_argument(
+        "--only-tabs",
+        action="store_true",
+        help="Only create tab phrase animations (skip harmonica)",
+    )
+    full_parser.add_argument(
+        "--only-harmonica",
+        action="store_true",
+        help="Only create harmonica animation (skip tabs)",
     )
 
     return parser
@@ -144,15 +164,28 @@ def create_video_phase(
     tabs: str,
     harmonica_model: str = DEFAULT_HARMONICA_MODEL,
     produce_tabs: bool = True,
+    only_tabs: bool = False,
+    only_harmonica: bool = False,
 ) -> None:
     """Phase 2: Create video from fixed MIDI."""
     from harmonica_pipeline.video_creator import VideoCreator
+
+    # Handle conflicting options
+    if only_tabs and only_harmonica:
+        print("❌ Error: Cannot specify both --only-tabs and --only-harmonica")
+        sys.exit(1)
+
+    # Determine what to create based on options
+    create_harmonica = not only_tabs  # Create harmonica unless only tabs requested
+    create_tabs = (
+        produce_tabs and not only_harmonica
+    )  # Create tabs unless only harmonica requested
 
     # Generate smart defaults
     base_name = get_video_base_name(video)
     midi_name = f"{base_name}{MIDI_SUFFIX}"
     output_video = f"{base_name}_harmonica.mov"
-    tabs_output_video = f"{base_name}_tabs.mov" if produce_tabs else None
+    tabs_output_video = f"{base_name}_tabs.mov" if create_tabs else None
 
     # Validate all input files exist
     video_path = os.path.join(VIDEO_FILES_DIR, video)
@@ -186,9 +219,9 @@ def create_video_phase(
         midi_path=midi_path,
         output_video_path=output_video_path,
         tabs_output_path=tabs_output_path,
-        produce_tabs=produce_tabs,
+        produce_tabs=create_tabs,
     )
-    creator.create()
+    creator.create(create_harmonica=create_harmonica, create_tabs=create_tabs)
 
     print("✅ Phase 2 Complete!")
     print(f"🎥 Video saved to: {output_video_path}")
@@ -199,6 +232,8 @@ def full_pipeline(
     tabs: str,
     harmonica_model: str = DEFAULT_HARMONICA_MODEL,
     produce_tabs: bool = True,
+    only_tabs: bool = False,
+    only_harmonica: bool = False,
 ) -> None:
     """Run complete pipeline for testing (no manual MIDI editing)."""
     print("🎬 Starting Full Pipeline (Testing Mode)")
@@ -211,7 +246,9 @@ def full_pipeline(
     print(f"📋 MIDI ready at: {generated_midi_path}")
 
     # Phase 2: Create video (MIDI is already in the right location)
-    create_video_phase(video, tabs, harmonica_model, produce_tabs)
+    create_video_phase(
+        video, tabs, harmonica_model, produce_tabs, only_tabs, only_harmonica
+    )
 
 
 def main():
@@ -228,12 +265,22 @@ def main():
 
         elif args.command == "create-video":
             create_video_phase(
-                args.video, args.tabs, args.harmonica_model, not args.no_produce_tabs
+                args.video,
+                args.tabs,
+                args.harmonica_model,
+                not args.no_produce_tabs,
+                args.only_tabs,
+                args.only_harmonica,
             )
 
         elif args.command == "full":
             full_pipeline(
-                args.video, args.tabs, args.harmonica_model, not args.no_produce_tabs
+                args.video,
+                args.tabs,
+                args.harmonica_model,
+                not args.no_produce_tabs,
+                args.only_tabs,
+                args.only_harmonica,
             )
 
     except KeyboardInterrupt:

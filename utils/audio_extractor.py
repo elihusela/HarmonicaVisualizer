@@ -8,10 +8,11 @@ error handling, format detection, and audio quality validation.
 import os
 import subprocess
 from dataclasses import dataclass
-from typing import Optional, List, Dict, Any
+from typing import Optional, List, Dict, Any, Callable
 
 try:
     from moviepy import VideoFileClip
+
     MOVIEPY_AVAILABLE = True
 except ImportError:
     MOVIEPY_AVAILABLE = False
@@ -20,6 +21,7 @@ except ImportError:
 @dataclass
 class AudioConfig:
     """Configuration for audio extraction."""
+
     sample_rate: int = 44100
     channels: int = 2  # Stereo
     audio_codec: str = "pcm_s16le"
@@ -31,6 +33,7 @@ class AudioConfig:
 @dataclass
 class ExtractionResult:
     """Result of audio extraction operation."""
+
     success: bool
     output_path: str
     method_used: str
@@ -43,6 +46,7 @@ class ExtractionResult:
 
 class AudioExtractionError(Exception):
     """Custom exception for audio extraction errors."""
+
     pass
 
 
@@ -54,7 +58,12 @@ class AudioExtractor:
     handling, format validation, and quality assessment.
     """
 
-    def __init__(self, video_path: str, audio_result_path: str, config: Optional[AudioConfig] = None):
+    def __init__(
+        self,
+        video_path: str,
+        audio_result_path: str,
+        config: Optional[AudioConfig] = None,
+    ):
         """
         Initialize audio extractor.
 
@@ -107,7 +116,9 @@ class AudioExtractor:
                 print(f"⚠️  {method_name} failed: {e}")
 
                 # Cleanup partial files on error
-                if self._config.cleanup_on_error and os.path.exists(self._audio_result_path):
+                if self._config.cleanup_on_error and os.path.exists(
+                    self._audio_result_path
+                ):
                     try:
                         os.remove(self._audio_result_path)
                     except OSError:
@@ -141,8 +152,12 @@ class AudioExtractor:
             "input_file": {
                 "exists": os.path.exists(self._video_path),
                 "is_audio": self._is_audio_file(self._video_path),
-                "size_mb": os.path.getsize(self._video_path) / (1024 * 1024) if os.path.exists(self._video_path) else 0,
-            }
+                "size_mb": (
+                    os.path.getsize(self._video_path) / (1024 * 1024)
+                    if os.path.exists(self._video_path)
+                    else 0
+                ),
+            },
         }
 
     def _validate_inputs(self) -> None:
@@ -179,10 +194,10 @@ class AudioExtractor:
         Returns:
             True if file appears to be audio
         """
-        audio_extensions = {'.wav', '.mp3', '.aac', '.m4a', '.flac', '.ogg'}
+        audio_extensions = {".wav", ".mp3", ".aac", ".m4a", ".flac", ".ogg"}
         return os.path.splitext(file_path)[1].lower() in audio_extensions
 
-    def _get_extraction_methods(self) -> List[tuple[str, callable]]:
+    def _get_extraction_methods(self) -> List[tuple[str, Callable]]:
         """
         Get list of available extraction methods in order of preference.
 
@@ -224,7 +239,7 @@ class AudioExtractor:
             audio.write_audiofile(
                 self._audio_result_path,
                 logger=None,  # Suppress moviepy logs
-                verbose=False
+                verbose=False,
             )
 
             # Get audio properties
@@ -242,7 +257,7 @@ class AudioExtractor:
                 file_size_bytes=file_size,
                 duration_seconds=duration,
                 sample_rate=self._config.sample_rate,
-                channels=self._config.channels
+                channels=self._config.channels,
             )
 
         except Exception as e:
@@ -262,12 +277,18 @@ class AudioExtractor:
             raise AudioExtractionError("FFmpeg not found on system")
 
         cmd = [
-            "ffmpeg", "-y",  # Overwrite output
-            "-i", self._video_path,
-            "-map", "0:a:0",  # Select first audio stream
-            "-acodec", self._config.audio_codec,
-            "-ar", str(self._config.sample_rate),
-            "-ac", str(self._config.channels),
+            "ffmpeg",
+            "-y",  # Overwrite output
+            "-i",
+            self._video_path,
+            "-map",
+            "0:a:0",  # Select first audio stream
+            "-acodec",
+            self._config.audio_codec,
+            "-ar",
+            str(self._config.sample_rate),
+            "-ac",
+            str(self._config.channels),
             self._audio_result_path,
         ]
 
@@ -287,7 +308,7 @@ class AudioExtractor:
                 file_size_bytes=file_size,
                 duration_seconds=duration,
                 sample_rate=self._config.sample_rate,
-                channels=self._config.channels
+                channels=self._config.channels,
             )
 
         except subprocess.CalledProcessError as e:
@@ -311,7 +332,9 @@ class AudioExtractor:
         except (subprocess.CalledProcessError, FileNotFoundError):
             return False
 
-    def _extract_duration_from_ffmpeg_output(self, stderr_output: str) -> Optional[float]:
+    def _extract_duration_from_ffmpeg_output(
+        self, stderr_output: str
+    ) -> Optional[float]:
         """
         Extract duration from FFmpeg stderr output.
 
@@ -324,10 +347,18 @@ class AudioExtractor:
         try:
             # Look for duration in format "Duration: HH:MM:SS.ss"
             import re
-            match = re.search(r'Duration: (\d{2}):(\d{2}):(\d{2})\.(\d{2})', stderr_output)
+
+            match = re.search(
+                r"Duration: (\d{2}):(\d{2}):(\d{2})\.(\d{2})", stderr_output
+            )
             if match:
                 hours, minutes, seconds, centiseconds = match.groups()
-                total_seconds = int(hours) * 3600 + int(minutes) * 60 + int(seconds) + int(centiseconds) / 100
+                total_seconds = (
+                    int(hours) * 3600
+                    + int(minutes) * 60
+                    + int(seconds)
+                    + int(centiseconds) / 100
+                )
                 return total_seconds
         except Exception:
             pass  # Ignore parsing errors
@@ -348,7 +379,9 @@ class AudioExtractor:
             return
 
         if not result.success:
-            raise AudioExtractionError(f"Extraction reported failure: {result.error_message}")
+            raise AudioExtractionError(
+                f"Extraction reported failure: {result.error_message}"
+            )
 
         if not os.path.exists(result.output_path):
             raise AudioExtractionError(f"Output file not created: {result.output_path}")
@@ -358,7 +391,9 @@ class AudioExtractor:
 
         # Basic size sanity check (audio should be at least 1KB)
         if result.file_size_bytes < 1024:
-            raise AudioExtractionError(f"Output file suspiciously small: {result.file_size_bytes} bytes")
+            raise AudioExtractionError(
+                f"Output file suspiciously small: {result.file_size_bytes} bytes"
+            )
 
     # Backwards compatibility properties
     @property

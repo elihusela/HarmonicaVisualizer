@@ -92,7 +92,7 @@ class Animator:
                 self._temp_video_path,
                 extracted_audio_path,
                 output_path,
-                cleanup_temp=True
+                cleanup_temp=True,
             )
 
             # Log video information
@@ -120,7 +120,8 @@ class Animator:
 
         # Only process notes that should be visible at current time
         active_entries = [
-            entry for entry in self._flat_entries
+            entry
+            for entry in self._flat_entries
             if entry.time <= current_time <= entry.time + entry.duration
         ]
 
@@ -146,11 +147,15 @@ class Animator:
         """
         hole = abs(tab_entry.tab)
         center_x, center_y = self._harmonica_layout.get_position(hole)
-        rect_x, rect_y, rect_width, rect_height = self._harmonica_layout.get_rectangle(hole)
+        rect_x, rect_y, rect_width, rect_height = self._harmonica_layout.get_rectangle(
+            hole
+        )
         direction = self._calc_direction(tab_entry)
         color = self._get_color(tab_entry)
 
         # Create rectangle
+        if self._ax is None:
+            raise RuntimeError("Axes not initialized")
         rect = self._ax.add_patch(
             plt.Rectangle(
                 (rect_x, rect_y),
@@ -227,11 +232,13 @@ class Animator:
             file_size_mb = file_size_bytes / (1024 * 1024)
 
             # Calculate video metrics
-            bitrate_kbps = (file_size_bytes * 8) / (duration * 1000) if duration > 0 else 0
+            bitrate_kbps = (
+                (file_size_bytes * 8) / (duration * 1000) if duration > 0 else 0
+            )
 
-            print("\n" + "="*50)
+            print("\n" + "=" * 50)
             print("📹 VIDEO INFORMATION")
-            print("="*50)
+            print("=" * 50)
             print(f"📁 File: {os.path.basename(video_path)}")
             print(f"📏 Size: {file_size_mb:.2f} MB ({file_size_bytes:,} bytes)")
             print(f"⏱️  Duration: {duration:.2f}s")
@@ -246,7 +253,7 @@ class Animator:
                 print(f"⚡ Avg frame time: {avg_frame_time:.4f}s")
                 print(f"🏃 Est. total render: {total_render_time:.2f}s")
 
-            print("="*50 + "\n")
+            print("=" * 50 + "\n")
 
         except Exception as e:
             print(f"⚠️  Warning: Could not retrieve video info: {e}")

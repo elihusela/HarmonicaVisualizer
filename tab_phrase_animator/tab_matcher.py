@@ -14,6 +14,7 @@ from tab_converter.models import TabEntry, Tabs
 
 class TabMatcherError(Exception):
     """Custom exception for tab matching errors."""
+
     pass
 
 
@@ -46,7 +47,7 @@ class TabMatcher:
             "successful_matches": 0,
             "failed_matches": 0,
             "notes_matched": 0,
-            "notes_unmatched": 0
+            "notes_unmatched": 0,
         }
 
     def match(
@@ -102,7 +103,9 @@ class TabMatcher:
         page_result: List[List[Optional[List[TabEntry]]]] = []
 
         for line_idx, line in enumerate(lines):
-            line_result = self._match_line(f"{page_name}:L{line_idx}", line, midi_entries)
+            line_result = self._match_line(
+                f"{page_name}:L{line_idx}", line, midi_entries
+            )
             page_result.append(line_result)
 
         return page_result
@@ -183,11 +186,17 @@ class TabMatcher:
         """Print matching statistics summary."""
         stats = self._match_statistics
         total_chords = stats["total_chords_processed"]
-        success_rate = (stats["successful_matches"] / total_chords * 100) if total_chords > 0 else 0
+        success_rate = (
+            (stats["successful_matches"] / total_chords * 100)
+            if total_chords > 0
+            else 0
+        )
 
-        print(f"📊 Tab Matching Statistics:")
+        print("📊 Tab Matching Statistics:")
         print(f"   Chords processed: {total_chords}")
-        print(f"   Successful matches: {stats['successful_matches']} ({success_rate:.1f}%)")
+        print(
+            f"   Successful matches: {stats['successful_matches']} ({success_rate:.1f}%)"
+        )
         print(f"   Failed matches: {stats['failed_matches']}")
         print(f"   Notes matched: {stats['notes_matched']}")
         print(f"   Notes unmatched: {stats['notes_unmatched']}")

@@ -1,4 +1,3 @@
-import os
 from dataclasses import dataclass
 from typing import Tuple, Dict, List, Optional
 
@@ -6,6 +5,7 @@ from typing import Tuple, Dict, List, Optional
 @dataclass
 class HoleCoordinates:
     """Represents coordinates for a single harmonica hole."""
+
     x: int
     y: int
     width: int
@@ -17,6 +17,7 @@ class HoleCoordinates:
 @dataclass
 class LayoutConfig:
     """Configuration for harmonica layout processing."""
+
     min_coordinate: int = 0
     max_coordinate: int = 2000
     validate_coordinates: bool = True
@@ -24,6 +25,7 @@ class LayoutConfig:
 
 class HarmonicaLayoutError(Exception):
     """Custom exception for harmonica layout errors."""
+
     pass
 
 
@@ -39,7 +41,7 @@ class HarmonicaLayout:
         self,
         image_path: str,
         hole_map: Dict[int, Dict[str, Dict[str, int]]],
-        config: Optional[LayoutConfig] = None
+        config: Optional[LayoutConfig] = None,
     ):
         """
         Initialize harmonica layout.
@@ -118,10 +120,12 @@ class HarmonicaLayout:
                 "min_coordinate": self._config.min_coordinate,
                 "max_coordinate": self._config.max_coordinate,
                 "validate_coordinates": self._config.validate_coordinates,
-            }
+            },
         }
 
-    def _validate_hole_map(self, hole_map: Dict[int, Dict[str, Dict[str, int]]]) -> None:
+    def _validate_hole_map(
+        self, hole_map: Dict[int, Dict[str, Dict[str, int]]]
+    ) -> None:
         """
         Validate hole mapping data structure and values.
 
@@ -145,32 +149,53 @@ class HarmonicaLayout:
 
                 # Validate structure
                 if "top_left" not in coords or "bottom_right" not in coords:
-                    raise HarmonicaLayoutError(f"Missing coordinate data for hole {hole}")
+                    raise HarmonicaLayoutError(
+                        f"Missing coordinate data for hole {hole}"
+                    )
 
                 top_left = coords["top_left"]
                 bottom_right = coords["bottom_right"]
 
                 # Validate coordinate structure
-                for corner, corner_coords in [("top_left", top_left), ("bottom_right", bottom_right)]:
+                for corner, corner_coords in [
+                    ("top_left", top_left),
+                    ("bottom_right", bottom_right),
+                ]:
                     if "x" not in corner_coords or "y" not in corner_coords:
-                        raise HarmonicaLayoutError(f"Missing x/y in {corner} for hole {hole}")
+                        raise HarmonicaLayoutError(
+                            f"Missing x/y in {corner} for hole {hole}"
+                        )
 
                 # Validate coordinate values
                 tl_x, tl_y = top_left["x"], top_left["y"]
                 br_x, br_y = bottom_right["x"], bottom_right["y"]
 
                 # Check coordinate ranges
-                for coord, name in [(tl_x, f"hole {hole} top_left.x"), (tl_y, f"hole {hole} top_left.y"),
-                                  (br_x, f"hole {hole} bottom_right.x"), (br_y, f"hole {hole} bottom_right.y")]:
-                    if not (self._config.min_coordinate <= coord <= self._config.max_coordinate):
-                        raise HarmonicaLayoutError(f"Coordinate out of range for {name}: {coord}")
+                for coord, name in [
+                    (tl_x, f"hole {hole} top_left.x"),
+                    (tl_y, f"hole {hole} top_left.y"),
+                    (br_x, f"hole {hole} bottom_right.x"),
+                    (br_y, f"hole {hole} bottom_right.y"),
+                ]:
+                    if not (
+                        self._config.min_coordinate
+                        <= coord
+                        <= self._config.max_coordinate
+                    ):
+                        raise HarmonicaLayoutError(
+                            f"Coordinate out of range for {name}: {coord}"
+                        )
 
                 # Validate rectangle geometry
                 if br_x <= tl_x or br_y <= tl_y:
-                    raise HarmonicaLayoutError(f"Invalid rectangle for hole {hole}: bottom_right must be > top_left")
+                    raise HarmonicaLayoutError(
+                        f"Invalid rectangle for hole {hole}: bottom_right must be > top_left"
+                    )
 
             except (KeyError, TypeError, ValueError) as e:
-                raise HarmonicaLayoutError(f"Invalid coordinate data for hole {hole}: {e}")
+                raise HarmonicaLayoutError(
+                    f"Invalid coordinate data for hole {hole}: {e}"
+                )
 
     def _calculate_hole_coordinates(self) -> Dict[int, HoleCoordinates]:
         """
@@ -196,12 +221,18 @@ class HarmonicaLayout:
                 center_y = (top_left["y"] + bottom_right["y"]) // 2
 
                 coordinates[hole] = HoleCoordinates(
-                    x=x, y=y, width=width, height=height,
-                    center_x=center_x, center_y=center_y
+                    x=x,
+                    y=y,
+                    width=width,
+                    height=height,
+                    center_x=center_x,
+                    center_y=center_y,
                 )
 
             except Exception as e:
-                raise HarmonicaLayoutError(f"Failed to calculate coordinates for hole {hole}: {e}")
+                raise HarmonicaLayoutError(
+                    f"Failed to calculate coordinates for hole {hole}: {e}"
+                )
 
         return coordinates
 
@@ -252,7 +283,7 @@ class HarmonicaLayout:
             "width": width,
             "height": height,
             "area": width * height,
-            "aspect_ratio": width / height if height > 0 else 0
+            "aspect_ratio": width / height if height > 0 else 0,
         }
 
     # Backwards compatibility properties

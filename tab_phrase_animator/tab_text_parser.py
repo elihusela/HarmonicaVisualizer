@@ -13,6 +13,7 @@ from typing import Dict, List, Optional
 @dataclass
 class ParseConfig:
     """Configuration for tab file parsing."""
+
     allow_empty_pages: bool = False
     allow_empty_chords: bool = True
     validate_hole_numbers: bool = True
@@ -24,6 +25,7 @@ class ParseConfig:
 @dataclass
 class ParseStatistics:
     """Statistics about the parsed tab file."""
+
     total_pages: int
     total_lines: int
     total_chords: int
@@ -35,6 +37,7 @@ class ParseStatistics:
 
 class TabTextParserError(Exception):
     """Custom exception for tab parsing errors."""
+
     pass
 
 
@@ -61,8 +64,13 @@ class TabTextParser:
         self._file_path = file_path
         self._config = config or ParseConfig()
         self._statistics = ParseStatistics(
-            total_pages=0, total_lines=0, total_chords=0, total_notes=0,
-            empty_pages=0, invalid_lines=0, hole_range=(0, 0)
+            total_pages=0,
+            total_lines=0,
+            total_chords=0,
+            total_notes=0,
+            empty_pages=0,
+            invalid_lines=0,
+            hole_range=(0, 0),
         )
 
         # Validate file exists
@@ -137,7 +145,7 @@ class TabTextParser:
                 "allow_empty_pages": self._config.allow_empty_pages,
                 "allow_empty_chords": self._config.allow_empty_chords,
                 "validate_hole_numbers": self._config.validate_hole_numbers,
-            }
+            },
         }
 
     def _validate_file(self) -> None:
@@ -201,9 +209,13 @@ class TabTextParser:
                             print(f"⚠️  Warning: Error parsing line {line_number}: {e}")
                             self._statistics.invalid_lines += 1
                             if not self._config.allow_empty_chords:
-                                raise TabTextParserError(f"Parse error at line {line_number}: {e}")
+                                raise TabTextParserError(
+                                    f"Parse error at line {line_number}: {e}"
+                                )
                     elif line:
-                        print(f"⚠️  Warning: Tab line outside page context at line {line_number}: {line}")
+                        print(
+                            f"⚠️  Warning: Tab line outside page context at line {line_number}: {line}"
+                        )
                         self._statistics.invalid_lines += 1
 
         except IOError as e:
@@ -239,7 +251,9 @@ class TabTextParser:
                 # Parse negative (draw) notes
                 i += 1
                 if i >= len(line) or not line[i].isdigit():
-                    raise TabTextParserError(f"Invalid negative note format at position {i}")
+                    raise TabTextParserError(
+                        f"Invalid negative note format at position {i}"
+                    )
 
                 # Collect consecutive digits after '-'
                 start_pos = i
@@ -326,7 +340,9 @@ class TabTextParser:
                 raise TabTextParserError(f"Empty pages not allowed: {empty_pages}")
 
         # Update empty page count
-        self._statistics.empty_pages = len([content for content in pages.values() if not content])
+        self._statistics.empty_pages = len(
+            [content for content in pages.values() if not content]
+        )
 
     def _finalize_statistics(self) -> None:
         """
@@ -334,7 +350,7 @@ class TabTextParser:
         """
         if self._statistics.total_notes > 0:
             # Find hole range from all parsed notes
-            all_holes = []
+            all_holes: List[int] = []
             for page_content in self._pages.values():
                 for line in page_content:
                     for chord in line:

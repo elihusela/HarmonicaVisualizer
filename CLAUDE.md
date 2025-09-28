@@ -119,6 +119,8 @@ TabMatcher → Animator → Final Video
 - ✅ **Enhanced AudioExtractor with ffmpeg fallback**
 - ✅ **Simplified workflow (auto-naming, WAV reuse)**
 - ✅ HarmonicaTabs Claude Code agent created (harmonica-dev subagent)
+- ✅ **Tab phrase animation bug fixed** (multiple pages now generated)
+- ✅ **Selective generation options** (--only-tabs, --only-harmonica)
 
 ## Latest Architecture (Sept 2024)
 
@@ -130,7 +132,11 @@ python cli.py generate-midi BW.MOV  # No --output-name needed!
 # Fix MIDI in DAW → save as fixed_midis/BW_fixed.mid
 
 # Phase 2: WAV → Video (reuses extracted audio)
-python cli.py create-video BW.wav BW.txt
+python cli.py create-video KHD.wav KHD.txt
+
+# Selective Generation Options (NEW):
+python cli.py create-video KHD.wav KHD.txt --only-tabs        # Only tab phrase animations
+python cli.py create-video KHD.wav KHD.txt --only-harmonica   # Only harmonica animation
 ```
 
 ### 🏗️ **OOP Audio Processing Architecture:**
@@ -156,7 +162,34 @@ utils/
 - **MidiGenerator**: 3-step pipeline orchestration
 - **AudioExtractor**: Robust video→audio with fallbacks
 - **AudioProcessor**: Configurable kaki.sh logic with presets
-- **VideoCreator**: Phase 2 video generation (unchanged)
+- **VideoCreator**: Phase 2 video generation with selective creation support
+
+### 🎭 **Selective Generation Options (Latest Feature):**
+New CLI options for targeted video creation:
+
+```bash
+# Create both animations (default behavior)
+python cli.py create-video song.wav song.txt
+
+# Create only tab phrase animations (skip harmonica)
+python cli.py create-video KHD.wav KHD.txt --only-tabs
+
+# Create only harmonica animation (skip tab phrases)
+python cli.py create-video song.wav song.txt --only-harmonica
+
+# Skip all tab generation (original option)
+python cli.py create-video song.wav song.txt --no-produce-tabs
+
+# Error: Cannot use both selective options
+python cli.py create-video song.wav song.txt --only-tabs --only-harmonica
+# ❌ Error: Cannot specify both --only-tabs and --only-harmonica
+```
+
+**Use Cases:**
+- **Development**: Test individual components separately
+- **Performance**: Skip slow animations when iterating
+- **Debugging**: Isolate issues to specific animation types
+- **Workflow**: Generate harmonica first, then tabs after review
 
 ## Next Session Tasks - Phase 2 Refactoring
 

@@ -6,12 +6,13 @@ Separated from Animator for better separation of concerns and easier testing.
 
 import os
 import subprocess
-from typing import Optional
 from pathlib import Path
+from typing import Dict, Any
 
 
 class VideoProcessorError(Exception):
     """Custom exception for video processing errors."""
+
     pass
 
 
@@ -37,7 +38,7 @@ class VideoProcessor:
         raw_video_path: str,
         audio_path: str,
         final_output_path: str,
-        cleanup_temp: bool = True
+        cleanup_temp: bool = True,
     ) -> None:
         """
         Convert raw animation video to final transparent video with audio.
@@ -58,9 +59,13 @@ class VideoProcessor:
             self._create_transparent_video(raw_video_path, str(transparent_video_path))
 
             # Step 2: Add audio to transparent video
-            self._add_audio_to_video(str(transparent_video_path), audio_path, final_output_path)
+            self._add_audio_to_video(
+                str(transparent_video_path), audio_path, final_output_path
+            )
 
-            print(f"✅ Final video with transparency + audio saved to {final_output_path}")
+            print(
+                f"✅ Final video with transparency + audio saved to {final_output_path}"
+            )
 
         except Exception as e:
             raise VideoProcessorError(f"Video processing failed: {e}")
@@ -82,16 +87,22 @@ class VideoProcessor:
             VideoProcessorError: If transparency processing fails
         """
         cmd = [
-            "ffmpeg", "-y",
-            "-i", input_path,
-            "-vf", "colorkey=0xFF00FF:0.4:0.0,format=yuva444p10le",
-            "-c:v", "prores_ks",
-            "-profile:v", "4",
-            "-pix_fmt", "yuva444p10le",
-            output_path
+            "ffmpeg",
+            "-y",
+            "-i",
+            input_path,
+            "-vf",
+            "colorkey=0xFF00FF:0.4:0.0,format=yuva444p10le",
+            "-c:v",
+            "prores_ks",
+            "-profile:v",
+            "4",
+            "-pix_fmt",
+            "yuva444p10le",
+            output_path,
         ]
 
-        print(f"🟣 Creating transparent video...")
+        print("🟣 Creating transparent video...")
         result = subprocess.run(cmd, capture_output=True, text=True)
 
         if result.returncode != 0:
@@ -116,21 +127,24 @@ class VideoProcessor:
             VideoProcessorError: If audio processing fails
         """
         cmd = [
-            "ffmpeg", "-y",
-            "-i", video_path,
-            "-i", audio_path,
-            "-c:v", "copy",
-            "-c:a", "aac",
-            output_path
+            "ffmpeg",
+            "-y",
+            "-i",
+            video_path,
+            "-i",
+            audio_path,
+            "-c:v",
+            "copy",
+            "-c:a",
+            "aac",
+            output_path,
         ]
 
-        print(f"🎵 Adding audio to video...")
+        print("🎵 Adding audio to video...")
         result = subprocess.run(cmd, capture_output=True, text=True)
 
         if result.returncode != 0:
-            raise VideoProcessorError(
-                f"Failed to add audio to video: {result.stderr}"
-            )
+            raise VideoProcessorError(f"Failed to add audio to video: {result.stderr}")
 
     def _cleanup_temp_files(self, file_paths: list[str]) -> None:
         """
@@ -156,10 +170,7 @@ class VideoProcessor:
         """
         try:
             result = subprocess.run(
-                ["ffmpeg", "-version"],
-                capture_output=True,
-                text=True,
-                timeout=5
+                ["ffmpeg", "-version"], capture_output=True, text=True, timeout=5
             )
             return result.returncode == 0
         except (subprocess.TimeoutExpired, FileNotFoundError):
@@ -182,10 +193,14 @@ class VideoProcessor:
             raise VideoProcessorError("FFmpeg not available for video info")
 
         cmd = [
-            "ffprobe", "-v", "quiet",
-            "-print_format", "json",
-            "-show_format", "-show_streams",
-            video_path
+            "ffprobe",
+            "-v",
+            "quiet",
+            "-print_format",
+            "json",
+            "-show_format",
+            "-show_streams",
+            video_path,
         ]
 
         try:
@@ -194,13 +209,18 @@ class VideoProcessor:
                 raise VideoProcessorError(f"FFprobe failed: {result.stderr}")
 
             import json
+
             probe_data = json.loads(result.stdout)
 
             # Extract basic info
             format_info = probe_data.get("format", {})
-            video_stream = next(
-                (s for s in probe_data.get("streams", []) if s.get("codec_type") == "video"),
-                {}
+            video_stream: Dict[str, Any] = next(
+                (
+                    s
+                    for s in probe_data.get("streams", [])
+                    if s.get("codec_type") == "video"
+                ),
+                {},
             )
 
             return {
@@ -208,17 +228,21 @@ class VideoProcessor:
                 "size_bytes": int(format_info.get("size", 0)),
                 "width": video_stream.get("width", 0),
                 "height": video_stream.get("height", 0),
-                "fps": eval(video_stream.get("r_frame_rate", "0/1")),  # e.g., "30/1" -> 30.0
-                "codec": video_stream.get("codec_name", "unknown")
+                "fps": eval(
+                    video_stream.get("r_frame_rate", "0/1")
+                ),  # e.g., "30/1" -> 30.0
+                "codec": video_stream.get("codec_name", "unknown"),
             }
 
-        except Exception as e:
+        except Exception:
             # Fallback to basic file size info
             return {
                 "duration": 0,
-                "size_bytes": os.path.getsize(video_path) if os.path.exists(video_path) else 0,
+                "size_bytes": (
+                    os.path.getsize(video_path) if os.path.exists(video_path) else 0
+                ),
                 "width": 0,
                 "height": 0,
                 "fps": 0,
-                "codec": "unknown"
+                "codec": "unknown",
             }

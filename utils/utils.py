@@ -20,6 +20,7 @@ from tab_converter.consts import SET_TEMPO_MSG
 @dataclass
 class DirectoryConfig:
     """Configuration for project directories."""
+
     temp_dir: str
     video_files_dir: str
     tab_files_dir: str
@@ -30,13 +31,20 @@ class DirectoryConfig:
     def __post_init__(self):
         """Ensure all directories exist if create_if_missing is True."""
         if self.create_if_missing:
-            for dir_path in [self.temp_dir, self.video_files_dir, self.tab_files_dir,
-                           self.outputs_dir, self.midi_dir]:
+            directories = [
+                self.temp_dir,
+                self.video_files_dir,
+                self.tab_files_dir,
+                self.outputs_dir,
+                self.midi_dir,
+            ]
+            for dir_path in directories:
                 os.makedirs(dir_path, exist_ok=True)
 
 
 class UtilsError(Exception):
     """Custom exception for utilities operations."""
+
     pass
 
 
@@ -47,7 +55,7 @@ _default_config = DirectoryConfig(
     video_files_dir=str(_project_root / "video-files") + "/",
     tab_files_dir=str(_project_root / "tab-files") + "/",
     outputs_dir=str(_project_root / "outputs") + "/",
-    midi_dir=str(_project_root / "fixed_midis") + "/"
+    midi_dir=str(_project_root / "fixed_midis") + "/",
 )
 
 # Backwards compatibility constants
@@ -76,24 +84,23 @@ def get_directory_info() -> dict:
         Dict with directory paths, existence status, and sizes
     """
     config = get_directory_config()
-    info = {
-        "project_root": str(_project_root),
-        "directories": {}
-    }
+    info = {"project_root": str(_project_root), "directories": {}}
 
     for dir_name, dir_path in [
         ("temp", config.temp_dir),
         ("video_files", config.video_files_dir),
         ("tab_files", config.tab_files_dir),
         ("outputs", config.outputs_dir),
-        ("midi", config.midi_dir)
+        ("midi", config.midi_dir),
     ]:
         dir_info = {
             "path": dir_path,
             "exists": os.path.exists(dir_path),
-            "is_directory": os.path.isdir(dir_path) if os.path.exists(dir_path) else False,
+            "is_directory": (
+                os.path.isdir(dir_path) if os.path.exists(dir_path) else False
+            ),
             "file_count": 0,
-            "total_size_bytes": 0
+            "total_size_bytes": 0,
         }
 
         if dir_info["exists"] and dir_info["is_directory"]:
@@ -148,8 +155,13 @@ def ensure_directories_exist(directories: Optional[List[str]] = None) -> None:
     """
     if directories is None:
         config = get_directory_config()
-        directories = [config.temp_dir, config.video_files_dir, config.tab_files_dir,
-                      config.outputs_dir, config.midi_dir]
+        directories = [
+            config.temp_dir,
+            config.video_files_dir,
+            config.tab_files_dir,
+            config.outputs_dir,
+            config.midi_dir,
+        ]
 
     for dir_path in directories:
         try:
@@ -210,7 +222,7 @@ def get_midi_info(midi_path: str) -> dict:
         note_events = 0
         for track in mid.tracks:
             for msg in track:
-                if msg.type in ['note_on', 'note_off']:
+                if msg.type in ["note_on", "note_off"]:
                     note_events += 1
 
         return {

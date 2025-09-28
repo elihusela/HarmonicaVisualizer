@@ -17,6 +17,7 @@ from matplotlib.axes import Axes
 @dataclass
 class FigureConfig:
     """Configuration for figure creation."""
+
     background_color: str = "#FF00FF"  # Magenta for chroma key removal
     default_dpi: int = 100
     tight_layout: bool = True
@@ -25,6 +26,7 @@ class FigureConfig:
 
 class FigureFactoryError(Exception):
     """Custom exception for figure creation errors."""
+
     pass
 
 
@@ -36,7 +38,9 @@ class FigureFactory:
     error handling and resource management.
     """
 
-    def __init__(self, harmonica_image_path: str, config: Optional[FigureConfig] = None):
+    def __init__(
+        self, harmonica_image_path: str, config: Optional[FigureConfig] = None
+    ):
         """
         Initialize figure factory.
 
@@ -72,7 +76,7 @@ class FigureFactory:
             fig, ax = plt.subplots(
                 figsize=self._figsize,
                 dpi=self._dpi,
-                facecolor=self._config.background_color
+                facecolor=self._config.background_color,
             )
 
             # Configure figure
@@ -107,7 +111,7 @@ class FigureFactory:
             "dpi": self._dpi,
             "figsize": self._figsize,
             "mode": self._img.mode,
-            "format": self._img.format
+            "format": self._img.format,
         }
 
     def _validate_image_path(self) -> None:
@@ -138,7 +142,9 @@ class FigureFactory:
             return img
 
         except Exception as e:
-            raise FigureFactoryError(f"Failed to load harmonica image {self._image_path}: {e}")
+            raise FigureFactoryError(
+                f"Failed to load harmonica image {self._image_path}: {e}"
+            )
 
     def _get_image_dpi(self) -> int:
         """
@@ -151,7 +157,10 @@ class FigureFactory:
             dpi_info = self._img.info.get("dpi")
 
             if dpi_info is None:
-                print(f"⚠️  DPI not found in {os.path.basename(self._image_path)}. Using default: {self._config.default_dpi}")
+                print(
+                    f"⚠️  DPI not found in {os.path.basename(self._image_path)}. "
+                    f"Using default: {self._config.default_dpi}"
+                )
                 return self._config.default_dpi
 
             if isinstance(dpi_info, tuple):
@@ -162,13 +171,17 @@ class FigureFactory:
 
             # Validate DPI range
             if not (50 <= dpi <= 600):
-                print(f"⚠️  Unusual DPI value ({dpi}) detected. Using default: {self._config.default_dpi}")
+                print(
+                    f"⚠️  Unusual DPI value ({dpi}) detected. Using default: {self._config.default_dpi}"
+                )
                 return self._config.default_dpi
 
             return dpi
 
         except (ValueError, TypeError) as e:
-            print(f"⚠️  Error reading DPI: {e}. Using default: {self._config.default_dpi}")
+            print(
+                f"⚠️  Error reading DPI: {e}. Using default: {self._config.default_dpi}"
+            )
             return self._config.default_dpi
 
     def _calculate_figsize(self) -> Tuple[float, float]:
@@ -190,5 +203,5 @@ class FigureFactory:
 
     def __del__(self):
         """Clean up resources when factory is destroyed."""
-        if hasattr(self, '_img'):
+        if hasattr(self, "_img"):
             self._img.close()
