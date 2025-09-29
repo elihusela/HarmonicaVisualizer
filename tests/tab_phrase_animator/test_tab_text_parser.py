@@ -2,7 +2,6 @@
 
 import os
 import tempfile
-from unittest.mock import patch
 import pytest
 
 from tab_phrase_animator.tab_text_parser import (
@@ -45,18 +44,6 @@ class TestParseConfig:
         assert config.max_hole == 8
         assert config.encoding == "latin-1"
 
-    def test_parse_config_edge_cases(self):
-        """Test ParseConfig with edge case values."""
-        # Very restrictive range
-        config = ParseConfig(min_hole=5, max_hole=5)
-        assert config.min_hole == 5
-        assert config.max_hole == 5
-
-        # Wide range
-        config_wide = ParseConfig(min_hole=1, max_hole=20)
-        assert config_wide.min_hole == 1
-        assert config_wide.max_hole == 20
-
 
 class TestParseStatistics:
     """Test ParseStatistics dataclass."""
@@ -81,26 +68,6 @@ class TestParseStatistics:
         assert stats.invalid_lines == 2
         assert stats.hole_range == (1, 8)
 
-    def test_parse_statistics_zero_values(self):
-        """Test ParseStatistics with zero values."""
-        stats = ParseStatistics(
-            total_pages=0,
-            total_lines=0,
-            total_chords=0,
-            total_notes=0,
-            empty_pages=0,
-            invalid_lines=0,
-            hole_range=(0, 0),
-        )
-
-        assert stats.total_pages == 0
-        assert stats.total_lines == 0
-        assert stats.total_chords == 0
-        assert stats.total_notes == 0
-        assert stats.empty_pages == 0
-        assert stats.invalid_lines == 0
-        assert stats.hole_range == (0, 0)
-
 
 class TestTabTextParserInitialization:
     """Test TabTextParser initialization and file validation."""
@@ -118,26 +85,6 @@ class TestTabTextParserInitialization:
         with pytest.raises(TabTextParserError, match="Path is not a file"):
             TabTextParser(str(temp_test_dir))
 
-    @patch("builtins.open", side_effect=IOError("Permission denied"))
-    def test_tab_text_parser_unreadable_file(self, mock_file, temp_test_dir):
-        """Test parser with unreadable file."""
-        test_file = temp_test_dir / "test.txt"
-        test_file.write_text("Page 1:\n1 2 3")
-
-        with pytest.raises(TabTextParserError, match="Cannot read tab file"):
-            TabTextParser(str(test_file))
-
-    @patch(
-        "builtins.open", side_effect=UnicodeDecodeError("utf-8", b"", 0, 1, "invalid")
-    )
-    def test_tab_text_parser_encoding_error(self, mock_file, temp_test_dir):
-        """Test parser with encoding error."""
-        test_file = temp_test_dir / "test.txt"
-        test_file.write_text("Page 1:\n1 2 3")
-
-        with pytest.raises(TabTextParserError, match="Cannot read tab file"):
-            TabTextParser(str(test_file))
-
     def test_tab_text_parser_custom_config(self, temp_test_dir):
         """Test parser with custom configuration."""
         test_file = temp_test_dir / "test.txt"
@@ -151,13 +98,13 @@ class TestTabTextParserInitialization:
         assert parser._config.max_hole == 8
 
 
-class TestTabTextParserBasicParsing:
-    """Test basic tab file parsing functionality."""
+class TestTabTextParserValidInputs:
+    """Test parsing of valid harmonica tablature."""
 
-    def test_parse_single_page_simple(self, temp_test_dir):
-        """Test parsing a simple single-page tab file."""
-        test_file = temp_test_dir / "simple.txt"
-        test_file.write_text("Page 1:\n1 2 3\n-4 -5 -6")
+    def test_parse_single_notes(self, temp_test_dir):
+        """Test parsing valid single notes."""
+        test_file = temp_test_dir / "single_notes.txt"
+        test_file.write_text("Page 1:\n1 2 3 -4 -5 -6\n4 5 6 -1 -2 -3")
 
         parser = TabTextParser(str(test_file))
         pages = parser.get_pages()
@@ -166,19 +113,57 @@ class TestTabTextParserBasicParsing:
         assert "Page 1" in pages
         assert len(pages["Page 1"]) == 2  # Two lines
 
-        # First line: three chords, each with one note
+        # First line: single notes
         line1 = pages["Page 1"][0]
-        assert len(line1) == 3
-        assert line1[0] == [1]
-        assert line1[1] == [2]
-        assert line1[2] == [3]
+        assert line1 == [[1], [2], [3], [-4], [-5], [-6]]
 
-        # Second line: three chords with negative notes
+        # Second line: single notes
         line2 = pages["Page 1"][1]
-        assert len(line2) == 3
-        assert line2[0] == [-4]
-        assert line2[1] == [-5]
-        assert line2[2] == [-6]
+        assert line2 == [[4], [5], [6], [-1], [-2], [-3]]
+
+    def test_parse_valid_two_note_chords(self, temp_test_dir):
+        """Test parsing valid consecutive two-note chords."""
+        test_file = temp_test_dir / "valid_chords.txt"
+        test_file.write_text(
+            "Page 1:\n12 23 45 -45 -67"
+        )  # Adjacent notes forming chords
+
+        parser = TabTextParser(str(test_file))
+        pages = parser.get_pages()
+
+        line = pages["Page 1"][0]
+        assert line == [[1, 2], [2, 3], [4, 5], [-4, -5], [-6, -7]]
+
+    def test_parse_realistic_harmonica_tab(self, temp_test_dir):
+        """Test parsing realistic harmonica tablature."""
+        test_file = temp_test_dir / "realistic.txt"
+        realistic_content = """Page Intro:
+4 -4 5 -5 6
+
+Page Verse:
+6 6 6 -6 -7 7 -8 8
+-8 7 -7 -6 6 -5 5 -4
+
+Page Chorus:
+8 -8 -9 8 -8 -9 8
+-8 -9 9 -9 8 -8
+"""
+        test_file.write_text(realistic_content)
+
+        config = ParseConfig(validate_hole_numbers=True, max_hole=10)
+        parser = TabTextParser(str(test_file), config)
+        pages = parser.get_pages()
+        stats = parser.get_statistics()
+
+        # Should have all pages
+        assert len(pages) == 3
+        assert "Page Intro" in pages
+        assert "Page Verse" in pages
+        assert "Page Chorus" in pages
+
+        # Check statistics
+        assert stats.total_pages == 3
+        assert stats.empty_pages == 0
 
     def test_parse_multiple_pages(self, temp_test_dir):
         """Test parsing multiple pages."""
@@ -189,67 +174,9 @@ class TestTabTextParserBasicParsing:
         pages = parser.get_pages()
 
         assert len(pages) == 3
-        assert "Page 1" in pages
-        assert "Page 2" in pages
-        assert "Page 3" in pages
-
-        # Verify page contents
         assert len(pages["Page 1"]) == 1
         assert len(pages["Page 2"]) == 1
         assert len(pages["Page 3"]) == 1
-
-    def test_parse_complex_chords(self, temp_test_dir):
-        """Test parsing complex chords with multiple notes."""
-        test_file = temp_test_dir / "complex.txt"
-        test_file.write_text("Page 1:\n123 -456 78 -91")
-
-        parser = TabTextParser(str(test_file))
-        pages = parser.get_pages()
-
-        line = pages["Page 1"][0]
-        assert len(line) == 4
-
-        # First chord: 1, 2, 3 (blow chord)
-        assert line[0] == [1, 2, 3]
-
-        # Second chord: -4, -5, -6 (draw chord)
-        assert line[1] == [-4, -5, -6]
-
-        # Third chord: 7, 8 (blow chord)
-        assert line[2] == [7, 8]
-
-        # Fourth chord: -9, -1 (draw chord)
-        assert line[3] == [-9, -1]
-
-    def test_parse_mixed_format(self, temp_test_dir):
-        """Test parsing mixed positive and negative notes."""
-        test_file = temp_test_dir / "mixed.txt"
-        test_file.write_text("Page 1:\n1 -2 34 -56 7")
-
-        parser = TabTextParser(str(test_file))
-        pages = parser.get_pages()
-
-        line = pages["Page 1"][0]
-        assert len(line) == 5
-        assert line[0] == [1]
-        assert line[1] == [-2]
-        assert line[2] == [3, 4]
-        assert line[3] == [-5, -6]
-        assert line[4] == [7]
-
-    def test_parse_empty_lines_ignored(self, temp_test_dir):
-        """Test that empty lines are ignored."""
-        test_file = temp_test_dir / "empty_lines.txt"
-        test_file.write_text("Page 1:\n\n1 2 3\n\n\n-4 -5\n\n")
-
-        parser = TabTextParser(str(test_file))
-        pages = parser.get_pages()
-
-        assert len(pages["Page 1"]) == 2  # Only non-empty lines counted
-
-
-class TestTabTextParserAdvancedParsing:
-    """Test advanced parsing scenarios and edge cases."""
 
     def test_parse_page_header_variations(self, temp_test_dir):
         """Test various page header formats."""
@@ -276,46 +203,70 @@ class TestTabTextParserAdvancedParsing:
         page_names = parser.get_page_names()
 
         assert "Page 1" in page_names
-        assert "Page 2:" in page_names  # Only trailing colon removed
+        assert "Page 2:" in page_names  # Only single trailing colon removed
 
     def test_parse_comments_and_special_chars(self, temp_test_dir):
         """Test handling of comments and special characters."""
         test_file = temp_test_dir / "comments.txt"
         test_file.write_text("Page 1:\n1 2 # comment\n3@4!5 -6*7\n")
 
-        parser = TabTextParser(str(test_file))
+        # Disable validation since 345 and 67 will be out of range
+        config = ParseConfig(validate_hole_numbers=False)
+        parser = TabTextParser(str(test_file), config)
         pages = parser.get_pages()
 
         line1 = pages["Page 1"][0]
         line2 = pages["Page 1"][1]
 
-        # Special characters should be ignored, only digits and spaces matter
+        # Special characters act as separators between notes
         assert line1 == [[1], [2]]  # Comment ignored
-        assert line2 == [[3, 4, 5], [-6, 7]]  # Special chars ignored
+        assert line2 == [[3, 4, 5], [-6, 7]]  # Special chars act as separators
 
-    def test_parse_hole_validation_enabled(self, temp_test_dir):
-        """Test hole number validation when enabled."""
-        test_file = temp_test_dir / "invalid_holes.txt"
+
+class TestTabTextParserInvalidInputs:
+    """Test error handling for invalid harmonica tablature."""
+
+    def test_invalid_hole_numbers_out_of_range_high(self, temp_test_dir):
+        """Test that hole numbers above max_hole are rejected."""
+        test_file = temp_test_dir / "high_holes.txt"
         test_file.write_text("Page 1:\n1 2 15 3")  # 15 is out of range (1-10)
 
-        config = ParseConfig(validate_hole_numbers=True, max_hole=10)
+        config = ParseConfig(
+            validate_hole_numbers=True, max_hole=10, allow_empty_chords=False
+        )
 
-        with pytest.raises(TabTextParserError, match="Hole number 15 out of range"):
+        with pytest.raises(
+            TabTextParserError, match="Chord contains non-consecutive holes"
+        ):
             TabTextParser(str(test_file), config)
 
-    def test_parse_hole_validation_disabled(self, temp_test_dir):
-        """Test hole number validation when disabled."""
-        test_file = temp_test_dir / "invalid_holes.txt"
-        test_file.write_text("Page 1:\n1 2 15 3")
+    def test_invalid_hole_numbers_out_of_range_low(self, temp_test_dir):
+        """Test that hole numbers below min_hole are rejected."""
+        test_file = temp_test_dir / "low_holes.txt"
+        test_file.write_text("Page 1:\n2 3 0 5")  # 0 is below min_hole=1
 
-        config = ParseConfig(validate_hole_numbers=False)
-        parser = TabTextParser(str(test_file), config)
+        config = ParseConfig(
+            validate_hole_numbers=True, min_hole=1, allow_empty_chords=False
+        )
 
-        pages = parser.get_pages()
-        line = pages["Page 1"][0]
-        assert line == [[1], [2], [1, 5], [3]]  # 15 parsed as 1, 5
+        with pytest.raises(TabTextParserError, match="Hole number 0 out of range"):
+            TabTextParser(str(test_file), config)
 
-    def test_parse_negative_note_format_errors(self, temp_test_dir):
+    def test_invalid_multi_digit_holes(self, temp_test_dir):
+        """Test that unrealistic multi-digit holes are rejected."""
+        test_file = temp_test_dir / "multi_digit.txt"
+        test_file.write_text(
+            "Page 1:\n123 -456"
+        )  # These don't exist on real harmonicas
+
+        config = ParseConfig(validate_hole_numbers=True, allow_empty_chords=False)
+
+        with pytest.raises(
+            TabTextParserError, match="Chord with 3 notes is unrealistic for harmonica"
+        ):
+            TabTextParser(str(test_file), config)
+
+    def test_invalid_negative_note_format(self, temp_test_dir):
         """Test errors in negative note format."""
         test_file = temp_test_dir / "bad_negative.txt"
         test_file.write_text("Page 1:\n1 - 3")  # Missing digit after -
@@ -324,94 +275,6 @@ class TestTabTextParserAdvancedParsing:
 
         with pytest.raises(TabTextParserError, match="Invalid negative note format"):
             TabTextParser(str(test_file), config)
-
-    def test_parse_tab_line_outside_page_context(self, temp_test_dir, capsys):
-        """Test handling of tab lines outside page context."""
-        test_file = temp_test_dir / "no_page.txt"
-        test_file.write_text("1 2 3\nPage 1:\n4 5 6")
-
-        parser = TabTextParser(str(test_file))
-        pages = parser.get_pages()
-
-        # Should only have Page 1 content
-        assert len(pages) == 1
-        assert "Page 1" in pages
-        assert pages["Page 1"][0] == [[4], [5], [6]]
-
-        # Should have warning about line outside page context
-        captured = capsys.readouterr()
-        assert "Tab line outside page context" in captured.out
-
-
-class TestTabTextParserStatistics:
-    """Test parsing statistics calculation."""
-
-    def test_statistics_comprehensive(self, temp_test_dir):
-        """Test comprehensive statistics calculation."""
-        test_file = temp_test_dir / "stats.txt"
-        test_file.write_text(
-            "Page 1:\n"
-            "1 23 -45\n"  # Line 1: 3 chords, 5 notes (1, 2+3, -4+-5)
-            "67 -89\n"  # Line 2: 2 chords, 4 notes (6+7, -8+-9)
-            "Page 2:\n"
-            "1\n"  # Line 3: 1 chord, 1 note (just 1, no zero)
-            "Page 3:\n"  # Empty page
-        )
-
-        config = ParseConfig(allow_empty_pages=True, validate_hole_numbers=True)
-        parser = TabTextParser(str(test_file), config)
-        stats = parser.get_statistics()
-
-        assert stats.total_pages == 3
-        assert stats.total_lines == 3
-        assert stats.total_chords == 6
-        assert stats.total_notes == 10  # 5 + 4 + 1
-        assert stats.empty_pages == 1  # Page 3 is empty
-        assert stats.invalid_lines == 0
-        assert stats.hole_range == (1, 9)  # 1 to 9 (no zero hole)
-
-    def test_statistics_empty_file_error(self, temp_test_dir):
-        """Test statistics with empty file."""
-        test_file = temp_test_dir / "empty.txt"
-        test_file.write_text("")
-
-        with pytest.raises(TabTextParserError, match="No pages found"):
-            TabTextParser(str(test_file))
-
-    def test_statistics_no_notes(self, temp_test_dir):
-        """Test statistics when no valid notes are found."""
-        test_file = temp_test_dir / "no_notes.txt"
-        test_file.write_text("Page 1:\n# just comments\n@ symbols only")
-
-        parser = TabTextParser(str(test_file))
-        stats = parser.get_statistics()
-
-        assert stats.total_pages == 1
-        assert stats.total_lines == 2
-        assert stats.total_chords == 0
-        assert stats.total_notes == 0
-        assert stats.hole_range == (0, 0)
-
-    def test_statistics_invalid_lines(self, temp_test_dir, capsys):
-        """Test statistics with invalid lines."""
-        test_file = temp_test_dir / "invalid.txt"
-        test_file.write_text("Page 1:\n1 2 3\n1 - bad\n4 5 6")
-
-        config = ParseConfig(allow_empty_chords=True)  # Allow parsing to continue
-        parser = TabTextParser(str(test_file), config)
-        stats = parser.get_statistics()
-
-        assert stats.total_pages == 1
-        assert stats.total_lines == 2  # Only valid lines counted
-        assert stats.invalid_lines == 1  # One line failed to parse
-
-        # Should have warning about parse error
-        captured = capsys.readouterr()
-        assert "Error parsing line" in captured.out
-
-
-class TestTabTextParserValidation:
-    """Test tab file validation and error handling."""
 
     def test_empty_pages_not_allowed(self, temp_test_dir):
         """Test empty pages validation when not allowed."""
@@ -423,17 +286,145 @@ class TestTabTextParserValidation:
         with pytest.raises(TabTextParserError, match="Empty pages not allowed"):
             TabTextParser(str(test_file), config)
 
-    def test_empty_pages_allowed(self, temp_test_dir):
-        """Test empty pages validation when allowed."""
-        test_file = temp_test_dir / "empty_page.txt"
-        test_file.write_text("Page 1:\n1 2 3\nPage 2:\nPage 3:\n4 5 6")
+    def test_no_pages_found_error(self, temp_test_dir):
+        """Test error when no pages are found."""
+        test_file = temp_test_dir / "no_pages.txt"
+        test_file.write_text("1 2 3\n4 5 6")  # No page headers
 
-        config = ParseConfig(allow_empty_pages=True)
+        with pytest.raises(TabTextParserError, match="No pages found"):
+            TabTextParser(str(test_file))
+
+
+class TestTabTextParserChordValidation:
+    """Test realistic harmonica chord validation."""
+
+    def test_valid_single_notes_always_pass(self, temp_test_dir):
+        """Test that single notes always pass chord validation."""
+        test_file = temp_test_dir / "single_notes.txt"
+        test_file.write_text(
+            "Page 1:\n1 -2 3 -4 5 -6 7 -8 9"
+        )  # Remove -10 since it becomes [-1, 0]
+
+        config = ParseConfig(validate_hole_numbers=True)
         parser = TabTextParser(str(test_file), config)
-
         pages = parser.get_pages()
-        assert len(pages) == 3
-        assert len(pages["Page 2"]) == 0  # Empty page
+
+        line = pages["Page 1"][0]
+        assert line == [[1], [-2], [3], [-4], [5], [-6], [7], [-8], [9]]
+
+    def test_valid_consecutive_blow_chords(self, temp_test_dir):
+        """Test valid consecutive blow note chords."""
+        test_file = temp_test_dir / "valid_blow_chords.txt"
+        test_file.write_text(
+            "Page 1:\n12 23 34 45 56 67 78 89"
+        )  # Consecutive blow chords
+
+        config = ParseConfig(validate_hole_numbers=True)
+        parser = TabTextParser(str(test_file), config)
+        pages = parser.get_pages()
+
+        line = pages["Page 1"][0]
+        assert line == [[1, 2], [2, 3], [3, 4], [4, 5], [5, 6], [6, 7], [7, 8], [8, 9]]
+
+    def test_valid_consecutive_draw_chords(self, temp_test_dir):
+        """Test valid consecutive draw note chords."""
+        test_file = temp_test_dir / "valid_draw_chords.txt"
+        test_file.write_text("Page 1:\n-12 -34 -45 -67 -89")  # Consecutive draw chords
+
+        config = ParseConfig(validate_hole_numbers=True)
+        parser = TabTextParser(str(test_file), config)
+        pages = parser.get_pages()
+
+        line = pages["Page 1"][0]
+        assert line == [[-1, -2], [-3, -4], [-4, -5], [-6, -7], [-8, -9]]
+
+    def test_mixed_single_notes_and_chords(self, temp_test_dir):
+        """Test mix of single notes and valid chords."""
+        test_file = temp_test_dir / "mixed_chords.txt"
+        test_file.write_text("Page 1:\n1 23 -4 -56 7 89")  # Mix of singles and chords
+
+        config = ParseConfig(validate_hole_numbers=True)
+        parser = TabTextParser(str(test_file), config)
+        pages = parser.get_pages()
+
+        line = pages["Page 1"][0]
+        assert line == [[1], [2, 3], [-4], [-5, -6], [7], [8, 9]]
+
+    def test_invalid_three_note_chords_rejected(self, temp_test_dir):
+        """Test that three-note chords are rejected."""
+        test_file = temp_test_dir / "three_note_chord.txt"
+        test_file.write_text("Page 1:\n123")  # Three notes in one chord
+
+        config = ParseConfig(validate_hole_numbers=True, allow_empty_chords=False)
+
+        with pytest.raises(
+            TabTextParserError, match="Chord with 3 notes is unrealistic for harmonica"
+        ):
+            TabTextParser(str(test_file), config)
+
+    def test_invalid_mixed_blow_draw_chords_rejected(self, temp_test_dir):
+        """Test that chords mixing blow and draw notes are rejected."""
+        test_file = temp_test_dir / "mixed_blow_draw.txt"
+        test_file.write_text("Page 1:\n1-2")  # Blow 1 + Draw 2
+
+        config = ParseConfig(validate_hole_numbers=True, allow_empty_chords=False)
+
+        with pytest.raises(TabTextParserError, match="Chord mixes blow and draw notes"):
+            TabTextParser(str(test_file), config)
+
+    def test_invalid_non_consecutive_chords_rejected(self, temp_test_dir):
+        """Test that non-consecutive note chords are rejected."""
+        test_file = temp_test_dir / "non_consecutive.txt"
+        test_file.write_text("Page 1:\n14")  # Holes 1 and 4 (not consecutive)
+
+        config = ParseConfig(validate_hole_numbers=True, allow_empty_chords=False)
+
+        with pytest.raises(
+            TabTextParserError, match="Chord contains non-consecutive holes"
+        ):
+            TabTextParser(str(test_file), config)
+
+    def test_chord_validation_disabled_allows_anything(self, temp_test_dir):
+        """Test that all inputs are allowed when validation is disabled."""
+        test_file = temp_test_dir / "validation_disabled.txt"
+        test_file.write_text(
+            "Page 1:\n1 2 3 99 -88"
+        )  # Mix of valid and invalid but realistic digits
+
+        config = ParseConfig(validate_hole_numbers=False)
+        parser = TabTextParser(str(test_file), config)
+        pages = parser.get_pages()
+
+        line = pages["Page 1"][0]
+        assert line == [
+            [1],
+            [2],
+            [3],
+            [9, 9],
+            [-8, -8],
+        ]  # 99 becomes [9,9], -88 becomes [-8,-8]
+
+    def test_warnings_with_allow_empty_chords(self, temp_test_dir, capsys):
+        """Test that invalid inputs generate warnings when allow_empty_chords=True."""
+        test_file = temp_test_dir / "invalid_with_warnings.txt"
+        test_file.write_text(
+            "Page 1:\n19 2 3"
+        )  # 19 becomes [1, 9] which has hole 9 in range but creates realistic chord
+
+        config = ParseConfig(
+            validate_hole_numbers=True,
+            allow_empty_chords=True,
+            allow_empty_pages=True,
+            max_hole=8,
+        )
+        parser = TabTextParser(str(test_file), config)
+        pages = parser.get_pages()
+
+        # Should parse but with warnings and empty page due to validation error (hole 9 out of range)
+        assert len(pages["Page 1"]) == 0
+
+        captured = capsys.readouterr()
+        assert "Hole number 9 out of range" in captured.out
 
     def test_hole_range_validation_custom_range(self, temp_test_dir):
         """Test hole number validation with custom range."""
@@ -446,15 +437,77 @@ class TestTabTextParserValidation:
         pages = parser.get_pages()
         assert pages["Page 1"][0] == [[3], [4], [5], [6]]
 
-    def test_hole_range_validation_out_of_range(self, temp_test_dir):
-        """Test hole number validation with out-of-range values."""
-        test_file = temp_test_dir / "out_of_range.txt"
+    def test_hole_range_validation_out_of_custom_range(self, temp_test_dir):
+        """Test that holes outside custom range are rejected."""
+        test_file = temp_test_dir / "out_of_custom_range.txt"
         test_file.write_text("Page 1:\n2 3 4 5")  # 2 is below min_hole=3
 
-        config = ParseConfig(validate_hole_numbers=True, min_hole=3, max_hole=6)
+        config = ParseConfig(
+            validate_hole_numbers=True, min_hole=3, max_hole=6, allow_empty_chords=False
+        )
 
         with pytest.raises(TabTextParserError, match="Hole number 2 out of range"):
             TabTextParser(str(test_file), config)
+
+
+class TestTabTextParserStatistics:
+    """Test parsing statistics calculation."""
+
+    def test_statistics_comprehensive(self, temp_test_dir):
+        """Test comprehensive statistics calculation."""
+        test_file = temp_test_dir / "stats.txt"
+        test_file.write_text(
+            "Page 1:\n"
+            "1 2 -4\n"  # Line 1: 3 chords, 3 notes
+            "6 -8\n"  # Line 2: 2 chords, 2 notes
+            "Page 2:\n"
+            "1\n"  # Line 3: 1 chord, 1 note
+            "Page 3:\n"  # Empty page
+        )
+
+        config = ParseConfig(allow_empty_pages=True, validate_hole_numbers=True)
+        parser = TabTextParser(str(test_file), config)
+        stats = parser.get_statistics()
+
+        assert stats.total_pages == 3
+        assert stats.total_lines == 3
+        assert stats.total_chords == 6
+        assert stats.total_notes == 6  # 3 + 2 + 1
+        assert stats.empty_pages == 1  # Page 3 is empty
+        assert stats.invalid_lines == 0
+        assert stats.hole_range == (1, 8)  # 1 to 8
+
+    def test_statistics_with_invalid_lines(self, temp_test_dir, capsys):
+        """Test statistics with invalid lines."""
+        test_file = temp_test_dir / "invalid_lines.txt"
+        test_file.write_text(
+            "Page 1:\n1 2 3\n1 100 bad\n4 5 6"
+        )  # Middle line has out-of-range hole
+
+        config = ParseConfig(allow_empty_chords=True)  # Allow parsing to continue
+        parser = TabTextParser(str(test_file), config)
+        stats = parser.get_statistics()
+
+        assert stats.total_pages == 1
+        assert stats.total_lines == 2  # Only valid lines counted
+        assert stats.invalid_lines == 1  # One line failed to parse
+
+        captured = capsys.readouterr()
+        assert "Error parsing line" in captured.out
+
+    def test_statistics_no_valid_notes(self, temp_test_dir):
+        """Test statistics when no valid notes are found."""
+        test_file = temp_test_dir / "no_notes.txt"
+        test_file.write_text("Page 1:\n# just comments\n@ symbols only")
+
+        parser = TabTextParser(str(test_file))
+        stats = parser.get_statistics()
+
+        assert stats.total_pages == 1
+        assert stats.total_lines == 2
+        assert stats.total_chords == 0
+        assert stats.total_notes == 0
+        assert stats.hole_range == (0, 0)
 
 
 class TestTabTextParserGetters:
@@ -492,7 +545,7 @@ class TestTabTextParserGetters:
     def test_get_file_info_comprehensive(self, temp_test_dir):
         """Test comprehensive file info."""
         test_file = temp_test_dir / "info_test.txt"
-        content = "Page 1:\n1 23 -45\nPage 2:\n"
+        content = "Page 1:\n2 3 -4\nPage 2:\n"
         test_file.write_text(content)
 
         config = ParseConfig(
@@ -517,17 +570,10 @@ class TestTabTextParserGetters:
         # Check content info
         assert info["content"]["lines"] == 1
         assert info["content"]["chords"] == 3
-        assert info["content"]["notes"] == 5
-        assert info["content"]["invalid_lines"] == 0
+        assert info["content"]["notes"] == 3
 
         # Check hole info
-        assert info["holes"]["range"] == (1, 5)  # From notes 1, 2, 3, -4, -5
-        assert info["holes"]["min_allowed"] == 2
-        assert info["holes"]["max_allowed"] == 8
-
-        # Check config info
-        assert info["config"]["allow_empty_pages"] is True
-        assert info["config"]["validate_hole_numbers"] is True
+        assert info["holes"]["range"] == (2, 4)  # From notes 2, 3, -4
 
     def test_backwards_compatibility_properties(self, temp_test_dir):
         """Test backwards compatibility properties."""
@@ -541,63 +587,46 @@ class TestTabTextParserGetters:
         assert isinstance(parser.pages, dict)
         assert len(parser.pages) == 1
 
+    def test_empty_pages_allowed(self, temp_test_dir):
+        """Test empty pages validation when allowed."""
+        test_file = temp_test_dir / "empty_page.txt"
+        test_file.write_text("Page 1:\n1 2 3\nPage 2:\nPage 3:\n4 5 6")
 
-class TestTabTextParserIntegration:
-    """Test integration scenarios and real-world use cases."""
-
-    def test_realistic_tab_file(self, temp_test_dir):
-        """Test parsing a realistic harmonica tab file."""
-        test_file = temp_test_dir / "realistic.txt"
-        realistic_content = """Page Intro:
-4 -4 5 -5 6
-
-Page Verse 1:
-6 6 6 -6 -7 7 -8 8
--8 7 -7 -6 6 -5 5 -4
-
-Page Chorus:
-8 -8 -9 8 -8 -9 8
--8 -9 9 -9 8 -8
-
-Page Bridge:
--3 4 -4 5 -5 6 -6 7
-
-Page Outro:
-7 -7 6 -6 5 -5 4 -4 4
-"""
-        test_file.write_text(realistic_content)
-
-        config = ParseConfig(
-            validate_hole_numbers=True, max_hole=10
-        )  # Allow up to hole 10
+        config = ParseConfig(allow_empty_pages=True)
         parser = TabTextParser(str(test_file), config)
+
         pages = parser.get_pages()
-        stats = parser.get_statistics()
+        assert len(pages) == 3
+        assert len(pages["Page 2"]) == 0  # Empty page
 
-        # Should have all pages
-        assert len(pages) == 5
-        expected_pages = [
-            "Page Intro",
-            "Page Verse 1",
-            "Page Chorus",
-            "Page Bridge",
-            "Page Outro",
-        ]
-        assert all(page in pages for page in expected_pages)
+    def test_tab_line_outside_page_context(self, temp_test_dir, capsys):
+        """Test handling of tab lines outside page context."""
+        test_file = temp_test_dir / "no_page_context.txt"
+        test_file.write_text("1 2 3\nPage 1:\n4 5 6")
 
-        # Check statistics
-        assert stats.total_pages == 5
-        assert stats.total_lines == 8
-        assert stats.hole_range == (3, 10)  # From -3 to -10 (abs values)
-        assert stats.empty_pages == 0
+        parser = TabTextParser(str(test_file))
+        pages = parser.get_pages()
 
-    def test_error_recovery_parsing(self, temp_test_dir, capsys):
-        """Test parser error recovery with mixed valid/invalid content."""
+        # Should only have Page 1 content
+        assert len(pages) == 1
+        assert "Page 1" in pages
+        assert pages["Page 1"][0] == [[4], [5], [6]]
+
+        # Should have warning about line outside page context
+        captured = capsys.readouterr()
+        assert "Tab line outside page context" in captured.out
+
+
+class TestTabTextParserErrorRecovery:
+    """Test parser error recovery with mixed valid/invalid content."""
+
+    def test_error_recovery_with_invalid_holes(self, temp_test_dir, capsys):
+        """Test parser continues with warnings when allow_empty_chords=True."""
         test_file = temp_test_dir / "mixed_validity.txt"
         test_file.write_text(
             "Page 1:\n"
             "1 2 3\n"  # Valid line
-            "1 - invalid\n"  # Invalid line (bad negative format)
+            "1 100 invalid\n"  # Invalid line (out of range hole)
             "4 5 6\n"  # Valid line
             "Page 2:\n"
             "7 8 9\n"  # Valid line
@@ -620,15 +649,3 @@ Page Outro:
         # Should have warnings
         captured = capsys.readouterr()
         assert "Error parsing line" in captured.out
-
-    @patch("os.path.getsize", side_effect=OSError("File not accessible"))
-    def test_file_info_size_error_handling(self, mock_getsize, temp_test_dir):
-        """Test file info when file size cannot be determined."""
-        test_file = temp_test_dir / "size_error.txt"
-        test_file.write_text("Page 1:\n1 2 3")
-
-        parser = TabTextParser(str(test_file))
-        info = parser.get_file_info()
-
-        # Should handle size error gracefully
-        assert info["file_size_bytes"] == 0

@@ -50,8 +50,6 @@ class TabTextParser:
     and provides detailed feedback on parsing issues.
     """
 
-    # TODO: validate chords are only consecutive holes! no 14 or 26 for example. also validate no 3 note chords.
-
     def __init__(self, file_path: str, config: Optional[ParseConfig] = None):
         """
         Initialize tab text parser.
@@ -196,7 +194,11 @@ class TabTextParser:
 
                     # Check for page header
                     if line.lower().startswith("page"):
-                        current_page = line.rstrip(":").strip()
+                        # Remove only single trailing colon, not multiple
+                        if line.endswith(":"):
+                            current_page = line[:-1].strip()
+                        else:
+                            current_page = line.strip()
                         pages[current_page] = []
                         self._statistics.total_pages += 1
                         continue
@@ -263,6 +265,7 @@ class TabTextParser:
                     i += 1
 
                 digits_str = line[start_pos:i]
+                # Parse each digit as a separate hole number in the chord
                 for digit_char in digits_str:
                     hole_number = -int(digit_char)
                     self._validate_hole_number(hole_number, line_number)
@@ -276,6 +279,7 @@ class TabTextParser:
                     i += 1
 
                 digits_str = line[start_pos:i]
+                # Parse each digit as a separate hole number in the chord
                 for digit_char in digits_str:
                     hole_number = int(digit_char)
                     self._validate_hole_number(hole_number, line_number)
@@ -285,6 +289,7 @@ class TabTextParser:
             elif char.isspace():
                 # Space separates chords
                 if current_chord:
+                    self._validate_chord(current_chord, line_number)
                     chords.append(current_chord)
                     self._statistics.total_chords += 1
                     current_chord = []
@@ -296,6 +301,7 @@ class TabTextParser:
 
         # Add final chord if exists
         if current_chord:
+            self._validate_chord(current_chord, line_number)
             chords.append(current_chord)
             self._statistics.total_chords += 1
 
@@ -321,6 +327,44 @@ class TabTextParser:
                 f"Hole number {hole_number} out of range [{self._config.min_hole}, {self._config.max_hole}] "
                 f"at line {line_number}"
             )
+
+    def _validate_chord(self, chord: List[int], line_number: int) -> None:
+        """
+        Validate that a chord follows realistic harmonica constraints.
+
+        Args:
+            chord: List of hole numbers in the chord
+            line_number: Line number for error reporting
+
+        Raises:
+            TabTextParserError: If chord is invalid
+        """
+        if not self._config.validate_hole_numbers or len(chord) <= 1:
+            return
+
+        # No more than 2 notes in a chord (realistic harmonica limitation)
+        if len(chord) > 2:
+            raise TabTextParserError(
+                f"Chord with {len(chord)} notes is unrealistic for harmonica at line {line_number}. "
+                f"Maximum 2 notes allowed."
+            )
+
+        # All notes in chord must be same type (all blow or all draw)
+        signs = [1 if note > 0 else -1 for note in chord]
+        if len(set(signs)) > 1:
+            raise TabTextParserError(
+                f"Chord mixes blow and draw notes at line {line_number}. "
+                f"All notes in a chord must be same type."
+            )
+
+        # Notes must be consecutive holes (e.g., 1,2 or -4,-5 but not 1,4 or -2,-6)
+        abs_holes = sorted([abs(note) for note in chord])
+        for i in range(1, len(abs_holes)):
+            if abs_holes[i] - abs_holes[i - 1] != 1:
+                raise TabTextParserError(
+                    f"Chord contains non-consecutive holes {chord} at line {line_number}. "
+                    f"Harmonica chords must be consecutive holes."
+                )
 
     def _validate_parsed_content(self, pages: Dict[str, List[List[List[int]]]]) -> None:
         """
