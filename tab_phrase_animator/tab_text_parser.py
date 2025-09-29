@@ -50,6 +50,8 @@ class TabTextParser:
     and provides detailed feedback on parsing issues.
     """
 
+    # TODO: validate chords are only consecutive holes! no 14 or 26 for example. also validate no 3 note chords.
+
     def __init__(self, file_path: str, config: Optional[ParseConfig] = None):
         """
         Initialize tab text parser.
