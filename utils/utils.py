@@ -84,7 +84,9 @@ def get_directory_info() -> dict:
         Dict with directory paths, existence status, and sizes
     """
     config = get_directory_config()
-    info = {"project_root": str(_project_root), "directories": {}}
+    from typing import Dict, Any
+
+    info: Dict[str, Any] = {"project_root": str(_project_root), "directories": {}}
 
     for dir_name, dir_path in [
         ("temp", config.temp_dir),
