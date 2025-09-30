@@ -108,6 +108,7 @@ class VideoCreator:
             self.tab_mapper = TabMapper(C_HARMONICA_MAPPING, TEMP_DIR)
 
             # Tab text parsing setup (always load if producing tabs)
+            self.tabs_text_parser: Optional[TabTextParser]
             if config.produce_tabs or config.enable_tab_matching:
                 self.tabs_text_parser = TabTextParser(config.tabs_path)
                 print(f"📖 Loaded tab text file: {config.tabs_path}")
@@ -115,6 +116,7 @@ class VideoCreator:
                 self.tabs_text_parser = None
 
             # Tab matching setup (optional)
+            self.tab_matcher: Optional[TabMatcher]
             if config.enable_tab_matching:
                 if not self.tabs_text_parser:
                     self.tabs_text_parser = TabTextParser(config.tabs_path)
@@ -209,7 +211,11 @@ class VideoCreator:
         if create_tabs and self.tabs_output_path and self.tabs_text_parser:
             print("🎯 Using .txt file structure for tab phrase animations...")
             matched_tabs = self._create_text_based_structure(tabs)
-        elif self.config.enable_tab_matching and self.tabs_text_parser and self.tab_matcher:
+        elif (
+            self.config.enable_tab_matching
+            and self.tabs_text_parser
+            and self.tab_matcher
+        ):
             print("🎯 Matching tabs with text notation...")
             matched_tabs = self._match_tabs(tabs)
         else:
@@ -270,7 +276,8 @@ class VideoCreator:
             return {"page_1": [[]]}
 
         # Sort entries by time
-        sorted_entries = sorted(tab_entries, key=lambda e: e.time)
+        tab_entries_list: List[TabEntry] = tab_entries  # type: ignore[assignment]
+        sorted_entries: List[TabEntry] = sorted(tab_entries_list, key=lambda e: e.time)
 
         # Split into pages based on timing gaps (> 2 seconds indicates new phrase/page)
         pages: List[List[TabEntry]] = []
@@ -323,17 +330,20 @@ class VideoCreator:
             return self._create_text_only_structure(parsed_pages)
 
         # Sort MIDI entries by time to maintain chronological order
-        sorted_midi_entries = sorted(tab_entries, key=lambda e: e.time)
+        tab_entries_list: List[TabEntry] = tab_entries  # type: ignore[assignment]
+        sorted_midi_entries: List[TabEntry] = sorted(
+            tab_entries_list, key=lambda e: e.time
+        )
         midi_index = 0
 
         # Build structure following .txt file organization with sequential MIDI timing
         animation_structure: Dict[str, List[List[Optional[List[TabEntry]]]]] = {}
 
         for page_name, page_lines in parsed_pages.items():
-            animation_lines = []
+            animation_lines: List[List[Optional[List[TabEntry]]]] = []
 
             for line_chords in page_lines:
-                animation_chords = []
+                animation_chords: List[Optional[List[TabEntry]]] = []
 
                 for chord_tabs in line_chords:
                     if not chord_tabs:
@@ -355,9 +365,16 @@ class VideoCreator:
                             chord_entries.append(found_entry)
                         else:
                             # If no more MIDI entries match, create a fallback entry
-                            last_time = sorted_midi_entries[-1].time if sorted_midi_entries else 0.0
+                            last_time = (
+                                sorted_midi_entries[-1].time
+                                if sorted_midi_entries
+                                else 0.0
+                            )
                             fallback_entry = TabEntry(
-                                tab=tab_value, time=last_time + 0.5, duration=0.5, confidence=0.5
+                                tab=tab_value,
+                                time=last_time + 0.5,
+                                duration=0.5,
+                                confidence=0.5,
                             )
                             chord_entries.append(fallback_entry)
 
@@ -371,7 +388,9 @@ class VideoCreator:
             animation_structure[page_name] = animation_lines
 
         print(f"📖 Created {len(animation_structure)} pages using .txt file structure")
-        print(f"🎵 Mapped {midi_index}/{len(sorted_midi_entries)} MIDI entries to text structure")
+        print(
+            f"🎵 Mapped {midi_index}/{len(sorted_midi_entries)} MIDI entries to text structure"
+        )
         return animation_structure
 
     def _create_text_only_structure(
@@ -383,10 +402,10 @@ class VideoCreator:
         animation_structure: Dict[str, List[List[Optional[List[TabEntry]]]]] = {}
 
         for page_name, page_lines in parsed_pages.items():
-            animation_lines = []
+            animation_lines: List[List[Optional[List[TabEntry]]]] = []
 
             for line_chords in page_lines:
-                animation_chords = []
+                animation_chords: List[Optional[List[TabEntry]]] = []
 
                 for chord_tabs in line_chords:
                     if not chord_tabs:
