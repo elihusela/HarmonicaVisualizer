@@ -1,6 +1,6 @@
-"""Tests for harmonica_pipeline.video_creator module."""
+"""Refactored tests for harmonica_pipeline.video_creator module."""
 
-from unittest.mock import MagicMock, patch
+from unittest.mock import MagicMock
 import pytest
 
 from harmonica_pipeline.video_creator import VideoCreator, VideoCreatorError
@@ -11,62 +11,21 @@ from tab_converter.models import TabEntry
 class TestVideoCreatorConfig:
     """Test VideoCreatorConfig dataclass functionality."""
 
-    def test_config_creation_valid(self, temp_test_dir):
+    def test_config_creation_valid(self, basic_config):
         """Test creating a valid VideoCreatorConfig."""
-        # Create dummy files
-        video_path = temp_test_dir / "test.mp4"
-        tabs_path = temp_test_dir / "test.txt"
-        harmonica_path = temp_test_dir / "harmonica.png"
-        midi_path = temp_test_dir / "test.mid"
-        output_path = temp_test_dir / "output.mp4"
+        assert basic_config.video_path.endswith("test.mp4")
+        assert basic_config.tabs_path.endswith("test.txt")
+        assert basic_config.harmonica_path.endswith("harmonica.png")
+        assert basic_config.midi_path.endswith("test.mid")
+        assert basic_config.output_video_path.endswith("output.mp4")
+        assert basic_config.tabs_output_path is None
+        assert basic_config.produce_tabs is True
+        assert basic_config.enable_tab_matching is False
 
-        for path in [video_path, tabs_path, harmonica_path, midi_path]:
-            path.write_text("dummy")
-
-        config = VideoCreatorConfig(
-            video_path=str(video_path),
-            tabs_path=str(tabs_path),
-            harmonica_path=str(harmonica_path),
-            midi_path=str(midi_path),
-            output_video_path=str(output_path),
-        )
-
-        assert config.video_path == str(video_path)
-        assert config.tabs_path == str(tabs_path)
-        assert config.harmonica_path == str(harmonica_path)
-        assert config.midi_path == str(midi_path)
-        assert config.output_video_path == str(output_path)
-        assert config.tabs_output_path is None
-        assert config.produce_tabs is True
-        assert config.enable_tab_matching is False
-
-    def test_config_with_optional_params(self, temp_test_dir):
+    def test_config_with_optional_params(self, config_with_tabs):
         """Test config with optional parameters."""
-        # Create dummy files
-        video_path = temp_test_dir / "test.mp4"
-        tabs_path = temp_test_dir / "test.txt"
-        harmonica_path = temp_test_dir / "harmonica.png"
-        midi_path = temp_test_dir / "test.mid"
-        output_path = temp_test_dir / "output.mp4"
-        tabs_output_path = temp_test_dir / "tabs_output.mp4"
-
-        for path in [video_path, tabs_path, harmonica_path, midi_path]:
-            path.write_text("dummy")
-
-        config = VideoCreatorConfig(
-            video_path=str(video_path),
-            tabs_path=str(tabs_path),
-            harmonica_path=str(harmonica_path),
-            midi_path=str(midi_path),
-            output_video_path=str(output_path),
-            tabs_output_path=str(tabs_output_path),
-            produce_tabs=False,
-            enable_tab_matching=True,
-        )
-
-        assert config.tabs_output_path == str(tabs_output_path)
-        assert config.produce_tabs is False
-        assert config.enable_tab_matching is True
+        assert config_with_tabs.tabs_output_path.endswith("tabs_output.mp4")
+        assert config_with_tabs.produce_tabs is True
 
     def test_config_invalid_path_validation(self):
         """Test that invalid paths raise ValueError."""
@@ -79,139 +38,70 @@ class TestVideoCreatorConfig:
                 output_video_path="output.mp4",
             )
 
-    def test_config_from_cli_args(self, temp_test_dir):
+    def test_config_from_cli_args(self, temp_test_dir, create_test_files):
         """Test creating config from CLI arguments."""
-        # Create dummy files
-        video_path = temp_test_dir / "test.mp4"
-        tabs_path = temp_test_dir / "test.txt"
-        harmonica_path = temp_test_dir / "harmonica.png"
-        midi_path = temp_test_dir / "test.mid"
-        output_path = temp_test_dir / "output.mp4"
-
-        for path in [video_path, tabs_path, harmonica_path, midi_path]:
-            path.write_text("dummy")
+        create_test_files(temp_test_dir)
 
         config = VideoCreatorConfig.from_cli_args(
-            video_path=str(video_path),
-            tabs_path=str(tabs_path),
-            harmonica_path=str(harmonica_path),
-            midi_path=str(midi_path),
-            output_video_path=str(output_path),
+            video_path=str(temp_test_dir / "test.mp4"),
+            tabs_path=str(temp_test_dir / "test.txt"),
+            harmonica_path=str(temp_test_dir / "harmonica.png"),
+            midi_path=str(temp_test_dir / "test.mid"),
+            output_video_path=str(temp_test_dir / "output.mp4"),
             produce_tabs=False,
         )
 
-        assert config.video_path == str(video_path)
+        assert config.video_path.endswith("test.mp4")
         assert config.produce_tabs is False
 
 
 class TestVideoCreatorInitialization:
     """Test VideoCreator initialization methods."""
 
-    def test_init_with_config_object(self, temp_test_dir):
+    def test_init_with_config_object(
+        self, basic_config, create_video_creator_with_mocks
+    ):
         """Test initialization with VideoCreatorConfig object."""
-        config = self._create_valid_config(temp_test_dir)
+        creator = create_video_creator_with_mocks(basic_config)
+        assert creator.config == basic_config
+        assert creator.video_path == basic_config.video_path
+        assert creator.tabs_path == basic_config.tabs_path
 
-        with patch.multiple(
-            "harmonica_pipeline.video_creator",
-            AudioExtractor=MagicMock(),
-            MidiProcessor=MagicMock(),
-            TabMapper=MagicMock(),
-            TabTextParser=MagicMock(),
-            TabMatcher=MagicMock(),
-            HarmonicaLayout=MagicMock(),
-            FigureFactory=MagicMock(),
-            Animator=MagicMock(),
-            TabPhraseAnimator=MagicMock(),
-        ):
-            creator = VideoCreator(config)
-            assert creator.config == config
-            assert creator.video_path == config.video_path
-            assert creator.tabs_path == config.tabs_path
-
-    def test_init_with_legacy_parameters(self, temp_test_dir):
+    def test_init_with_legacy_parameters(
+        self, temp_test_dir, create_test_files, mock_video_creator_dependencies
+    ):
         """Test initialization with legacy parameter style."""
-        video_path, tabs_path, harmonica_path, midi_path, output_path = (
-            self._create_dummy_files(temp_test_dir)
+        create_test_files(temp_test_dir)
+
+        creator = VideoCreator(
+            config_or_video_path=str(temp_test_dir / "test.mp4"),
+            tabs_path=str(temp_test_dir / "test.txt"),
+            harmonica_path=str(temp_test_dir / "harmonica.png"),
+            midi_path=str(temp_test_dir / "test.mid"),
+            output_video_path=str(temp_test_dir / "output.mp4"),
         )
+        assert creator.video_path.endswith("test.mp4")
+        assert creator.tabs_path.endswith("test.txt")
 
-        with patch.multiple(
-            "harmonica_pipeline.video_creator",
-            AudioExtractor=MagicMock(),
-            MidiProcessor=MagicMock(),
-            TabMapper=MagicMock(),
-            TabTextParser=MagicMock(),
-            HarmonicaLayout=MagicMock(),
-            FigureFactory=MagicMock(),
-            Animator=MagicMock(),
-            TabPhraseAnimator=MagicMock(),
-        ):
-            creator = VideoCreator(
-                config_or_video_path=str(video_path),
-                tabs_path=str(tabs_path),
-                harmonica_path=str(harmonica_path),
-                midi_path=str(midi_path),
-                output_video_path=str(output_path),
-            )
-            assert creator.video_path == str(video_path)
-            assert creator.tabs_path == str(tabs_path)
-
-    def test_init_legacy_missing_parameters(self, temp_test_dir):
+    def test_init_legacy_missing_parameters(self, temp_test_dir, create_test_files):
         """Test that legacy initialization fails when parameters are missing."""
-        video_path = temp_test_dir / "test.mp4"
-        video_path.write_text("dummy")
+        create_test_files(temp_test_dir)
 
         with pytest.raises(VideoCreatorError, match="all path parameters are required"):
             VideoCreator(
-                config_or_video_path=str(video_path),
+                config_or_video_path=str(temp_test_dir / "test.mp4"),
                 tabs_path=None,  # Missing required parameter
-                harmonica_path="harmonica.png",
-                midi_path="test.mid",
-                output_video_path="output.mp4",
+                harmonica_path=str(temp_test_dir / "harmonica.png"),
+                midi_path=str(temp_test_dir / "test.mid"),
+                output_video_path=str(temp_test_dir / "output.mp4"),
             )
 
-    def test_from_config_classmethod(self, temp_test_dir):
+    def test_from_config_classmethod(
+        self, basic_config, create_video_creator_with_mocks
+    ):
         """Test from_config class method."""
-        config = self._create_valid_config(temp_test_dir)
-
-        with patch.multiple(
-            "harmonica_pipeline.video_creator",
-            AudioExtractor=MagicMock(),
-            MidiProcessor=MagicMock(),
-            TabMapper=MagicMock(),
-            TabTextParser=MagicMock(),
-            HarmonicaLayout=MagicMock(),
-            FigureFactory=MagicMock(),
-            Animator=MagicMock(),
-            TabPhraseAnimator=MagicMock(),
-        ):
-            creator = VideoCreator.from_config(config)
-            assert creator.config == config
-
-    def _create_dummy_files(self, temp_dir):
-        """Helper to create dummy files for testing."""
-        video_path = temp_dir / "test.mp4"
-        tabs_path = temp_dir / "test.txt"
-        harmonica_path = temp_dir / "harmonica.png"
-        midi_path = temp_dir / "test.mid"
-        output_path = temp_dir / "output.mp4"
-
-        for path in [video_path, tabs_path, harmonica_path, midi_path]:
-            path.write_text("dummy")
-
-        return video_path, tabs_path, harmonica_path, midi_path, output_path
-
-    def _create_valid_config(self, temp_dir):
-        """Helper to create a valid VideoCreatorConfig."""
-        video_path, tabs_path, harmonica_path, midi_path, output_path = (
-            self._create_dummy_files(temp_dir)
-        )
-        return VideoCreatorConfig(
-            video_path=str(video_path),
-            tabs_path=str(tabs_path),
-            harmonica_path=str(harmonica_path),
-            midi_path=str(midi_path),
-            output_video_path=str(output_path),
-        )
+        creator = VideoCreator.from_config(basic_config)
+        assert creator.config == basic_config
 
 
 class TestVideoCreatorValidation:
@@ -253,190 +143,146 @@ class TestVideoCreatorValidation:
         with pytest.raises(VideoCreatorError, match="Tab file not found"):
             VideoCreator(config)
 
-    def test_invalid_video_format(self, temp_test_dir):
-        """Test error with unsupported video format."""
-        # Create files with invalid video extension
-        video_path = temp_test_dir / "test.txt"  # Wrong extension
-        tabs_path = temp_test_dir / "test.txt"
-        harmonica_path = temp_test_dir / "harmonica.png"
-        midi_path = temp_test_dir / "test.mid"
+    @pytest.mark.parametrize(
+        "invalid_ext,expected_error",
+        [
+            ("test.txt", "Unsupported video format"),
+            ("test.json", "Tab file must be .txt format"),
+            ("harmonica.gif", "Harmonica image must be PNG/JPG format"),
+        ],
+    )
+    def test_invalid_file_formats(self, temp_test_dir, invalid_ext, expected_error):
+        """Test error with invalid file formats."""
+        # Create files with one invalid extension
+        files = {
+            "test.mp4": "dummy",
+            "test.txt": "dummy",
+            "harmonica.png": "dummy",
+            "test.mid": "dummy",
+        }
 
-        for path in [video_path, tabs_path, harmonica_path, midi_path]:
-            path.write_text("dummy")
+        # Override one file with invalid extension
+        if "video" in expected_error:
+            files["test.txt"] = files.pop("test.mp4")  # Wrong video ext
+        elif "Tab file" in expected_error:
+            files["test.json"] = files.pop("test.txt")  # Wrong tabs ext
+        elif "Harmonica" in expected_error:
+            files["harmonica.gif"] = files.pop("harmonica.png")  # Wrong image ext
+
+        for filename, content in files.items():
+            (temp_test_dir / filename).write_text(content)
+
+        # Build config with the invalid file
+        video_path = temp_test_dir / (
+            "test.txt" if "video" in expected_error else "test.mp4"
+        )
+        tabs_path = temp_test_dir / (
+            "test.json" if "Tab file" in expected_error else "test.txt"
+        )
+        harmonica_path = temp_test_dir / (
+            "harmonica.gif" if "Harmonica" in expected_error else "harmonica.png"
+        )
 
         config = VideoCreatorConfig(
             video_path=str(video_path),
             tabs_path=str(tabs_path),
             harmonica_path=str(harmonica_path),
-            midi_path=str(midi_path),
+            midi_path=str(temp_test_dir / "test.mid"),
             output_video_path=str(temp_test_dir / "output.mp4"),
         )
 
-        with pytest.raises(VideoCreatorError, match="Unsupported video format"):
+        with pytest.raises(VideoCreatorError, match=expected_error):
             VideoCreator(config)
 
-    def test_invalid_tabs_format(self, temp_test_dir):
-        """Test error with non-.txt tabs file."""
-        # Create files with invalid tabs extension
-        video_path = temp_test_dir / "test.mp4"
-        tabs_path = temp_test_dir / "test.json"  # Wrong extension
-        harmonica_path = temp_test_dir / "harmonica.png"
-        midi_path = temp_test_dir / "test.mid"
-
-        for path in [video_path, tabs_path, harmonica_path, midi_path]:
-            path.write_text("dummy")
-
-        config = VideoCreatorConfig(
-            video_path=str(video_path),
-            tabs_path=str(tabs_path),
-            harmonica_path=str(harmonica_path),
-            midi_path=str(midi_path),
-            output_video_path=str(temp_test_dir / "output.mp4"),
-        )
-
-        with pytest.raises(VideoCreatorError, match="Tab file must be .txt format"):
-            VideoCreator(config)
-
-    def test_invalid_harmonica_format(self, temp_test_dir):
-        """Test error with unsupported harmonica image format."""
-        # Create files with invalid harmonica extension
-        video_path = temp_test_dir / "test.mp4"
-        tabs_path = temp_test_dir / "test.txt"
-        harmonica_path = temp_test_dir / "harmonica.gif"  # Wrong extension
-        midi_path = temp_test_dir / "test.mid"
-
-        for path in [video_path, tabs_path, harmonica_path, midi_path]:
-            path.write_text("dummy")
-
-        config = VideoCreatorConfig(
-            video_path=str(video_path),
-            tabs_path=str(tabs_path),
-            harmonica_path=str(harmonica_path),
-            midi_path=str(midi_path),
-            output_video_path=str(temp_test_dir / "output.mp4"),
-        )
-
-        with pytest.raises(
-            VideoCreatorError, match="Harmonica image must be PNG/JPG format"
-        ):
-            VideoCreator(config)
-
-    def test_supported_formats_validation(self, temp_test_dir):
-        """Test that all supported formats are accepted."""
-        supported_combinations = [
+    @pytest.mark.parametrize(
+        "video_ext,harmonica_ext",
+        [
             ("test.mp4", "harmonica.png"),
             ("test.mov", "harmonica.jpg"),
             ("test.avi", "harmonica.jpeg"),
             ("test.wav", "harmonica.PNG"),  # Case insensitive
-        ]
+        ],
+    )
+    def test_supported_formats_validation(
+        self, temp_test_dir, mock_video_creator_dependencies, video_ext, harmonica_ext
+    ):
+        """Test that all supported formats are accepted."""
+        # Create files with supported extensions
+        (temp_test_dir / video_ext).write_text("dummy")
+        (temp_test_dir / "test.txt").write_text("dummy")
+        (temp_test_dir / harmonica_ext).write_text("dummy")
+        (temp_test_dir / "test.mid").write_text("dummy")
 
-        for video_ext, harmonica_ext in supported_combinations:
-            # Create files with supported extensions
-            video_path = temp_test_dir / video_ext
-            tabs_path = temp_test_dir / "test.txt"
-            harmonica_path = temp_test_dir / harmonica_ext
-            midi_path = temp_test_dir / "test.mid"
+        config = VideoCreatorConfig(
+            video_path=str(temp_test_dir / video_ext),
+            tabs_path=str(temp_test_dir / "test.txt"),
+            harmonica_path=str(temp_test_dir / harmonica_ext),
+            midi_path=str(temp_test_dir / "test.mid"),
+            output_video_path=str(temp_test_dir / f"output_{video_ext}"),
+        )
 
-            for path in [video_path, tabs_path, harmonica_path, midi_path]:
-                path.write_text("dummy")
-
-            config = VideoCreatorConfig(
-                video_path=str(video_path),
-                tabs_path=str(tabs_path),
-                harmonica_path=str(harmonica_path),
-                midi_path=str(midi_path),
-                output_video_path=str(temp_test_dir / f"output_{video_ext}"),
-            )
-
-            # Should not raise any validation errors
-            with patch.multiple(
-                "harmonica_pipeline.video_creator",
-                AudioExtractor=MagicMock(),
-                MidiProcessor=MagicMock(),
-                TabMapper=MagicMock(),
-                TabTextParser=MagicMock(),
-                HarmonicaLayout=MagicMock(),
-                FigureFactory=MagicMock(),
-                Animator=MagicMock(),
-                TabPhraseAnimator=MagicMock(),
-            ):
-                creator = VideoCreator(config)
-                assert creator.video_path == str(video_path)
+        # Should not raise any validation errors
+        creator = VideoCreator(config)
+        assert creator.video_path.endswith(video_ext)
 
 
 class TestVideoCreatorTextBasedStructure:
     """Test the text-based structure implementation (key feature)."""
 
-    def test_create_text_based_structure_basic(self, temp_test_dir):
+    def test_create_text_based_structure_basic(
+        self,
+        config_with_tabs,
+        create_video_creator_with_mocks,
+        sample_midi_tabs,
+        sample_parsed_pages,
+    ):
         """Test basic text-based structure creation."""
-        config = self._create_config_with_tabs(temp_test_dir)
+        creator = create_video_creator_with_mocks(config_with_tabs)
 
         # Mock tab text parser to return structured pages
         mock_parser = MagicMock()
-        mock_parser.get_pages.return_value = {
-            "Page 1": [[[1], [2, 3]]],  # Line 1: chord 1, chord 2+3
-            "Page 2": [[[4]], [[-5, -6]]],  # Line 1: chord 4, Line 2: chord -5+-6
-        }
+        mock_parser.get_pages.return_value = sample_parsed_pages
+        creator.tabs_text_parser = mock_parser
 
         # Create mock MIDI tabs
-        midi_tabs = [
-            TabEntry(tab=1, time=0.0, duration=0.5, confidence=0.8),
-            TabEntry(tab=2, time=0.5, duration=0.5, confidence=0.8),
-            TabEntry(tab=3, time=1.0, duration=0.5, confidence=0.8),
-            TabEntry(tab=4, time=1.5, duration=0.5, confidence=0.8),
-            TabEntry(tab=-5, time=2.0, duration=0.5, confidence=0.8),
-            TabEntry(tab=-6, time=2.5, duration=0.5, confidence=0.8),
-        ]
         mock_tabs = MagicMock()
-        mock_tabs.tabs = midi_tabs
+        mock_tabs.tabs = sample_midi_tabs
 
-        with patch.multiple(
-            "harmonica_pipeline.video_creator",
-            AudioExtractor=MagicMock(),
-            MidiProcessor=MagicMock(),
-            TabMapper=MagicMock(),
-            TabTextParser=MagicMock(return_value=mock_parser),
-            HarmonicaLayout=MagicMock(),
-            FigureFactory=MagicMock(),
-            Animator=MagicMock(),
-            TabPhraseAnimator=MagicMock(),
-        ):
-            creator = VideoCreator(config)
-            creator.tabs_text_parser = mock_parser
+        result = creator._create_text_based_structure(mock_tabs)
 
-            # Test text-based structure creation
-            result = creator._create_text_based_structure(mock_tabs)
+        # Should have 2 pages matching the text structure
+        assert len(result) == 2
+        assert "Page 1" in result
+        assert "Page 2" in result
 
-            # Should have 2 pages matching the text structure
-            assert len(result) == 2
-            assert "Page 1" in result
-            assert "Page 2" in result
+        # Page 1 should have 1 line with 2 chords
+        page1 = result["Page 1"]
+        assert len(page1) == 1  # 1 line
+        assert len(page1[0]) == 2  # 2 chords
 
-            # Page 1 should have 1 line with 2 chords
-            page1 = result["Page 1"]
-            assert len(page1) == 1  # 1 line
-            assert len(page1[0]) == 2  # 2 chords
+        # First chord should have 1 tab entry (hole 1)
+        chord1 = page1[0][0]
+        assert len(chord1) == 1
+        assert chord1[0].tab == 1
 
-            # First chord should have 1 tab entry (hole 1)
-            chord1 = page1[0][0]
-            assert len(chord1) == 1
-            assert chord1[0].tab == 1
+        # Second chord should have 2 tab entries (holes 2, 3)
+        chord2 = page1[0][1]
+        assert len(chord2) == 2
+        assert chord2[0].tab == 2
+        assert chord2[1].tab == 3
 
-            # Second chord should have 2 tab entries (holes 2, 3)
-            chord2 = page1[0][1]
-            assert len(chord2) == 2
-            assert chord2[0].tab == 2
-            assert chord2[1].tab == 3
+    def test_create_text_based_structure_chronological_order(
+        self, config_with_tabs, create_video_creator_with_mocks
+    ):
+        """Test that MIDI entries are consumed in chronological order."""
+        creator = create_video_creator_with_mocks(config_with_tabs)
 
-    def test_create_text_based_structure_chronological_order(self, temp_test_dir):
-        """Test that MIDI entries are consumed in chronological order, creating fallbacks when needed."""
-        config = self._create_config_with_tabs(temp_test_dir)
-
-        # Mock tab text parser - text order that requires chronological processing
+        # Mock tab text parser - text order matches MIDI chronological order
         mock_parser = MagicMock()
         mock_parser.get_pages.return_value = {
             "Page 1": [[[1], [2], [3]]],  # Text order matches MIDI chronological order
         }
+        creator.tabs_text_parser = mock_parser
 
         # MIDI tabs in chronological order: 1, 2, 3
         midi_tabs = [
@@ -447,46 +293,30 @@ class TestVideoCreatorTextBasedStructure:
         mock_tabs = MagicMock()
         mock_tabs.tabs = midi_tabs
 
-        with patch.multiple(
-            "harmonica_pipeline.video_creator",
-            AudioExtractor=MagicMock(),
-            MidiProcessor=MagicMock(),
-            TabMapper=MagicMock(),
-            TabTextParser=MagicMock(return_value=mock_parser),
-            HarmonicaLayout=MagicMock(),
-            FigureFactory=MagicMock(),
-            Animator=MagicMock(),
-            TabPhraseAnimator=MagicMock(),
-        ):
-            creator = VideoCreator(config)
-            creator.tabs_text_parser = mock_parser
+        result = creator._create_text_based_structure(mock_tabs)
 
-            result = creator._create_text_based_structure(mock_tabs)
+        # Should follow text structure and consume MIDI entries in chronological order
+        page1 = result["Page 1"][0]
 
-            # Should follow text structure and consume MIDI entries in chronological order
-            page1 = result["Page 1"][0]
+        # Check that entries are correctly mapped - should use MIDI entries in order
+        assert page1[0][0].tab == 1
+        assert page1[0][0].time == 0.0
+        assert page1[1][0].tab == 2
+        assert page1[1][0].time == 0.5
+        assert page1[2][0].tab == 3
+        assert page1[2][0].time == 1.0
 
-            # Check that entries are correctly mapped - should use MIDI entries in order
-            # First text position wants tab 1, should find first MIDI entry with tab=1
-            assert page1[0][0].tab == 1
-            assert page1[0][0].time == 0.0  # First MIDI entry for tab 1
-
-            # Second text position wants tab 2, should find next MIDI entry with tab=2
-            assert page1[1][0].tab == 2
-            assert page1[1][0].time == 0.5  # Second MIDI entry for tab 2
-
-            # Third text position wants tab 3, should find next MIDI entry with tab=3
-            assert page1[2][0].tab == 3
-            assert page1[2][0].time == 1.0  # Third MIDI entry for tab 3
-
-    def test_create_text_based_structure_with_fallbacks(self, temp_test_dir):
+    def test_create_text_based_structure_with_fallbacks(
+        self, config_with_tabs, create_video_creator_with_mocks
+    ):
         """Test structure creation with fallback entries when MIDI runs out."""
-        config = self._create_config_with_tabs(temp_test_dir)
+        creator = create_video_creator_with_mocks(config_with_tabs)
 
         mock_parser = MagicMock()
         mock_parser.get_pages.return_value = {
             "Page 1": [[[1], [2], [3], [4]]],  # 4 positions in text
         }
+        creator.tabs_text_parser = mock_parser
 
         # Only 2 MIDI entries available
         midi_tabs = [
@@ -496,135 +326,72 @@ class TestVideoCreatorTextBasedStructure:
         mock_tabs = MagicMock()
         mock_tabs.tabs = midi_tabs
 
-        with patch.multiple(
-            "harmonica_pipeline.video_creator",
-            AudioExtractor=MagicMock(),
-            MidiProcessor=MagicMock(),
-            TabMapper=MagicMock(),
-            TabTextParser=MagicMock(return_value=mock_parser),
-            HarmonicaLayout=MagicMock(),
-            FigureFactory=MagicMock(),
-            Animator=MagicMock(),
-            TabPhraseAnimator=MagicMock(),
-        ):
-            creator = VideoCreator(config)
-            creator.tabs_text_parser = mock_parser
+        result = creator._create_text_based_structure(mock_tabs)
+        page1 = result["Page 1"][0]
 
-            result = creator._create_text_based_structure(mock_tabs)
+        # First two positions should get real MIDI entries
+        assert page1[0][0].tab == 1
+        assert page1[0][0].time == 0.0
+        assert page1[1][0].tab == 2
+        assert page1[1][0].time == 0.5
 
-            page1 = result["Page 1"][0]
+        # Last two positions should get fallback entries
+        assert page1[2][0].tab == 3
+        assert page1[2][0].time == 1.0  # last_time + 0.5
+        assert page1[2][0].confidence == 0.5  # fallback confidence
 
-            # First two positions should get real MIDI entries
-            assert page1[0][0].tab == 1
-            assert page1[0][0].time == 0.0
-            assert page1[1][0].tab == 2
-            assert page1[1][0].time == 0.5
+        assert page1[3][0].tab == 4
+        assert page1[3][0].time == 1.0  # last_time + 0.5
+        assert page1[3][0].confidence == 0.5
 
-            # Last two positions should get fallback entries
-            assert page1[2][0].tab == 3
-            assert page1[2][0].time == 1.0  # last_time + 0.5
-            assert page1[2][0].confidence == 0.5  # fallback confidence
-
-            assert page1[3][0].tab == 4
-            assert page1[3][0].time == 1.0  # last_time + 0.5
-            assert page1[3][0].confidence == 0.5
-
-    def test_create_text_only_structure_fallback(self, temp_test_dir):
+    def test_create_text_only_structure_fallback(
+        self, config_with_tabs, create_video_creator_with_mocks
+    ):
         """Test fallback to text-only structure when no MIDI available."""
-        config = self._create_config_with_tabs(temp_test_dir)
+        creator = create_video_creator_with_mocks(config_with_tabs)
 
-        mock_parser = MagicMock()
         parsed_pages = {
             "Page 1": [[[1], [2, 3]]],
             "Page 2": [[[4]], [[-5]]],
         }
 
-        with patch.multiple(
-            "harmonica_pipeline.video_creator",
-            AudioExtractor=MagicMock(),
-            MidiProcessor=MagicMock(),
-            TabMapper=MagicMock(),
-            TabTextParser=MagicMock(return_value=mock_parser),
-            HarmonicaLayout=MagicMock(),
-            FigureFactory=MagicMock(),
-            Animator=MagicMock(),
-            TabPhraseAnimator=MagicMock(),
-        ):
-            creator = VideoCreator(config)
+        result = creator._create_text_only_structure(parsed_pages)
 
-            result = creator._create_text_only_structure(parsed_pages)
+        # Should create structure with dummy timing
+        assert len(result) == 2
 
-            # Should create structure with dummy timing
-            assert len(result) == 2
+        # Check that all entries have dummy timing
+        page1 = result["Page 1"][0]
+        assert page1[0][0].tab == 1
+        assert page1[0][0].time == 0.0  # dummy time
+        assert page1[0][0].duration == 0.5
+        assert page1[0][0].confidence == 1.0
 
-            # Check that all entries have dummy timing
-            page1 = result["Page 1"][0]
-            assert page1[0][0].tab == 1
-            assert page1[0][0].time == 0.0  # dummy time
-            assert page1[0][0].duration == 0.5
-            assert page1[0][0].confidence == 1.0
+        # Multi-note chord
+        chord2 = page1[1]
+        assert len(chord2) == 2
+        assert chord2[0].tab == 2
+        assert chord2[1].tab == 3
 
-            # Multi-note chord
-            chord2 = page1[1]
-            assert len(chord2) == 2
-            assert chord2[0].tab == 2
-            assert chord2[1].tab == 3
-
-    def test_create_text_based_structure_no_parser_error(self, temp_test_dir):
+    def test_create_text_based_structure_no_parser_error(
+        self, config_with_tabs, create_video_creator_with_mocks, mock_empty_tabs
+    ):
         """Test error when text parser is not available."""
-        config = self._create_config_with_tabs(temp_test_dir)
+        creator = create_video_creator_with_mocks(config_with_tabs)
+        creator.tabs_text_parser = None  # Simulate missing parser
 
-        with patch.multiple(
-            "harmonica_pipeline.video_creator",
-            AudioExtractor=MagicMock(),
-            MidiProcessor=MagicMock(),
-            TabMapper=MagicMock(),
-            TabTextParser=MagicMock(),
-            HarmonicaLayout=MagicMock(),
-            FigureFactory=MagicMock(),
-            Animator=MagicMock(),
-            TabPhraseAnimator=MagicMock(),
-        ):
-            creator = VideoCreator(config)
-            creator.tabs_text_parser = None  # Simulate missing parser
-
-            mock_tabs = MagicMock()
-            mock_tabs.tabs = []
-
-            with pytest.raises(
-                VideoCreatorError, match="Tab text parser not available"
-            ):
-                creator._create_text_based_structure(mock_tabs)
-
-    def _create_config_with_tabs(self, temp_dir):
-        """Helper to create config with tabs enabled."""
-        video_path = temp_dir / "test.mp4"
-        tabs_path = temp_dir / "test.txt"
-        harmonica_path = temp_dir / "harmonica.png"
-        midi_path = temp_dir / "test.mid"
-        output_path = temp_dir / "output.mp4"
-        tabs_output_path = temp_dir / "tabs_output.mp4"
-
-        for path in [video_path, tabs_path, harmonica_path, midi_path]:
-            path.write_text("dummy")
-
-        return VideoCreatorConfig(
-            video_path=str(video_path),
-            tabs_path=str(tabs_path),
-            harmonica_path=str(harmonica_path),
-            midi_path=str(midi_path),
-            output_video_path=str(output_path),
-            tabs_output_path=str(tabs_output_path),
-            produce_tabs=True,
-        )
+        with pytest.raises(VideoCreatorError, match="Tab text parser not available"):
+            creator._create_text_based_structure(mock_empty_tabs)
 
 
 class TestVideoCreatorDirectStructure:
     """Test direct MIDI structure creation."""
 
-    def test_create_direct_tabs_structure_basic(self, temp_test_dir):
+    def test_create_direct_tabs_structure_basic(
+        self, basic_config, create_video_creator_with_mocks
+    ):
         """Test basic direct structure creation from MIDI timing."""
-        config = self._create_basic_config(temp_test_dir)
+        creator = create_video_creator_with_mocks(basic_config)
 
         # Create MIDI tabs with timing gaps
         midi_tabs = [
@@ -638,42 +405,31 @@ class TestVideoCreatorDirectStructure:
         mock_tabs = MagicMock()
         mock_tabs.tabs = midi_tabs
 
-        with patch.multiple(
-            "harmonica_pipeline.video_creator",
-            AudioExtractor=MagicMock(),
-            MidiProcessor=MagicMock(),
-            TabMapper=MagicMock(),
-            TabTextParser=MagicMock(),
-            HarmonicaLayout=MagicMock(),
-            FigureFactory=MagicMock(),
-            Animator=MagicMock(),
-            TabPhraseAnimator=MagicMock(),
-        ):
-            creator = VideoCreator(config)
+        result = creator._create_direct_tabs_structure(mock_tabs)
 
-            result = creator._create_direct_tabs_structure(mock_tabs)
+        # Should create 2 pages due to timing gap
+        assert len(result) == 2
+        assert "page_1" in result
+        assert "page_2" in result
 
-            # Should create 2 pages due to timing gap
-            assert len(result) == 2
-            assert "page_1" in result
-            assert "page_2" in result
+        # Page 1 should have first 3 entries
+        page1 = result["page_1"][0]
+        assert len(page1) == 3
+        assert page1[0][0].tab == 1
+        assert page1[1][0].tab == 2
+        assert page1[2][0].tab == 3
 
-            # Page 1 should have first 3 entries
-            page1 = result["page_1"][0]
-            assert len(page1) == 3
-            assert page1[0][0].tab == 1
-            assert page1[1][0].tab == 2
-            assert page1[2][0].tab == 3
+        # Page 2 should have last 2 entries
+        page2 = result["page_2"][0]
+        assert len(page2) == 2
+        assert page2[0][0].tab == 4
+        assert page2[1][0].tab == 5
 
-            # Page 2 should have last 2 entries
-            page2 = result["page_2"][0]
-            assert len(page2) == 2
-            assert page2[0][0].tab == 4
-            assert page2[1][0].tab == 5
-
-    def test_create_direct_tabs_structure_no_gaps(self, temp_test_dir):
+    def test_create_direct_tabs_structure_no_gaps(
+        self, basic_config, create_video_creator_with_mocks
+    ):
         """Test direct structure with no timing gaps."""
-        config = self._create_basic_config(temp_test_dir)
+        creator = create_video_creator_with_mocks(basic_config)
 
         # Create MIDI tabs with no gaps (all within 2 seconds)
         midi_tabs = [
@@ -685,391 +441,185 @@ class TestVideoCreatorDirectStructure:
         mock_tabs = MagicMock()
         mock_tabs.tabs = midi_tabs
 
-        with patch.multiple(
-            "harmonica_pipeline.video_creator",
-            AudioExtractor=MagicMock(),
-            MidiProcessor=MagicMock(),
-            TabMapper=MagicMock(),
-            TabTextParser=MagicMock(),
-            HarmonicaLayout=MagicMock(),
-            FigureFactory=MagicMock(),
-            Animator=MagicMock(),
-            TabPhraseAnimator=MagicMock(),
-        ):
-            creator = VideoCreator(config)
+        result = creator._create_direct_tabs_structure(mock_tabs)
 
-            result = creator._create_direct_tabs_structure(mock_tabs)
+        # Should create only 1 page since no gaps
+        assert len(result) == 1
+        assert "page_1" in result
 
-            # Should create only 1 page since no gaps
-            assert len(result) == 1
-            assert "page_1" in result
+        # Page should have all 4 entries
+        page1 = result["page_1"][0]
+        assert len(page1) == 4
 
-            # Page should have all 4 entries
-            page1 = result["page_1"][0]
-            assert len(page1) == 4
-
-    def test_create_direct_tabs_structure_empty_tabs(self, temp_test_dir):
+    def test_create_direct_tabs_structure_empty_tabs(
+        self, basic_config, create_video_creator_with_mocks, mock_empty_tabs
+    ):
         """Test direct structure with empty tabs."""
-        config = self._create_basic_config(temp_test_dir)
+        creator = create_video_creator_with_mocks(basic_config)
 
-        mock_tabs = MagicMock()
-        mock_tabs.tabs = []
+        result = creator._create_direct_tabs_structure(mock_empty_tabs)
 
-        with patch.multiple(
-            "harmonica_pipeline.video_creator",
-            AudioExtractor=MagicMock(),
-            MidiProcessor=MagicMock(),
-            TabMapper=MagicMock(),
-            TabTextParser=MagicMock(),
-            HarmonicaLayout=MagicMock(),
-            FigureFactory=MagicMock(),
-            Animator=MagicMock(),
-            TabPhraseAnimator=MagicMock(),
-        ):
-            creator = VideoCreator(config)
-
-            result = creator._create_direct_tabs_structure(mock_tabs)
-
-            # Should create single empty page
-            assert len(result) == 1
-            assert "page_1" in result
-            assert result["page_1"] == [[]]
-
-    def _create_basic_config(self, temp_dir):
-        """Helper to create basic config."""
-        video_path = temp_dir / "test.mp4"
-        tabs_path = temp_dir / "test.txt"
-        harmonica_path = temp_dir / "harmonica.png"
-        midi_path = temp_dir / "test.mid"
-        output_path = temp_dir / "output.mp4"
-
-        for path in [video_path, tabs_path, harmonica_path, midi_path]:
-            path.write_text("dummy")
-
-        return VideoCreatorConfig(
-            video_path=str(video_path),
-            tabs_path=str(tabs_path),
-            harmonica_path=str(harmonica_path),
-            midi_path=str(midi_path),
-            output_video_path=str(output_path),
-        )
+        # Should create single empty page
+        assert len(result) == 1
+        assert "page_1" in result
+        assert result["page_1"] == [[]]
 
 
 class TestVideoCreatorSelectiveCreation:
     """Test selective video creation (harmonica vs tabs)."""
 
-    def test_create_with_selective_options(self, temp_test_dir):
+    def test_create_with_selective_options(
+        self, config_with_tabs, create_video_creator_with_mocks, mock_empty_tabs
+    ):
         """Test create method with selective creation options."""
-        config = self._create_config_with_tabs(temp_test_dir)
+        creator = create_video_creator_with_mocks(config_with_tabs)
 
-        # Mock all the animation components
+        # Mock the animation components
         mock_animator = MagicMock()
         mock_tab_animator = MagicMock()
-        mock_audio_extractor = MagicMock()
+        creator.animator = mock_animator
+        creator.tab_phrase_animator = mock_tab_animator
 
-        with patch.multiple(
-            "harmonica_pipeline.video_creator",
-            AudioExtractor=MagicMock(return_value=mock_audio_extractor),
-            MidiProcessor=MagicMock(),
-            TabMapper=MagicMock(),
-            TabTextParser=MagicMock(),
-            HarmonicaLayout=MagicMock(),
-            FigureFactory=MagicMock(),
-            Animator=MagicMock(return_value=mock_animator),
-            TabPhraseAnimator=MagicMock(return_value=mock_tab_animator),
-        ):
-            creator = VideoCreator(config)
-            creator.animator = mock_animator
-            creator.tab_phrase_animator = mock_tab_animator
-            creator.audio_extractor = mock_audio_extractor
+        # Mock the internal methods
+        creator._extract_audio = MagicMock()
+        creator._load_midi_note_events = MagicMock(return_value=[])
+        creator._note_events_to_tabs = MagicMock(return_value=mock_empty_tabs)
+        creator._create_text_based_structure = MagicMock(return_value={})
+        creator._create_direct_tabs_structure = MagicMock(return_value={})
 
-            # Mock the internal methods
-            creator._extract_audio = MagicMock()
-            creator._load_midi_note_events = MagicMock(return_value=[])
-            # Create proper mock tabs with empty .tabs attribute
-            mock_empty_tabs = MagicMock()
-            mock_empty_tabs.tabs = []
-            creator._note_events_to_tabs = MagicMock(return_value=mock_empty_tabs)
-            creator._create_text_based_structure = MagicMock(return_value={})
-            creator._create_direct_tabs_structure = MagicMock(return_value={})
+        # Test: Create only harmonica (no tabs)
+        creator.create(create_harmonica=True, create_tabs=False)
+        mock_animator.create_animation.assert_called_once()
+        mock_tab_animator.create_animations.assert_not_called()
 
-            # Test: Create only harmonica (no tabs)
-            creator.create(create_harmonica=True, create_tabs=False)
+        # Reset mocks
+        mock_animator.reset_mock()
+        mock_tab_animator.reset_mock()
 
-            mock_animator.create_animation.assert_called_once()
-            mock_tab_animator.create_animations.assert_not_called()
+        # Test: Create only tabs (no harmonica)
+        creator.create(create_harmonica=False, create_tabs=True)
+        mock_animator.create_animation.assert_not_called()
+        mock_tab_animator.create_animations.assert_called_once()
 
-            # Reset mocks
-            mock_animator.reset_mock()
-            mock_tab_animator.reset_mock()
+        # Reset mocks
+        mock_animator.reset_mock()
+        mock_tab_animator.reset_mock()
 
-            # Test: Create only tabs (no harmonica)
-            creator.create(create_harmonica=False, create_tabs=True)
+        # Test: Create both (default behavior)
+        creator.create(create_harmonica=True, create_tabs=True)
+        mock_animator.create_animation.assert_called_once()
+        mock_tab_animator.create_animations.assert_called_once()
 
-            mock_animator.create_animation.assert_not_called()
-            mock_tab_animator.create_animations.assert_called_once()
-
-            # Reset mocks
-            mock_animator.reset_mock()
-            mock_tab_animator.reset_mock()
-
-            # Test: Create both (default behavior)
-            creator.create(create_harmonica=True, create_tabs=True)
-
-            mock_animator.create_animation.assert_called_once()
-            mock_tab_animator.create_animations.assert_called_once()
-
-    def test_create_uses_config_defaults(self, temp_test_dir):
+    def test_create_uses_config_defaults(
+        self, config_with_tabs, create_video_creator_with_mocks, mock_empty_tabs
+    ):
         """Test that create method uses config defaults when options not specified."""
-        config = self._create_config_with_tabs(temp_test_dir)
-        config.produce_tabs = False  # Set default to False
+        config_with_tabs.produce_tabs = False  # Set default to False
+        creator = create_video_creator_with_mocks(config_with_tabs)
 
         mock_animator = MagicMock()
         mock_tab_animator = MagicMock()
+        creator.animator = mock_animator
+        creator.tab_phrase_animator = mock_tab_animator
 
-        with patch.multiple(
-            "harmonica_pipeline.video_creator",
-            AudioExtractor=MagicMock(),
-            MidiProcessor=MagicMock(),
-            TabMapper=MagicMock(),
-            TabTextParser=MagicMock(),
-            HarmonicaLayout=MagicMock(),
-            FigureFactory=MagicMock(),
-            Animator=MagicMock(return_value=mock_animator),
-            TabPhraseAnimator=MagicMock(return_value=mock_tab_animator),
-        ):
-            creator = VideoCreator(config)
-            creator.animator = mock_animator
-            creator.tab_phrase_animator = mock_tab_animator
+        # Mock the internal methods
+        creator._extract_audio = MagicMock()
+        creator._load_midi_note_events = MagicMock(return_value=[])
+        creator._note_events_to_tabs = MagicMock(return_value=mock_empty_tabs)
+        creator._create_text_based_structure = MagicMock(return_value={})
+        creator._create_direct_tabs_structure = MagicMock(return_value={})
 
-            # Mock the internal methods
-            creator._extract_audio = MagicMock()
-            creator._load_midi_note_events = MagicMock(return_value=[])
-            # Create proper mock tabs with empty .tabs attribute
-            mock_empty_tabs = MagicMock()
-            mock_empty_tabs.tabs = []
-            creator._note_events_to_tabs = MagicMock(return_value=mock_empty_tabs)
-            creator._create_text_based_structure = MagicMock(return_value={})
-            creator._create_direct_tabs_structure = MagicMock(return_value={})
+        # Call create without specifying create_tabs - should use config default (False)
+        creator.create()
+        mock_animator.create_animation.assert_called_once()
+        mock_tab_animator.create_animations.assert_not_called()
 
-            # Call create without specifying create_tabs - should use config default (False)
-            creator.create()
-
-            mock_animator.create_animation.assert_called_once()
-            mock_tab_animator.create_animations.assert_not_called()
-
-    def test_create_skips_tabs_when_no_output_path(self, temp_test_dir):
+    def test_create_skips_tabs_when_no_output_path(
+        self, basic_config, create_video_creator_with_mocks
+    ):
         """Test that tab creation is skipped when no tabs output path is provided."""
-        config = self._create_basic_config(temp_test_dir)
-        config.tabs_output_path = None  # No tabs output path
+        basic_config.tabs_output_path = None  # No tabs output path
+        creator = create_video_creator_with_mocks(basic_config)
 
         mock_animator = MagicMock()
         mock_tab_animator = MagicMock()
+        creator.animator = mock_animator
+        creator.tab_phrase_animator = mock_tab_animator
 
-        with patch.multiple(
-            "harmonica_pipeline.video_creator",
-            AudioExtractor=MagicMock(),
-            MidiProcessor=MagicMock(),
-            TabMapper=MagicMock(),
-            TabTextParser=MagicMock(),
-            HarmonicaLayout=MagicMock(),
-            FigureFactory=MagicMock(),
-            Animator=MagicMock(return_value=mock_animator),
-            TabPhraseAnimator=MagicMock(return_value=mock_tab_animator),
-        ):
-            creator = VideoCreator(config)
-            creator.animator = mock_animator
-            creator.tab_phrase_animator = mock_tab_animator
+        # Mock the internal methods
+        creator._extract_audio = MagicMock()
+        creator._load_midi_note_events = MagicMock(return_value=[])
+        creator._note_events_to_tabs = MagicMock(return_value=MagicMock())
+        creator._create_direct_tabs_structure = MagicMock(return_value={})
 
-            # Mock the internal methods
-            creator._extract_audio = MagicMock()
-            creator._load_midi_note_events = MagicMock(return_value=[])
-            creator._note_events_to_tabs = MagicMock(return_value=MagicMock())
-            creator._create_direct_tabs_structure = MagicMock(return_value={})
-
-            # Should skip tabs even when create_tabs=True due to no output path
-            creator.create(create_harmonica=True, create_tabs=True)
-
-            mock_animator.create_animation.assert_called_once()
-            mock_tab_animator.create_animations.assert_not_called()
-
-    def _create_config_with_tabs(self, temp_dir):
-        """Helper to create config with tabs enabled."""
-        video_path = temp_dir / "test.mp4"
-        tabs_path = temp_dir / "test.txt"
-        harmonica_path = temp_dir / "harmonica.png"
-        midi_path = temp_dir / "test.mid"
-        output_path = temp_dir / "output.mp4"
-        tabs_output_path = temp_dir / "tabs_output.mp4"
-
-        for path in [video_path, tabs_path, harmonica_path, midi_path]:
-            path.write_text("dummy")
-
-        return VideoCreatorConfig(
-            video_path=str(video_path),
-            tabs_path=str(tabs_path),
-            harmonica_path=str(harmonica_path),
-            midi_path=str(midi_path),
-            output_video_path=str(output_path),
-            tabs_output_path=str(tabs_output_path),
-            produce_tabs=True,
-        )
-
-    def _create_basic_config(self, temp_dir):
-        """Helper to create basic config."""
-        video_path = temp_dir / "test.mp4"
-        tabs_path = temp_dir / "test.txt"
-        harmonica_path = temp_dir / "harmonica.png"
-        midi_path = temp_dir / "test.mid"
-        output_path = temp_dir / "output.mp4"
-
-        for path in [video_path, tabs_path, harmonica_path, midi_path]:
-            path.write_text("dummy")
-
-        return VideoCreatorConfig(
-            video_path=str(video_path),
-            tabs_path=str(tabs_path),
-            harmonica_path=str(harmonica_path),
-            midi_path=str(midi_path),
-            output_video_path=str(output_path),
-        )
+        # Should skip tabs even when create_tabs=True due to no output path
+        creator.create(create_harmonica=True, create_tabs=True)
+        mock_animator.create_animation.assert_called_once()
+        mock_tab_animator.create_animations.assert_not_called()
 
 
 class TestVideoCreatorIntegration:
     """Test integration with other components."""
 
-    def test_tab_matching_integration(self, temp_test_dir):
+    def test_tab_matching_integration(
+        self, config_with_tab_matching, create_video_creator_with_mocks
+    ):
         """Test integration with tab matching when enabled."""
-        config = self._create_config_with_matching_enabled(temp_test_dir)
+        creator = create_video_creator_with_mocks(config_with_tab_matching)
 
         mock_tab_matcher = MagicMock()
         mock_tab_matcher.match.return_value = {"Page 1": [[[]]]}
+        creator.tab_matcher = mock_tab_matcher
 
-        with patch.multiple(
-            "harmonica_pipeline.video_creator",
-            AudioExtractor=MagicMock(),
-            MidiProcessor=MagicMock(),
-            TabMapper=MagicMock(),
-            TabTextParser=MagicMock(),
-            TabMatcher=MagicMock(return_value=mock_tab_matcher),
-            HarmonicaLayout=MagicMock(),
-            FigureFactory=MagicMock(),
-            Animator=MagicMock(),
-            TabPhraseAnimator=MagicMock(),
-        ):
-            creator = VideoCreator(config)
-            assert creator.tab_matcher is not None
-            assert creator.config.enable_tab_matching is True
+        assert creator.tab_matcher is not None
+        assert creator.config.enable_tab_matching is True
 
-            # Test tab matching workflow
-            mock_tabs = MagicMock()
-            result = creator._match_tabs(mock_tabs)
-
-            mock_tab_matcher.match.assert_called_once()
-            assert result == {"Page 1": [[[]]]}
-
-    def test_tab_matching_disabled(self, temp_test_dir):
-        """Test that tab matching is properly disabled when not configured."""
-        config = self._create_basic_config(temp_test_dir)
-        config.enable_tab_matching = False
-
-        with patch.multiple(
-            "harmonica_pipeline.video_creator",
-            AudioExtractor=MagicMock(),
-            MidiProcessor=MagicMock(),
-            TabMapper=MagicMock(),
-            TabTextParser=MagicMock(),
-            HarmonicaLayout=MagicMock(),
-            FigureFactory=MagicMock(),
-            Animator=MagicMock(),
-            TabPhraseAnimator=MagicMock(),
-        ):
-            creator = VideoCreator(config)
-            assert creator.tab_matcher is None
-            assert creator.config.enable_tab_matching is False
-
-    def test_match_tabs_error_when_disabled(self, temp_test_dir):
-        """Test error when trying to match tabs but matching is disabled."""
-        config = self._create_basic_config(temp_test_dir)
-
-        with patch.multiple(
-            "harmonica_pipeline.video_creator",
-            AudioExtractor=MagicMock(),
-            MidiProcessor=MagicMock(),
-            TabMapper=MagicMock(),
-            TabTextParser=MagicMock(),
-            HarmonicaLayout=MagicMock(),
-            FigureFactory=MagicMock(),
-            Animator=MagicMock(),
-            TabPhraseAnimator=MagicMock(),
-        ):
-            creator = VideoCreator(config)
-            creator.tab_matcher = None
-
-            mock_tabs = MagicMock()
-
-            with pytest.raises(VideoCreatorError, match="Tab matching is disabled"):
-                creator._match_tabs(mock_tabs)
-
-    def test_midi_processing_integration(self, temp_test_dir):
-        """Test integration with MIDI processing components."""
-        config = self._create_basic_config(temp_test_dir)
-
-        mock_midi_processor = MagicMock()
-        mock_note_events = [(0.0, 0.5, 60, 0.8, 0.8)]
-        mock_midi_processor.load_note_events.return_value = mock_note_events
-
-        mock_tab_mapper = MagicMock()
+        # Test tab matching workflow
         mock_tabs = MagicMock()
-        mock_tab_mapper.note_events_to_tabs.return_value = mock_tabs
+        result = creator._match_tabs(mock_tabs)
+        mock_tab_matcher.match.assert_called_once()
+        assert result == {"Page 1": [[[]]]}
 
-        with patch.multiple(
-            "harmonica_pipeline.video_creator",
-            AudioExtractor=MagicMock(),
-            MidiProcessor=MagicMock(return_value=mock_midi_processor),
-            TabMapper=MagicMock(return_value=mock_tab_mapper),
-            TabTextParser=MagicMock(),
-            HarmonicaLayout=MagicMock(),
-            FigureFactory=MagicMock(),
-            Animator=MagicMock(),
-            TabPhraseAnimator=MagicMock(),
-        ):
-            creator = VideoCreator(config)
-            creator.midi_processor = mock_midi_processor
-            creator.tab_mapper = mock_tab_mapper
+    def test_tab_matching_disabled(self, basic_config, create_video_creator_with_mocks):
+        """Test that tab matching is properly disabled when not configured."""
+        basic_config.enable_tab_matching = False
+        creator = create_video_creator_with_mocks(basic_config)
 
-            # Test MIDI loading
-            note_events = creator._load_midi_note_events()
-            assert note_events == mock_note_events
+        assert creator.tab_matcher is None
+        assert creator.config.enable_tab_matching is False
 
-            # Test tab conversion
-            tabs = creator._note_events_to_tabs(mock_note_events)
-            assert tabs == mock_tabs
-            mock_tab_mapper.note_events_to_tabs.assert_called_once_with(
-                mock_note_events
-            )
+    def test_match_tabs_error_when_disabled(
+        self, basic_config, create_video_creator_with_mocks
+    ):
+        """Test error when trying to match tabs but matching is disabled."""
+        creator = create_video_creator_with_mocks(basic_config)
+        creator.tab_matcher = None
 
-    def _create_config_with_matching_enabled(self, temp_dir):
-        """Helper to create config with tab matching enabled."""
-        config = self._create_basic_config(temp_dir)
-        config.enable_tab_matching = True
-        return config
+        mock_tabs = MagicMock()
 
-    def _create_basic_config(self, temp_dir):
-        """Helper to create basic config."""
-        video_path = temp_dir / "test.mp4"
-        tabs_path = temp_dir / "test.txt"
-        harmonica_path = temp_dir / "harmonica.png"
-        midi_path = temp_dir / "test.mid"
-        output_path = temp_dir / "output.mp4"
+        with pytest.raises(VideoCreatorError, match="Tab matching is disabled"):
+            creator._match_tabs(mock_tabs)
 
-        for path in [video_path, tabs_path, harmonica_path, midi_path]:
-            path.write_text("dummy")
+    def test_midi_processing_integration(
+        self, basic_config, create_video_creator_with_mocks
+    ):
+        """Test integration with MIDI processing components."""
+        creator = create_video_creator_with_mocks(basic_config)
 
-        return VideoCreatorConfig(
-            video_path=str(video_path),
-            tabs_path=str(tabs_path),
-            harmonica_path=str(harmonica_path),
-            midi_path=str(midi_path),
-            output_video_path=str(output_path),
-        )
+        mock_note_events = [(0.0, 0.5, 60, 0.8, 0.8)]
+        mock_tabs = MagicMock()
+
+        # Mock the internal components
+        creator.midi_processor = MagicMock()
+        creator.midi_processor.load_note_events.return_value = mock_note_events
+        creator.tab_mapper = MagicMock()
+        creator.tab_mapper.note_events_to_tabs.return_value = mock_tabs
+
+        # Test MIDI loading
+        note_events = creator._load_midi_note_events()
+        assert note_events == mock_note_events
+
+        # Test tab conversion
+        tabs = creator._note_events_to_tabs(mock_note_events)
+        assert tabs == mock_tabs
+        creator.tab_mapper.note_events_to_tabs.assert_called_once_with(mock_note_events)
