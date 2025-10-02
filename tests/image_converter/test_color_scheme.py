@@ -86,7 +86,7 @@ class TestColorScheme:
     def test_color_values_are_valid_hex(self, color_scheme):
         """Test that returned colors are valid hex color strings."""
         test_entries = [
-            TabEntry(tab=1, time=0.0, duration=0.5, confidence=0.8),   # Blow
+            TabEntry(tab=1, time=0.0, duration=0.5, confidence=0.8),  # Blow
             TabEntry(tab=-1, time=0.0, duration=0.5, confidence=0.8),  # Draw
         ]
 
@@ -126,10 +126,17 @@ class TestColorScheme:
         assert color_scheme.get_color(blow_entry) == OUT_COLOR
         assert color_scheme.get_color(draw_entry) == IN_COLOR
 
-    @pytest.mark.parametrize("tab_value,expected_color", [
-        (1, OUT_COLOR), (2, OUT_COLOR), (10, OUT_COLOR),
-        (-1, IN_COLOR), (-2, IN_COLOR), (-10, IN_COLOR),
-    ])
+    @pytest.mark.parametrize(
+        "tab_value,expected_color",
+        [
+            (1, OUT_COLOR),
+            (2, OUT_COLOR),
+            (10, OUT_COLOR),
+            (-1, IN_COLOR),
+            (-2, IN_COLOR),
+            (-10, IN_COLOR),
+        ],
+    )
     def test_parametrized_color_mapping(self, color_scheme, tab_value, expected_color):
         """Test color mapping with parametrized values."""
         tab_entry = TabEntry(tab=tab_value, time=0.0, duration=0.5, confidence=0.8)
@@ -155,8 +162,14 @@ class TestColorSchemeIntegration:
         ]
 
         expected_colors = [
-            OUT_COLOR, IN_COLOR, OUT_COLOR, IN_COLOR,
-            OUT_COLOR, IN_COLOR, IN_COLOR, OUT_COLOR
+            OUT_COLOR,
+            IN_COLOR,
+            OUT_COLOR,
+            IN_COLOR,
+            OUT_COLOR,
+            IN_COLOR,
+            IN_COLOR,
+            OUT_COLOR,
         ]
 
         actual_colors = [color_scheme.get_color(entry) for entry in sequence]

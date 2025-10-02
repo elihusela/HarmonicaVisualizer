@@ -2,11 +2,14 @@
 
 import pytest
 from image_converter.consts import (
-    IMAGE_WIDTH, IMAGE_HEIGHT,
-    C_BASIC_MODEL_WIDTH, C_BASIC_MODEL_HEIGHT,
-    OUT_COLOR, IN_COLOR,
+    IMAGE_WIDTH,
+    IMAGE_HEIGHT,
+    C_BASIC_MODEL_WIDTH,
+    C_BASIC_MODEL_HEIGHT,
+    OUT_COLOR,
+    IN_COLOR,
     C_BASIC_MODEL_HOLE_MAPPING,
-    C_NEW_MODEL_HOLE_MAPPING
+    C_NEW_MODEL_HOLE_MAPPING,
 )
 
 
@@ -34,13 +37,13 @@ class TestColorConstants:
     def test_color_values(self):
         """Test color constants are valid hex colors."""
         assert OUT_COLOR == "#41dd65"  # Green for blow notes
-        assert IN_COLOR == "#fd4444"   # Red for draw notes
+        assert IN_COLOR == "#fd4444"  # Red for draw notes
 
         # Verify they're valid hex color format
         assert OUT_COLOR.startswith("#")
         assert IN_COLOR.startswith("#")
         assert len(OUT_COLOR) == 7  # #RRGGBB
-        assert len(IN_COLOR) == 7   # #RRGGBB
+        assert len(IN_COLOR) == 7  # #RRGGBB
 
     def test_color_difference(self):
         """Test colors are different."""
@@ -50,7 +53,9 @@ class TestColorConstants:
 class TestHoleMappingStructure:
     """Test hole mapping data structure consistency."""
 
-    @pytest.mark.parametrize("mapping", [C_BASIC_MODEL_HOLE_MAPPING, C_NEW_MODEL_HOLE_MAPPING])
+    @pytest.mark.parametrize(
+        "mapping", [C_BASIC_MODEL_HOLE_MAPPING, C_NEW_MODEL_HOLE_MAPPING]
+    )
     def test_hole_mapping_structure(self, mapping):
         """Test hole mapping has correct structure."""
         # Should have holes 1-10
@@ -70,7 +75,9 @@ class TestHoleMappingStructure:
                 assert isinstance(coordinates[corner]["x"], int)
                 assert isinstance(coordinates[corner]["y"], int)
 
-    @pytest.mark.parametrize("mapping", [C_BASIC_MODEL_HOLE_MAPPING, C_NEW_MODEL_HOLE_MAPPING])
+    @pytest.mark.parametrize(
+        "mapping", [C_BASIC_MODEL_HOLE_MAPPING, C_NEW_MODEL_HOLE_MAPPING]
+    )
     def test_hole_coordinate_validity(self, mapping):
         """Test hole coordinates are reasonable."""
         for hole_num, coordinates in mapping.items():
@@ -78,13 +85,21 @@ class TestHoleMappingStructure:
             bottom_right = coordinates["bottom_right"]
 
             # Bottom right should be below and to the right of top left
-            assert bottom_right["x"] > top_left["x"], f"Hole {hole_num}: invalid x coordinates"
-            assert bottom_right["y"] > top_left["y"], f"Hole {hole_num}: invalid y coordinates"
+            assert (
+                bottom_right["x"] > top_left["x"]
+            ), f"Hole {hole_num}: invalid x coordinates"
+            assert (
+                bottom_right["y"] > top_left["y"]
+            ), f"Hole {hole_num}: invalid y coordinates"
 
             # Coordinates should be within reasonable image bounds
             for point in [top_left, bottom_right]:
-                assert 0 <= point["x"] <= IMAGE_WIDTH, f"Hole {hole_num}: x coordinate out of bounds"
-                assert 0 <= point["y"] <= IMAGE_HEIGHT, f"Hole {hole_num}: y coordinate out of bounds"
+                assert (
+                    0 <= point["x"] <= IMAGE_WIDTH
+                ), f"Hole {hole_num}: x coordinate out of bounds"
+                assert (
+                    0 <= point["y"] <= IMAGE_HEIGHT
+                ), f"Hole {hole_num}: y coordinate out of bounds"
 
     def test_hole_ordering(self):
         """Test holes are ordered left to right."""
@@ -92,13 +107,15 @@ class TestHoleMappingStructure:
             x_positions = []
             for hole_num in range(1, 11):
                 x_center = (
-                    mapping[hole_num]["top_left"]["x"] +
-                    mapping[hole_num]["bottom_right"]["x"]
+                    mapping[hole_num]["top_left"]["x"]
+                    + mapping[hole_num]["bottom_right"]["x"]
                 ) / 2
                 x_positions.append(x_center)
 
             # X positions should be increasing (left to right)
-            assert x_positions == sorted(x_positions), "Holes should be ordered left to right"
+            assert x_positions == sorted(
+                x_positions
+            ), "Holes should be ordered left to right"
 
     def test_basic_vs_new_model_differences(self):
         """Test that basic and new models have different coordinates."""
@@ -106,13 +123,15 @@ class TestHoleMappingStructure:
         assert C_BASIC_MODEL_HOLE_MAPPING != C_NEW_MODEL_HOLE_MAPPING
 
         # But same structure
-        assert set(C_BASIC_MODEL_HOLE_MAPPING.keys()) == set(C_NEW_MODEL_HOLE_MAPPING.keys())
+        assert set(C_BASIC_MODEL_HOLE_MAPPING.keys()) == set(
+            C_NEW_MODEL_HOLE_MAPPING.keys()
+        )
 
     def test_hole_size_consistency(self):
         """Test holes have consistent sizes within each model."""
         for mapping_name, mapping in [
             ("basic", C_BASIC_MODEL_HOLE_MAPPING),
-            ("new", C_NEW_MODEL_HOLE_MAPPING)
+            ("new", C_NEW_MODEL_HOLE_MAPPING),
         ]:
             widths = []
             heights = []
@@ -128,8 +147,12 @@ class TestHoleMappingStructure:
             height_range = max(heights) - min(heights)
 
             # Allow up to 20% variation in size
-            assert width_range <= max(widths) * 0.2, f"{mapping_name} model: width variation too large"
-            assert height_range <= max(heights) * 0.2, f"{mapping_name} model: height variation too large"
+            assert (
+                width_range <= max(widths) * 0.2
+            ), f"{mapping_name} model: width variation too large"
+            assert (
+                height_range <= max(heights) * 0.2
+            ), f"{mapping_name} model: height variation too large"
 
 
 class TestHoleMappingCalculations:
@@ -165,7 +188,7 @@ class TestHoleMappingCalculations:
             holes = list(mapping.items())
 
             for i, (hole1_num, hole1_coords) in enumerate(holes):
-                for hole2_num, hole2_coords in holes[i+1:]:
+                for hole2_num, hole2_coords in holes[i + 1 :]:
                     # Check if rectangles overlap
                     h1_left = hole1_coords["top_left"]["x"]
                     h1_right = hole1_coords["bottom_right"]["x"]
@@ -179,10 +202,10 @@ class TestHoleMappingCalculations:
 
                     # No overlap condition
                     no_overlap = (
-                        h1_right <= h2_left or   # hole1 completely to the left
-                        h2_right <= h1_left or   # hole2 completely to the left
-                        h1_bottom <= h2_top or   # hole1 completely above
-                        h2_bottom <= h1_top      # hole2 completely above
+                        h1_right <= h2_left  # hole1 completely to the left
+                        or h2_right <= h1_left  # hole2 completely to the left
+                        or h1_bottom <= h2_top  # hole1 completely above
+                        or h2_bottom <= h1_top  # hole2 completely above
                     )
 
                     assert no_overlap, f"Holes {hole1_num} and {hole2_num} overlap"

@@ -40,9 +40,7 @@ def sample_hole_mapping():
 def layout_config():
     """Create a basic layout configuration."""
     return LayoutConfig(
-        min_coordinate=0,
-        max_coordinate=1000,
-        validate_coordinates=True
+        min_coordinate=0, max_coordinate=1000, validate_coordinates=True
     )
 
 
@@ -53,7 +51,7 @@ def figure_config():
         background_color="#FF00FF",
         default_dpi=100,
         tight_layout=True,
-        transparent=False
+        transparent=False,
     )
 
 
@@ -106,10 +104,10 @@ def color_scheme():
 def sample_tab_entries():
     """Create sample TabEntry objects for testing."""
     return [
-        TabEntry(tab=1, time=0.0, duration=0.5, confidence=0.8),    # Blow
-        TabEntry(tab=-2, time=0.5, duration=0.5, confidence=0.8),   # Draw
-        TabEntry(tab=3, time=1.0, duration=0.5, confidence=0.8),    # Blow
-        TabEntry(tab=-4, time=1.5, duration=0.5, confidence=0.8),   # Draw
+        TabEntry(tab=1, time=0.0, duration=0.5, confidence=0.8),  # Blow
+        TabEntry(tab=-2, time=0.5, duration=0.5, confidence=0.8),  # Draw
+        TabEntry(tab=3, time=1.0, duration=0.5, confidence=0.8),  # Blow
+        TabEntry(tab=-4, time=1.5, duration=0.5, confidence=0.8),  # Draw
     ]
 
 
@@ -124,7 +122,7 @@ def sample_animation_pages(sample_tab_entries):
             ],
             [
                 [sample_tab_entries[3]],  # Single note chord
-            ]
+            ],
         ]
     }
 
@@ -176,5 +174,5 @@ def mock_matplotlib():
                 "animation": mock_animation,
                 "fig": mock_fig,
                 "ax": mock_ax,
-                "ani": mock_ani
+                "ani": mock_ani,
             }
