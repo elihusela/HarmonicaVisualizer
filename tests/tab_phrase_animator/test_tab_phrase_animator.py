@@ -1,8 +1,7 @@
 """Tests for tab_phrase_animator.tab_phrase_animator module."""
 
-import os
 import subprocess
-from unittest.mock import MagicMock, patch, call
+from unittest.mock import MagicMock, patch
 import pytest
 
 from tab_phrase_animator.tab_phrase_animator import (
@@ -12,8 +11,6 @@ from tab_phrase_animator.tab_phrase_animator import (
     PageStatistics,
 )
 from tab_converter.models import TabEntry
-from image_converter.harmonica_layout import HarmonicaLayout
-from image_converter.figure_factory import FigureFactory
 
 
 class TestAnimationConfig:
@@ -131,9 +128,7 @@ class TestTabPhraseAnimatorInitialization:
 
         with patch("os.path.exists", return_value=True):
             with patch("matplotlib.font_manager.fontManager.addfont") as mock_add:
-                animator = TabPhraseAnimator(
-                    mock_harmonica_layout, mock_figure_factory, config
-                )
+                TabPhraseAnimator(mock_harmonica_layout, mock_figure_factory, config)
 
         mock_add.assert_called_once_with("test.ttf")
 
@@ -192,12 +187,12 @@ class TestTabPhraseAnimatorValidation:
                 empty_pages, str(temp_audio_file), "/output/base"
             )
 
-    def test_create_animations_page_no_text_lines(self, basic_animator, temp_audio_file):
+    def test_create_animations_page_no_text_lines(
+        self, basic_animator, temp_audio_file
+    ):
         """Test animation creation with page that produces no text lines."""
         # Mock _prepare_text_data to return empty results
-        with patch.object(
-            basic_animator, "_prepare_text_data", return_value=([], [])
-        ):
+        with patch.object(basic_animator, "_prepare_text_data", return_value=([], [])):
             pages_with_entries = {
                 "Page 1": [[[TabEntry(tab=1, time=1.0, duration=0.5, confidence=0.8)]]]
             }
@@ -309,7 +304,9 @@ class TestTabPhraseAnimatorVideoProcessing:
 
     def test_create_transparent_video_success(self, basic_animator):
         """Test successful transparent video creation."""
-        with patch("tab_phrase_animator.tab_phrase_animator.subprocess.run") as mock_run:
+        with patch(
+            "tab_phrase_animator.tab_phrase_animator.subprocess.run"
+        ) as mock_run:
             mock_run.return_value = None
 
             basic_animator._create_transparent_video("input.mp4", "output.mov")
@@ -319,7 +316,9 @@ class TestTabPhraseAnimatorVideoProcessing:
             assert args[0] == "ffmpeg"
             assert "input.mp4" in args
             assert "output.mov" in args
-            assert "colorkey=0xFF00FF:0.3:0.0" in args
+            # Check for colorkey in the -vf argument
+            vf_index = args.index("-vf")
+            assert "colorkey=0xFF00FF:0.3:0.0" in args[vf_index + 1]
 
     def test_create_transparent_video_failure(self, basic_animator):
         """Test transparent video creation failure."""
@@ -337,9 +336,7 @@ class TestTabPhraseAnimatorVideoProcessing:
         with patch("subprocess.run") as mock_run:
             mock_run.return_value = None
 
-            basic_animator._extract_audio_slice(
-                "input.wav", "output.m4a", 1.5, 4.2
-            )
+            basic_animator._extract_audio_slice("input.wav", "output.m4a", 1.5, 4.2)
 
             mock_run.assert_called_once()
             args = mock_run.call_args[0][0]
@@ -355,21 +352,15 @@ class TestTabPhraseAnimatorVideoProcessing:
             "subprocess.run",
             side_effect=subprocess.CalledProcessError(1, "ffmpeg", stderr="Error"),
         ):
-            with pytest.raises(
-                TabPhraseAnimatorError, match="Audio extraction failed"
-            ):
-                basic_animator._extract_audio_slice(
-                    "input.wav", "output.m4a", 1.0, 2.0
-                )
+            with pytest.raises(TabPhraseAnimatorError, match="Audio extraction failed"):
+                basic_animator._extract_audio_slice("input.wav", "output.m4a", 1.0, 2.0)
 
     def test_combine_video_audio_success(self, basic_animator):
         """Test successful video/audio combination."""
         with patch("subprocess.run") as mock_run:
             mock_run.return_value = None
 
-            basic_animator._combine_video_audio(
-                "video.mov", "audio.m4a", "output.mov"
-            )
+            basic_animator._combine_video_audio("video.mov", "audio.m4a", "output.mov")
 
             mock_run.assert_called_once()
             args = mock_run.call_args[0][0]
@@ -451,7 +442,7 @@ class TestTabPhraseAnimatorMatplotlib:
         with patch.object(basic_animator, "_create_background_box") as mock_box:
             mock_box.return_value = MagicMock()
 
-            elements = basic_animator._update_text_frame(
+            basic_animator._update_text_frame(
                 6, mock_ax, 30, text_lines, line_entries, 1.0  # frame 6 = time 1.2
             )
 
@@ -491,7 +482,6 @@ class TestTabPhraseAnimatorMatplotlib:
             # Verify box sizing based on text content
             call_args = mock_patch.call_args
             box_position = call_args[0][0]  # (x, y)
-            box_size = call_args[0][1:3]  # width, height
 
             # Box should be sized appropriately for the content
             assert isinstance(box_position[0], float)  # x position
@@ -534,22 +524,31 @@ class TestTabPhraseAnimatorIntegration:
         assert mock_animation.call_count == len(sample_pages)
 
         # Verify FFmpeg processing was called
-        assert mock_subprocess.call_count >= len(sample_pages) * 3  # Each page needs multiple ffmpeg calls
+        assert (
+            mock_subprocess.call_count >= len(sample_pages) * 3
+        )  # Each page needs multiple ffmpeg calls
 
     def test_create_animations_with_fps_override(
         self, basic_animator, sample_pages, temp_audio_file
     ):
         """Test animation creation with FPS override."""
-        with patch("matplotlib.pyplot.subplots"):
+        with patch("matplotlib.pyplot.subplots") as mock_subplots:
             with patch("matplotlib.animation.FuncAnimation") as mock_animation:
-                with patch("subprocess.run"):
+                with patch("tab_phrase_animator.tab_phrase_animator.subprocess.run"):
                     with patch("os.path.exists", return_value=True):
                         with patch("os.remove"):
 
+                            # Mock matplotlib components
+                            mock_fig = MagicMock()
+                            mock_ax = MagicMock()
+                            mock_subplots.return_value = (mock_fig, mock_ax)
                             mock_animation.return_value = MagicMock()
 
-                            result = basic_animator.create_animations(
-                                sample_pages, str(temp_audio_file), "/output/base", fps=60
+                            basic_animator.create_animations(
+                                sample_pages,
+                                str(temp_audio_file),
+                                "/output/base",
+                                fps=60,
                             )
 
         # Verify FPS was used in animation
@@ -563,45 +562,74 @@ class TestTabPhraseAnimatorIntegration:
     ):
         """Test animation creation with cleanup disabled."""
         config = AnimationConfig(cleanup_temp_files=False)
-        animator = TabPhraseAnimator(mock_harmonica_layout, mock_figure_factory, config)
+        with patch.object(TabPhraseAnimator, "_load_font"):
+            animator = TabPhraseAnimator(
+                mock_harmonica_layout, mock_figure_factory, config
+            )
 
-        with patch("matplotlib.pyplot.subplots"):
+        with patch("matplotlib.pyplot.subplots") as mock_subplots:
             with patch("matplotlib.animation.FuncAnimation"):
-                with patch("subprocess.run"):
+                with patch("tab_phrase_animator.tab_phrase_animator.subprocess.run"):
                     with patch("os.path.exists", return_value=True):
                         with patch("os.remove") as mock_remove:
 
-                            result = animator.create_animations(
+                            # Mock matplotlib components
+                            mock_fig = MagicMock()
+                            mock_ax = MagicMock()
+                            mock_subplots.return_value = (mock_fig, mock_ax)
+
+                            animator.create_animations(
                                 sample_pages, str(temp_audio_file), "/output/base"
                             )
 
         # Verify no cleanup occurred
         mock_remove.assert_not_called()
 
-    def test_error_handling_during_page_creation(
-        self, basic_animator, temp_audio_file
-    ):
+    def test_error_handling_during_page_creation(self, basic_animator, temp_audio_file):
         """Test error handling when page creation fails."""
         problematic_pages = {
             "Page 1": [[[TabEntry(tab=1, time=1.0, duration=0.5, confidence=0.8)]]],
             "Page 2": [[[TabEntry(tab=2, time=2.0, duration=0.5, confidence=0.8)]]],
         }
 
-        # Mock the single page creation to fail on second page
-        original_method = basic_animator._create_single_page_animation
+        # Mock matplotlib and subprocess first
+        with patch("matplotlib.pyplot.subplots") as mock_subplots:
+            with patch("matplotlib.animation.FuncAnimation"):
+                with patch("tab_phrase_animator.tab_phrase_animator.subprocess.run"):
 
-        def side_effect(*args, **kwargs):
-            if args[1] == "Page 2":  # page_name
-                raise Exception("Simulated failure")
-            return original_method(*args, **kwargs)
+                    # Setup matplotlib mocks
+                    mock_fig = MagicMock()
+                    mock_ax = MagicMock()
+                    mock_subplots.return_value = (mock_fig, mock_ax)
 
-        with patch.object(
-            basic_animator, "_create_single_page_animation", side_effect=side_effect
-        ):
-            with pytest.raises(TabPhraseAnimatorError, match="Failed to create animation"):
-                basic_animator.create_animations(
-                    problematic_pages, str(temp_audio_file), "/output/base"
-                )
+                    # Mock the single page creation to fail on second page
+                    def side_effect(*args, **kwargs):
+                        if args[1] == "Page 2":  # page_name
+                            raise Exception("Simulated failure")
+                        # For Page 1, return a mock PageStatistics
+                        return PageStatistics(
+                            page_name="Page 1",
+                            total_entries=1,
+                            start_time=1.0,
+                            end_time=1.5,
+                            duration=0.5,
+                            total_frames=15,
+                            lines_count=1,
+                            chords_count=1,
+                            output_file="/output/page1.mov",
+                        )
+
+                    with patch.object(
+                        basic_animator,
+                        "_create_single_page_animation",
+                        side_effect=side_effect,
+                    ):
+                        with pytest.raises(
+                            TabPhraseAnimatorError, match="Failed to create animation"
+                        ):
+                            basic_animator.create_animations(
+                                problematic_pages, str(temp_audio_file), "/output/base"
+                            )
 
 
 class TestTabPhraseAnimatorStatistics:

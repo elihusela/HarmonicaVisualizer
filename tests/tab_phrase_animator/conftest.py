@@ -5,7 +5,7 @@ from pathlib import Path
 from unittest.mock import MagicMock
 
 from tab_phrase_animator.tab_text_parser import ParseConfig, ParseStatistics
-from tab_phrase_animator.tab_phrase_animator import TabPhraseAnimator, AnimationConfig
+from tab_phrase_animator.tab_phrase_animator import TabPhraseAnimator
 from tab_converter.models import TabEntry
 from image_converter.harmonica_layout import HarmonicaLayout
 from image_converter.figure_factory import FigureFactory
@@ -152,6 +152,7 @@ def create_tab_file(temp_test_dir):
 
 # TabPhraseAnimator specific fixtures
 
+
 @pytest.fixture
 def mock_harmonica_layout():
     """Mock HarmonicaLayout for testing."""
@@ -168,6 +169,7 @@ def mock_figure_factory():
 def basic_animator(mock_harmonica_layout, mock_figure_factory):
     """Basic TabPhraseAnimator with mocked dependencies."""
     from unittest.mock import patch
+
     with patch.object(TabPhraseAnimator, "_load_font"):
         return TabPhraseAnimator(mock_harmonica_layout, mock_figure_factory)
 
@@ -209,10 +211,12 @@ def sample_midi_tabs():
     """Sample MIDI tabs for testing."""
     from tab_converter.models import Tabs
 
-    return Tabs(tabs=[
-        TabEntry(tab=1, time=1.0, duration=0.5, confidence=0.8),
-        TabEntry(tab=2, time=1.5, duration=0.5, confidence=0.8),
-        TabEntry(tab=-3, time=2.0, duration=0.5, confidence=0.8),
-        TabEntry(tab=4, time=2.5, duration=0.5, confidence=0.8),
-        TabEntry(tab=-5, time=3.0, duration=0.5, confidence=0.8),
-    ])
+    return Tabs(
+        tabs=[
+            TabEntry(tab=1, time=1.0, duration=0.5, confidence=0.8),
+            TabEntry(tab=2, time=1.5, duration=0.5, confidence=0.8),
+            TabEntry(tab=-3, time=2.0, duration=0.5, confidence=0.8),
+            TabEntry(tab=4, time=2.5, duration=0.5, confidence=0.8),
+            TabEntry(tab=-5, time=3.0, duration=0.5, confidence=0.8),
+        ]
+    )
