@@ -81,9 +81,9 @@ def mock_figure_factory():
 def mock_harmonica_layout():
     """Create a mock HarmonicaLayout for testing."""
     layout = MagicMock(spec=HarmonicaLayout)
-    layout.get_hole_coordinates.return_value = MagicMock()
-    layout.get_hole_rectangle.return_value = MagicMock()
-    layout.get_all_hole_numbers.return_value = [1, 2, 3, 4, 5, 6, 7, 8, 9, 10]
+    layout.get_position.return_value = (100, 200)
+    layout.get_rectangle.return_value = (90, 190, 20, 20)
+    layout.get_all_holes.return_value = [1, 2, 3, 4, 5, 6, 7, 8, 9, 10]
     return layout
 
 
