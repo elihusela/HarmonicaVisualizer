@@ -623,3 +623,105 @@ class TestVideoCreatorIntegration:
         tabs = creator._note_events_to_tabs(mock_note_events)
         assert tabs == mock_tabs
         creator.tab_mapper.note_events_to_tabs.assert_called_once_with(mock_note_events)
+
+
+class TestVideoCreatorCoverageGaps:
+    """Test cases to achieve 100% coverage for VideoCreator."""
+
+    def test_tab_matching_initialization_with_config(self, config_with_tab_matching):
+        """Test tab matching initialization when enabled in config - Line 122."""
+        from unittest.mock import patch
+
+        with patch("harmonica_pipeline.video_creator.TabTextParser") as mock_parser:
+            with patch("harmonica_pipeline.video_creator.TabMatcher"):
+                with patch("harmonica_pipeline.video_creator.HarmonicaLayout"):
+                    with patch("harmonica_pipeline.video_creator.FigureFactory"):
+                        with patch("harmonica_pipeline.video_creator.Animator"):
+                            with patch(
+                                "harmonica_pipeline.video_creator.TabPhraseAnimator"
+                            ):
+                                VideoCreator(config_with_tab_matching)
+
+                                # Verify TabTextParser was initialized with tabs path
+                                mock_parser.assert_called_once_with(
+                                    config_with_tab_matching.tabs_path
+                                )
+
+    def test_midi_processor_error_handling(self, basic_config):
+        """Test MidiProcessorError handling in constructor - Lines 139-140."""
+        from harmonica_pipeline.midi_processor import MidiProcessorError
+        from unittest.mock import patch
+
+        with patch(
+            "harmonica_pipeline.video_creator.MidiProcessor",
+            side_effect=MidiProcessorError("MIDI error"),
+        ):
+            with pytest.raises(
+                VideoCreatorError, match="MIDI processing error: MIDI error"
+            ):
+                VideoCreator(basic_config)
+
+    def test_general_exception_handling(self, basic_config):
+        """Test general exception handling in constructor - Lines 141-142."""
+        from unittest.mock import patch
+
+        with patch(
+            "harmonica_pipeline.video_creator.TabMapper",
+            side_effect=RuntimeError("General error"),
+        ):
+            with pytest.raises(
+                VideoCreatorError,
+                match="Failed to initialize video creator: General error",
+            ):
+                VideoCreator(basic_config)
+
+    def test_tab_matching_print_statements(
+        self, config_with_tab_matching, create_video_creator_with_mocks
+    ):
+        """Test tab matching print statements - Lines 219-220."""
+        from unittest.mock import patch
+
+        creator = create_video_creator_with_mocks(config_with_tab_matching)
+
+        # Enable tab matching (already enabled in config)
+        creator.tabs_text_parser = MagicMock()
+        creator.tab_matcher = MagicMock()
+
+        mock_tabs = MagicMock()
+
+        with patch("builtins.print") as mock_print:
+            with patch.object(creator, "_match_tabs", return_value=mock_tabs):
+                # Call the create method which triggers the tab structure creation
+                creator.create(create_harmonica=False, create_tabs=False)
+
+                # Verify print statement was called during tab structure creation
+                mock_print.assert_any_call("🎯 Matching tabs with text notation...")
+
+    def test_audio_extraction_call(self, basic_config, create_video_creator_with_mocks):
+        """Test audio extraction method call - Line 241."""
+        creator = create_video_creator_with_mocks(basic_config)
+
+        # Mock the audio extractor
+        creator.audio_extractor = MagicMock()
+
+        creator._extract_audio()
+
+        # Verify audio extraction was called
+        creator.audio_extractor.extract_audio_from_video.assert_called_once()
+
+    def test_empty_create_method_return(
+        self, basic_config, create_video_creator_with_mocks
+    ):
+        """Test empty return in create method - Line 444."""
+        creator = create_video_creator_with_mocks(basic_config)
+
+        # Mock the internal methods to avoid actual processing
+        creator._extract_audio = MagicMock()
+        creator._load_midi_note_events = MagicMock(return_value=[])
+        creator._note_events_to_tabs = MagicMock(return_value=MagicMock(tabs=[]))
+
+        # Test with create_harmonica=False and create_tabs=False
+        result = creator.create(create_harmonica=False, create_tabs=False)
+
+        # Should return None (line 444)
+        assert result is None
