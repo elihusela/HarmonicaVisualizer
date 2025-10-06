@@ -770,3 +770,56 @@ class TestAudioExtractorUtilities:
         assert info["input_file"]["exists"] is False
         assert info["input_file"]["size_mb"] == 0
         assert info["capabilities"]["ffmpeg_available"] is False
+
+
+class TestAudioExtractorCoverageGaps:
+    """Test cases to achieve higher coverage for AudioExtractor."""
+
+    def test_cleanup_file_removal_error(self, temp_test_dir):
+        """Test OSError handling during file cleanup - Lines 124-125."""
+        video_path = temp_test_dir / "test.mp4"
+        audio_path = temp_test_dir / "output.wav"
+        video_path.write_text("dummy")
+
+        # Create the audio file so it exists for removal attempt
+        audio_path.write_text("dummy audio")
+
+        config = AudioConfig(cleanup_on_error=True)
+        extractor = AudioExtractor(str(video_path), str(audio_path), config)
+
+        # Mock extraction methods to fail and os.remove to raise OSError
+        with patch.object(
+            extractor, "_extract_with_moviepy", side_effect=Exception("MoviePy failed")
+        ):
+            with patch.object(
+                extractor,
+                "_extract_with_ffmpeg",
+                side_effect=Exception("FFmpeg failed"),
+            ):
+                with patch("os.remove", side_effect=OSError("Permission denied")):
+                    with pytest.raises(
+                        AudioExtractionError, match="All extraction methods failed"
+                    ):
+                        extractor.extract_audio_from_video()
+
+                    # File should still exist despite removal error
+                    assert audio_path.exists()
+
+    def test_duration_parsing_exception(self, temp_test_dir):
+        """Test Exception handling in duration parsing - Lines 363-364."""
+        video_path = temp_test_dir / "test.mp4"
+        audio_path = temp_test_dir / "output.wav"
+        video_path.write_text("dummy")
+
+        config = AudioConfig(prefer_moviepy=False)
+        extractor = AudioExtractor(str(video_path), str(audio_path), config)
+
+        # Mock re.search to raise an exception during parsing
+        with patch("re.search", side_effect=Exception("Regex processing error")):
+            # This should trigger the exception handling in _extract_duration_from_ffmpeg_output
+            duration = extractor._extract_duration_from_ffmpeg_output(
+                "Duration: 01:02:30.50"
+            )
+
+            # Should return None when parsing fails due to exception
+            assert duration is None

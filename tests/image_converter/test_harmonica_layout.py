@@ -409,3 +409,75 @@ class TestHarmonicaLayoutIntegration:
         # Test random access
         position_50 = layout.get_position(50)
         assert position_50[0] == 50 * 20 + 7  # center_x (integer division)
+
+
+class TestHarmonicaLayoutCoverageGaps:
+    """Test cases to achieve 100% coverage for HarmonicaLayout."""
+
+    def test_coordinate_calculation_exception_handling(self, temp_image_file):
+        """Test Exception handling during coordinate calculation - Lines 232-233."""
+        # Create a layout with invalid coordinate data that will cause an exception
+        # during coordinate calculation
+        hole_mapping = {
+            1: {
+                "top_left": {"x": 10, "y": 20},
+                "bottom_right": {"x": 40, "y": 50},
+            }
+        }
+
+        # Create layout but don't trigger coordinate calculation yet
+        layout = HarmonicaLayout.__new__(HarmonicaLayout)
+        layout._image_path = temp_image_file
+        layout._hole_raw_data = hole_mapping
+        layout._config = LayoutConfig()
+
+        # Create corrupted hole data that will cause an exception
+        corrupted_mapping = {
+            1: {
+                "top_left": {"x": "invalid", "y": 20},  # Invalid data type
+                "bottom_right": {"x": 40, "y": 50},
+            }
+        }
+        layout._hole_raw_data = corrupted_mapping
+
+        with pytest.raises(
+            HarmonicaLayoutError, match="Failed to calculate coordinates for hole 1"
+        ):
+            layout._calculate_hole_coordinates()
+
+    def test_get_bounds_with_empty_coordinates(self, temp_image_file):
+        """Test get_bounds when no hole coordinates exist - Line 259."""
+        # Create a layout with valid data first
+        hole_mapping = {
+            1: {
+                "top_left": {"x": 10, "y": 20},
+                "bottom_right": {"x": 40, "y": 50},
+            }
+        }
+        layout = HarmonicaLayout(temp_image_file, hole_mapping)
+
+        # Clear the coordinates after initialization to simulate empty state
+        layout._hole_coordinates = {}
+
+        bounds = layout._get_coordinate_range()
+
+        # Should return zeros when no coordinates exist
+        assert bounds == {"x_min": 0, "x_max": 0, "y_min": 0, "y_max": 0}
+
+    def test_hole_raw_data_property_getter(self, temp_image_file):
+        """Test hole_raw_data property getter - Line 303."""
+        hole_mapping = {
+            1: {
+                "top_left": {"x": 10, "y": 20},
+                "bottom_right": {"x": 40, "y": 50},
+            }
+        }
+
+        layout = HarmonicaLayout(temp_image_file, hole_mapping)
+
+        # Access the property to trigger the getter
+        raw_data = layout.hole_raw_data
+
+        # Should return the same data that was passed in
+        assert raw_data == hole_mapping
+        assert raw_data is layout._hole_raw_data

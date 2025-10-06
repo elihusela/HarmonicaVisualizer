@@ -649,3 +649,86 @@ class TestTabTextParserErrorRecovery:
         # Should have warnings
         captured = capsys.readouterr()
         assert "Error parsing line" in captured.out
+
+
+class TestTabTextParserCoverageGaps:
+    """Test cases to achieve 100% coverage for TabTextParser."""
+
+    def test_file_size_error_handling(self, temp_test_dir):
+        """Test OSError handling when getting file size - Lines 121-122."""
+        from unittest.mock import patch
+
+        test_file = temp_test_dir / "test.txt"
+        test_file.write_text("Page 1:\n1 2 3")
+
+        with patch("os.path.getsize", side_effect=OSError("Permission denied")):
+            parser = TabTextParser(str(test_file))
+            file_info = parser.get_file_info()
+
+            # Should handle OSError and set file_size_bytes to 0
+            assert file_info["file_size_bytes"] == 0
+
+    def test_file_validation_unicode_error(self, temp_test_dir):
+        """Test UnicodeDecodeError handling during file validation - Lines 168-169."""
+        from unittest.mock import patch, mock_open
+
+        test_file = temp_test_dir / "test.txt"
+        test_file.write_text("1 2 3")
+
+        # Mock file opening to raise UnicodeDecodeError during validation
+        with patch("builtins.open", mock_open()) as mock_file:
+            mock_file.side_effect = UnicodeDecodeError(
+                "utf-8", b"invalid", 0, 1, "invalid byte"
+            )
+
+            with pytest.raises(TabTextParserError, match="Cannot read tab file"):
+                TabTextParser(str(test_file))
+
+    def test_file_validation_io_error(self, temp_test_dir):
+        """Test IOError handling during file validation - Lines 168-169."""
+        from unittest.mock import patch, mock_open
+
+        test_file = temp_test_dir / "test.txt"
+        test_file.write_text("1 2 3")
+
+        # Mock file opening to raise IOError during validation
+        with patch("builtins.open", mock_open()) as mock_file:
+            mock_file.side_effect = IOError("File access denied")
+
+            with pytest.raises(TabTextParserError, match="Cannot read tab file"):
+                TabTextParser(str(test_file))
+
+    def test_page_name_with_whitespace(self, temp_test_dir):
+        """Test page parsing with stripped line content - Line 201."""
+        test_file = temp_test_dir / "whitespace_page.txt"
+        test_file.write_text(
+            "   Page 1   \n"  # Page name with leading/trailing whitespace
+            "1 2 3\n"
+            "4 5 6\n"
+        )
+
+        parser = TabTextParser(str(test_file))
+        pages = parser.get_pages()
+
+        # Should strip whitespace and use "Page 1" as key
+        assert "Page 1" in pages
+        assert len(pages["Page 1"]) == 2
+
+    def test_file_loading_io_error(self, temp_test_dir):
+        """Test IOError handling during file loading - Line 226."""
+        from unittest.mock import patch, MagicMock
+
+        test_file = temp_test_dir / "test.txt"
+        test_file.write_text("Page 1:\n1 2 3")
+
+        # Mock that passes validation but fails during actual parsing
+        with patch("builtins.open") as mock_open:
+            # First call (validation) succeeds
+            # Second call (_load_and_parse) fails
+            mock_open.side_effect = [
+                MagicMock(),  # Success for validation
+                IOError("Disk error during parsing"),  # Failure during parsing
+            ]
+
+            with pytest.raises(TabTextParserError, match="Error reading file"):
+                TabTextParser(str(test_file))
