@@ -10,6 +10,7 @@ See TODO: Analyze and improve tab matching algorithm for better accuracy.
 
 from typing import Dict, List, Optional
 from tab_converter.models import TabEntry, Tabs
+from tab_phrase_animator.tab_text_parser import ParsedNote
 
 
 class TabMatcherError(Exception):
@@ -51,14 +52,14 @@ class TabMatcher:
         }
 
     def match(
-        self, midi_tabs: Tabs, parsed_pages: Dict[str, List[List[List[int]]]]
+        self, midi_tabs: Tabs, parsed_pages: Dict[str, List[List[List[ParsedNote]]]]
     ) -> Dict[str, List[List[Optional[List[TabEntry]]]]]:
         """
         Match parsed tab chords against MIDI-derived tab entries.
 
         Args:
             midi_tabs: Tabs object with MIDI-derived timing information
-            parsed_pages: Dict of page -> lines -> chords -> note numbers
+            parsed_pages: Dict of page -> lines -> chords -> ParsedNote objects
 
         Returns:
             Dict mapping pages to lines to chords to matched TabEntries
@@ -97,7 +98,10 @@ class TabMatcher:
             raise TabMatcherError(f"Tab matching failed: {e}")
 
     def _match_page(
-        self, page_name: str, lines: List[List[List[int]]], midi_entries: List[TabEntry]
+        self,
+        page_name: str,
+        lines: List[List[List[ParsedNote]]],
+        midi_entries: List[TabEntry],
     ) -> List[List[Optional[List[TabEntry]]]]:
         """Match a single page of tab notation."""
         page_result: List[List[Optional[List[TabEntry]]]] = []
@@ -111,7 +115,10 @@ class TabMatcher:
         return page_result
 
     def _match_line(
-        self, line_name: str, line: List[List[int]], midi_entries: List[TabEntry]
+        self,
+        line_name: str,
+        line: List[List[ParsedNote]],
+        midi_entries: List[TabEntry],
     ) -> List[Optional[List[TabEntry]]]:
         """Match a single line of tab notation."""
         line_result: List[Optional[List[TabEntry]]] = []
@@ -135,10 +142,10 @@ class TabMatcher:
         return line_result
 
     def _match_chord(
-        self, chord_name: str, chord: List[int], midi_entries: List[TabEntry]
+        self, chord_name: str, chord: List[ParsedNote], midi_entries: List[TabEntry]
     ) -> List[TabEntry] | None:
         """
-        Match a single chord (list of note numbers) with MIDI entries.
+        Match a single chord (list of ParsedNote objects) with MIDI entries.
 
         TODO: Improve this algorithm - current implementation is very basic:
         - Uses simple first-match strategy
@@ -148,18 +155,19 @@ class TabMatcher:
         """
         matched_entries: List[TabEntry] = []
 
-        for note in chord:
+        for parsed_note in chord:
             match_found = False
 
             # Simple first-match algorithm (TODO: improve this)
             for idx, entry in enumerate(midi_entries):
-                if entry.tab == note:
+                if entry.tab == parsed_note.hole_number:
                     matched_entries.append(
                         TabEntry(
-                            tab=note,
+                            tab=parsed_note.hole_number,
                             time=entry.time,
                             duration=entry.duration,
                             confidence=entry.confidence,
+                            is_bend=parsed_note.is_bend,
                         )
                     )
                     midi_entries.pop(idx)
@@ -167,13 +175,16 @@ class TabMatcher:
                     self._match_statistics["notes_matched"] += 1
 
                     if self.enable_debug:
-                        print(f"✅ Matched note {note} at time {entry.time}")
+                        bend_marker = "'" if parsed_note.is_bend else ""
+                        print(
+                            f"✅ Matched note {parsed_note.hole_number}{bend_marker} at time {entry.time}"
+                        )
                     break
 
             if not match_found:
                 self._match_statistics["notes_unmatched"] += 1
                 if self.enable_debug:
-                    print(f"❌ No MIDI entry found for note {note}")
+                    print(f"❌ No MIDI entry found for note {parsed_note.hole_number}")
 
         return matched_entries if matched_entries else None
 

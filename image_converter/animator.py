@@ -8,7 +8,7 @@ from matplotlib.axes import Axes
 from matplotlib.patches import Rectangle
 from matplotlib.text import Text
 
-from image_converter.consts import IN_COLOR, OUT_COLOR
+from image_converter.consts import IN_COLOR, OUT_COLOR, BEND_COLOR
 from image_converter.figure_factory import FigureFactory
 from image_converter.harmonica_layout import HarmonicaLayout
 from image_converter.video_processor import VideoProcessor, VideoProcessorError
@@ -197,6 +197,16 @@ class Animator:
 
     @staticmethod
     def _get_color(tab_entry: TabEntry) -> str:
+        """
+        Get the color for a tab entry.
+
+        Returns:
+            BEND_COLOR (orange) if the note is bent,
+            OUT_COLOR (green) if blow note,
+            IN_COLOR (red) if draw note
+        """
+        if tab_entry.is_bend:
+            return BEND_COLOR
         return OUT_COLOR if tab_entry.tab > 0 else IN_COLOR
 
     @staticmethod

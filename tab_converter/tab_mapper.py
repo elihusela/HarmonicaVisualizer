@@ -110,8 +110,20 @@ class TabMapper:
         duration = round(event.end_time - event.start_time, 5)
         confidence = round(event.confidence, 5)
 
+        # TODO: Add MIDI bend detection
+        # Currently, bend notation is only supported in .txt files.
+        # Future enhancement: Detect pitch bends from MIDI pitch bend events
+        # and automatically set is_bend=True for bent notes.
+        # This would require analyzing MIDI pitch bend messages and correlating
+        # them with note events.
+        is_bend = False
+
         return TabEntry(
-            tab=tab_hole, time=start_time, duration=duration, confidence=confidence
+            tab=tab_hole,
+            time=start_time,
+            duration=duration,
+            confidence=confidence,
+            is_bend=is_bend,
         )
 
     def save_tabs_to_json(self, tabs: Tabs, filename: str) -> None:

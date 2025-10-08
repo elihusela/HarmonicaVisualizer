@@ -6,6 +6,7 @@ C_BASIC_MODEL_HEIGHT = 84
 
 OUT_COLOR = "#41dd65"  # GREEN
 IN_COLOR = "#fd4444"  # RED
+BEND_COLOR = "#ff8c00"  # ORANGE (DarkOrange)
 
 C_BASIC_MODEL_HOLE_MAPPING = {
     1: {"top_left": {"x": 330, "y": 347}, "bottom_right": {"x": 390, "y": 413}},

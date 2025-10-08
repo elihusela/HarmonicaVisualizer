@@ -107,7 +107,7 @@ class TestTabTextParserValidInputs:
         test_file.write_text("Page 1:\n1 2 3 -4 -5 -6\n4 5 6 -1 -2 -3")
 
         parser = TabTextParser(str(test_file))
-        pages = parser.get_pages()
+        pages = parser.get_pages_as_int()
 
         assert len(pages) == 1
         assert "Page 1" in pages
@@ -129,7 +129,7 @@ class TestTabTextParserValidInputs:
         )  # Adjacent notes forming chords
 
         parser = TabTextParser(str(test_file))
-        pages = parser.get_pages()
+        pages = parser.get_pages_as_int()
 
         line = pages["Page 1"][0]
         assert line == [[1, 2], [2, 3], [4, 5], [-4, -5], [-6, -7]]
@@ -152,7 +152,7 @@ Page Chorus:
 
         config = ParseConfig(validate_hole_numbers=True, max_hole=10)
         parser = TabTextParser(str(test_file), config)
-        pages = parser.get_pages()
+        pages = parser.get_pages_as_int()
         stats = parser.get_statistics()
 
         # Should have all pages
@@ -307,7 +307,7 @@ class TestTabTextParserChordValidation:
 
         config = ParseConfig(validate_hole_numbers=True)
         parser = TabTextParser(str(test_file), config)
-        pages = parser.get_pages()
+        pages = parser.get_pages_as_int()
 
         line = pages["Page 1"][0]
         assert line == [[1], [-2], [3], [-4], [5], [-6], [7], [-8], [9]]
@@ -321,7 +321,7 @@ class TestTabTextParserChordValidation:
 
         config = ParseConfig(validate_hole_numbers=True)
         parser = TabTextParser(str(test_file), config)
-        pages = parser.get_pages()
+        pages = parser.get_pages_as_int()
 
         line = pages["Page 1"][0]
         assert line == [[1, 2], [2, 3], [3, 4], [4, 5], [5, 6], [6, 7], [7, 8], [8, 9]]
@@ -333,7 +333,7 @@ class TestTabTextParserChordValidation:
 
         config = ParseConfig(validate_hole_numbers=True)
         parser = TabTextParser(str(test_file), config)
-        pages = parser.get_pages()
+        pages = parser.get_pages_as_int()
 
         line = pages["Page 1"][0]
         assert line == [[-1, -2], [-3, -4], [-4, -5], [-6, -7], [-8, -9]]
@@ -345,7 +345,7 @@ class TestTabTextParserChordValidation:
 
         config = ParseConfig(validate_hole_numbers=True)
         parser = TabTextParser(str(test_file), config)
-        pages = parser.get_pages()
+        pages = parser.get_pages_as_int()
 
         line = pages["Page 1"][0]
         assert line == [[1], [2, 3], [-4], [-5, -6], [7], [8, 9]]
@@ -393,7 +393,7 @@ class TestTabTextParserChordValidation:
 
         config = ParseConfig(validate_hole_numbers=False)
         parser = TabTextParser(str(test_file), config)
-        pages = parser.get_pages()
+        pages = parser.get_pages_as_int()
 
         line = pages["Page 1"][0]
         assert line == [
@@ -434,7 +434,7 @@ class TestTabTextParserChordValidation:
         config = ParseConfig(validate_hole_numbers=True, min_hole=3, max_hole=6)
         parser = TabTextParser(str(test_file), config)
 
-        pages = parser.get_pages()
+        pages = parser.get_pages_as_int()
         assert pages["Page 1"][0] == [[3], [4], [5], [6]]
 
     def test_hole_range_validation_out_of_custom_range(self, temp_test_dir):
@@ -595,7 +595,7 @@ class TestTabTextParserGetters:
         config = ParseConfig(allow_empty_pages=True)
         parser = TabTextParser(str(test_file), config)
 
-        pages = parser.get_pages()
+        pages = parser.get_pages_as_int()
         assert len(pages) == 3
         assert len(pages["Page 2"]) == 0  # Empty page
 
@@ -605,7 +605,7 @@ class TestTabTextParserGetters:
         test_file.write_text("1 2 3\nPage 1:\n4 5 6")
 
         parser = TabTextParser(str(test_file))
-        pages = parser.get_pages()
+        pages = parser.get_pages_as_int()
 
         # Should only have Page 1 content
         assert len(pages) == 1

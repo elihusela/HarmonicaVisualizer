@@ -5,6 +5,7 @@ import pytest
 
 from harmonica_pipeline.video_creator_config import VideoCreatorConfig
 from tab_converter.models import TabEntry
+from tab_phrase_animator.tab_text_parser import ParsedNote
 
 
 @pytest.fixture
@@ -114,10 +115,18 @@ def sample_midi_tabs():
 
 @pytest.fixture
 def sample_parsed_pages():
-    """Create sample parsed page structure for testing."""
+    """Create sample parsed page structure for testing with ParsedNote objects."""
     return {
-        "Page 1": [[[1], [2, 3]]],  # Line 1: chord 1, chord 2+3
-        "Page 2": [[[4]], [[-5, -6]]],  # Line 1: chord 4, Line 2: chord -5+-6
+        "Page 1": [
+            [
+                [ParsedNote(1, False)],  # Chord 1
+                [ParsedNote(2, False), ParsedNote(3, False)],  # Chord 2+3
+            ]
+        ],
+        "Page 2": [
+            [[ParsedNote(4, False)]],  # Line 1: chord 4
+            [[ParsedNote(-5, False), ParsedNote(-6, False)]],  # Line 2: chord -5+-6
+        ],
     }
 
 

@@ -8,6 +8,7 @@ class TabEntry:
     time: float
     duration: float
     confidence: float
+    is_bend: bool = False
 
 
 @dataclass

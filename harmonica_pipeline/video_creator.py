@@ -352,12 +352,19 @@ class VideoCreator:
 
                     # Find next matching MIDI entries for this chord in chronological order
                     chord_entries = []
-                    for tab_value in chord_tabs:
+                    for parsed_note in chord_tabs:
                         # Search for the next MIDI entry that matches this tab value
                         found_entry = None
                         for i in range(midi_index, len(sorted_midi_entries)):
-                            if sorted_midi_entries[i].tab == tab_value:
-                                found_entry = sorted_midi_entries[i]
+                            if sorted_midi_entries[i].tab == parsed_note.hole_number:
+                                # Copy MIDI timing but preserve bend info from parsed note
+                                found_entry = TabEntry(
+                                    tab=sorted_midi_entries[i].tab,
+                                    time=sorted_midi_entries[i].time,
+                                    duration=sorted_midi_entries[i].duration,
+                                    confidence=sorted_midi_entries[i].confidence,
+                                    is_bend=parsed_note.is_bend,
+                                )
                                 midi_index = i + 1  # Move to next entry for next search
                                 break
 
@@ -371,10 +378,11 @@ class VideoCreator:
                                 else 0.0
                             )
                             fallback_entry = TabEntry(
-                                tab=tab_value,
+                                tab=parsed_note.hole_number,
                                 time=last_time + 0.5,
                                 duration=0.5,
                                 confidence=0.5,
+                                is_bend=parsed_note.is_bend,
                             )
                             chord_entries.append(fallback_entry)
 
@@ -394,7 +402,7 @@ class VideoCreator:
         return animation_structure
 
     def _create_text_only_structure(
-        self, parsed_pages: Dict[str, List[List[List[int]]]]
+        self, parsed_pages
     ) -> Dict[str, List[List[Optional[List[TabEntry]]]]]:
         """
         Create structure from text file only (fallback when no MIDI available).
@@ -413,9 +421,16 @@ class VideoCreator:
                         continue
 
                     # Create dummy TabEntry objects with 0.5 second duration
+                    # chord_tabs contains ParsedNote objects
                     chord_entries = [
-                        TabEntry(tab=tab_value, time=0.0, duration=0.5, confidence=1.0)
-                        for tab_value in chord_tabs
+                        TabEntry(
+                            tab=parsed_note.hole_number,
+                            time=0.0,
+                            duration=0.5,
+                            confidence=1.0,
+                            is_bend=parsed_note.is_bend,
+                        )
+                        for parsed_note in chord_tabs
                     ]
                     animation_chords.append(chord_entries)
 

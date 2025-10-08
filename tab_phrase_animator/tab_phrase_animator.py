@@ -16,7 +16,7 @@ import matplotlib.pyplot as plt
 from matplotlib.axes import Axes
 from matplotlib.patches import FancyBboxPatch
 
-from image_converter.consts import IN_COLOR, OUT_COLOR
+from image_converter.consts import IN_COLOR, OUT_COLOR, BEND_COLOR
 from image_converter.figure_factory import FigureFactory
 from image_converter.harmonica_layout import HarmonicaLayout
 from tab_converter.models import TabEntry
@@ -339,6 +339,10 @@ class TabPhraseAnimator:
                     else:
                         chord_str = "".join(str(abs(n)) for n in tabs)
 
+                    # Add bend notation if the first note (anchor) is bent
+                    if chord[0].is_bend:
+                        chord_str += "'"
+
                     line_texts.append(chord_str)
                     line_tab_entries.append(chord[0])  # Anchor on first note
 
@@ -565,10 +569,13 @@ class TabPhraseAnimator:
             for j, (char, entry) in enumerate(zip(line_texts, line_tab_entries)):
                 xpos = 0.5 + (j - (line_len - 1) / 2) * self._config.char_spacing
 
-                # Determine color based on timing and tab direction
+                # Determine color based on timing, bend status, and tab direction
                 color = "white"
                 if entry.time <= current_time <= entry.time + (entry.duration or 0.5):
-                    color = OUT_COLOR if entry.tab > 0 else IN_COLOR
+                    if entry.is_bend:
+                        color = BEND_COLOR  # Orange for bent notes
+                    else:
+                        color = OUT_COLOR if entry.tab > 0 else IN_COLOR
 
                 txt = ax.text(
                     xpos,
