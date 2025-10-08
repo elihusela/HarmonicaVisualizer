@@ -213,7 +213,7 @@ Page Chorus:
         # Disable validation since 345 and 67 will be out of range
         config = ParseConfig(validate_hole_numbers=False)
         parser = TabTextParser(str(test_file), config)
-        pages = parser.get_pages()
+        pages = parser.get_pages_as_int()
 
         line1 = pages["Page 1"][0]
         line2 = pages["Page 1"][1]

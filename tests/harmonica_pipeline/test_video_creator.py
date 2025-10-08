@@ -294,9 +294,13 @@ class TestVideoCreatorTextBasedStructure:
 
         # Mock tab text parser - text order matches MIDI chronological order
         mock_parser = MagicMock()
-        mock_parser.get_pages.return_value = make_parsed_pages({
-            "Page 1": [[[1], [2], [3]]],  # Text order matches MIDI chronological order
-        })
+        mock_parser.get_pages.return_value = make_parsed_pages(
+            {
+                "Page 1": [
+                    [[1], [2], [3]]
+                ],  # Text order matches MIDI chronological order
+            }
+        )
         creator.tabs_text_parser = mock_parser
 
         # MIDI tabs in chronological order: 1, 2, 3
@@ -328,9 +332,11 @@ class TestVideoCreatorTextBasedStructure:
         creator = create_video_creator_with_mocks(config_with_tabs)
 
         mock_parser = MagicMock()
-        mock_parser.get_pages.return_value = make_parsed_pages({
-            "Page 1": [[[1], [2], [3], [4]]],  # 4 positions in text
-        })
+        mock_parser.get_pages.return_value = make_parsed_pages(
+            {
+                "Page 1": [[[1], [2], [3], [4]]],  # 4 positions in text
+            }
+        )
         creator.tabs_text_parser = mock_parser
 
         # Only 2 MIDI entries available
@@ -365,10 +371,12 @@ class TestVideoCreatorTextBasedStructure:
         """Test fallback to text-only structure when no MIDI available."""
         creator = create_video_creator_with_mocks(config_with_tabs)
 
-        parsed_pages = {
-            "Page 1": [[[1], [2, 3]]],
-            "Page 2": [[[4]], [[-5]]],
-        }
+        parsed_pages = make_parsed_pages(
+            {
+                "Page 1": [[[1], [2, 3]]],
+                "Page 2": [[[4]], [[-5]]],
+            }
+        )
 
         result = creator._create_text_only_structure(parsed_pages)
 

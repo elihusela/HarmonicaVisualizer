@@ -16,7 +16,10 @@ def make_parsed_pages(page_data):
     result = {}
     for page_name, lines in page_data.items():
         result[page_name] = [
-            [[ParsedNote(hole_number=note, is_bend=False) for note in chord] for chord in line]
+            [
+                [ParsedNote(hole_number=note, is_bend=False) for note in chord]
+                for chord in line
+            ]
             for line in lines
         ]
     return result
@@ -160,7 +163,9 @@ class TestTabMatcherBasicMatching:
         """Test behavior when no match is found for a note."""
         matcher = TabMatcher()
         midi_tabs = Tabs(tabs=[TabEntry(tab=1, time=1.0, duration=0.5, confidence=0.8)])
-        parsed_pages = make_parsed_pages({"Page 1": [[[2]]]})  # Looking for tab 2, but only have tab 1
+        parsed_pages = make_parsed_pages(
+            {"Page 1": [[[2]]]}
+        )  # Looking for tab 2, but only have tab 1
 
         result = matcher.match(midi_tabs, parsed_pages)
 
@@ -176,7 +181,9 @@ class TestTabMatcherBasicMatching:
                 TabEntry(tab=3, time=1.5, duration=0.5, confidence=0.8),
             ]
         )
-        parsed_pages = make_parsed_pages({"Page 1": [[[1, 2]]]})  # Chord needs both 1 and 2
+        parsed_pages = make_parsed_pages(
+            {"Page 1": [[[1, 2]]]}
+        )  # Chord needs both 1 and 2
 
         result = matcher.match(midi_tabs, parsed_pages)
 
@@ -201,10 +208,12 @@ class TestTabMatcherMultiplePages:
                 TabEntry(tab=4, time=2.5, duration=0.5, confidence=0.8),
             ]
         )
-        parsed_pages = make_parsed_pages({
-            "Page 1": [[[1], [2]]],
-            "Page 2": [[[3], [4]]],
-        })
+        parsed_pages = make_parsed_pages(
+            {
+                "Page 1": [[[1], [2]]],
+                "Page 2": [[[3], [4]]],
+            }
+        )
 
         result = matcher.match(midi_tabs, parsed_pages)
 
@@ -226,12 +235,14 @@ class TestTabMatcherMultiplePages:
                 TabEntry(tab=4, time=2.5, duration=0.5, confidence=0.8),
             ]
         )
-        parsed_pages = make_parsed_pages({
-            "Page 1": [
-                [[1], [2]],  # Line 1
-                [[3], [4]],  # Line 2
-            ]
-        })
+        parsed_pages = make_parsed_pages(
+            {
+                "Page 1": [
+                    [[1], [2]],  # Line 1
+                    [[3], [4]],  # Line 2
+                ]
+            }
+        )
 
         result = matcher.match(midi_tabs, parsed_pages)
 
@@ -283,7 +294,9 @@ class TestTabMatcherAlgorithmBehavior:
                 TabEntry(tab=2, time=2.0, duration=0.5, confidence=0.8),
             ]
         )
-        parsed_pages = make_parsed_pages({"Page 1": [[[1], [1]]]})  # Two chords looking for tab 1
+        parsed_pages = make_parsed_pages(
+            {"Page 1": [[[1], [1]]]}
+        )  # Two chords looking for tab 1
 
         result = matcher.match(midi_tabs, parsed_pages)
 
@@ -348,7 +361,9 @@ class TestTabMatcherStatistics:
                 TabEntry(tab=1, time=1.0, duration=0.5, confidence=0.8),
             ]
         )
-        parsed_pages = make_parsed_pages({"Page 1": [[[2], [3]]]})  # Looking for tabs that don't exist
+        parsed_pages = make_parsed_pages(
+            {"Page 1": [[[2], [3]]]}
+        )  # Looking for tabs that don't exist
 
         matcher.match(midi_tabs, parsed_pages)
         stats = matcher.get_statistics()
@@ -368,7 +383,9 @@ class TestTabMatcherStatistics:
                 TabEntry(tab=2, time=1.5, duration=0.5, confidence=0.8),
             ]
         )
-        parsed_pages = make_parsed_pages({"Page 1": [[[1, 3], [2, 4]]]})  # Mixed valid/invalid notes
+        parsed_pages = make_parsed_pages(
+            {"Page 1": [[[1, 3], [2, 4]]]}
+        )  # Mixed valid/invalid notes
 
         matcher.match(midi_tabs, parsed_pages)
         stats = matcher.get_statistics()
@@ -387,14 +404,16 @@ class TestTabMatcherStatistics:
         midi_tabs1 = Tabs(
             tabs=[TabEntry(tab=1, time=1.0, duration=0.5, confidence=0.8)]
         )
-        parsed_pages1 = {"Page 1": [[[1]]]}
+        parsed_pages1 = make_parsed_pages({"Page 1": [[[1]]]})
         matcher.match(midi_tabs1, parsed_pages1)
 
         # Second match operation should reset statistics
         midi_tabs2 = Tabs(
             tabs=[TabEntry(tab=2, time=2.0, duration=0.5, confidence=0.8)]
         )
-        parsed_pages2 = {"Page 1": [[[2], [3]]]}  # One match, one miss
+        parsed_pages2 = make_parsed_pages(
+            {"Page 1": [[[2], [3]]]}
+        )  # One match, one miss
         matcher.match(midi_tabs2, parsed_pages2)
 
         stats = matcher.get_statistics()
@@ -431,7 +450,9 @@ class TestTabMatcherDebugMode:
                 TabEntry(tab=1, time=1.0, duration=0.5, confidence=0.8),
             ]
         )
-        parsed_pages = make_parsed_pages({"Page 1": [[[1], [2]]]})  # One match, one miss
+        parsed_pages = make_parsed_pages(
+            {"Page 1": [[[1], [2]]]}
+        )  # One match, one miss
 
         with patch("builtins.print") as mock_print:
             matcher.match(midi_tabs, parsed_pages)
@@ -494,7 +515,9 @@ class TestTabMatcherErrorHandling:
                 TabEntry(tab=1, time=1.0, duration=0.5, confidence=0.8),
             ]
         )
-        parsed_pages = make_parsed_pages({"Page 1": [[[1], [], []]]})  # Mixed content with empty chords
+        parsed_pages = make_parsed_pages(
+            {"Page 1": [[[1], [], []]]}
+        )  # Mixed content with empty chords
 
         result = matcher.match(midi_tabs, parsed_pages)
 
@@ -553,9 +576,9 @@ class TestTabMatcherErrorHandling:
         midi_tabs = Tabs(tabs=midi_entries)
 
         # Create many parsed entries
-        parsed_pages = make_parsed_pages({
-            f"Page {i}": [[[j % 10 + 1] for j in range(10)]] for i in range(10)
-        })
+        parsed_pages = make_parsed_pages(
+            {f"Page {i}": [[[j % 10 + 1] for j in range(10)]] for i in range(10)}
+        )
 
         result = matcher.match(midi_tabs, parsed_pages)
 
