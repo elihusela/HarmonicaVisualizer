@@ -298,6 +298,56 @@ class TestTabPhraseAnimatorTextProcessing:
         assert text_lines[0] == ["1"]
         assert text_lines[1] == ["2"]
 
+    def test_prepare_text_data_bent_notes(self, basic_animator):
+        """Test text data preparation with bent notes (apostrophe appended)."""
+        page = [
+            [
+                [
+                    TabEntry(
+                        tab=1, time=1.0, duration=0.5, confidence=0.8, is_bend=False
+                    )
+                ],
+                [TabEntry(tab=2, time=1.5, duration=0.5, confidence=0.8, is_bend=True)],
+                [
+                    TabEntry(
+                        tab=-6, time=2.0, duration=0.5, confidence=0.8, is_bend=True
+                    )
+                ],
+            ]
+        ]
+
+        text_lines, line_entries = basic_animator._prepare_text_data(page)
+
+        # Bent notes should have apostrophe appended
+        assert len(text_lines) == 1
+        assert text_lines[0] == ["1", "2'", "-6'"]
+
+    def test_prepare_text_data_bent_chords(self, basic_animator):
+        """Test that only single note bends get apostrophe (chords shouldn't have bends)."""
+        # In practice, chords shouldn't have bends (validation prevents this)
+        # But we test the rendering logic anyway
+        page = [
+            [
+                [
+                    TabEntry(
+                        tab=1, time=1.0, duration=0.5, confidence=0.8, is_bend=False
+                    ),
+                    TabEntry(
+                        tab=2, time=1.0, duration=0.5, confidence=0.8, is_bend=False
+                    ),
+                ],
+                [TabEntry(tab=6, time=1.5, duration=0.5, confidence=0.8, is_bend=True)],
+            ]
+        ]
+
+        text_lines, line_entries = basic_animator._prepare_text_data(page)
+
+        assert len(text_lines) == 1
+        assert text_lines[0] == [
+            "12",
+            "6'",
+        ]  # Chord is normal, single bent note has apostrophe
+
 
 class TestTabPhraseAnimatorVideoProcessing:
     """Test video processing functionality."""

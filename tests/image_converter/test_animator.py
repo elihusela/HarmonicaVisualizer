@@ -153,6 +153,44 @@ class TestAnimatorHelperMethods:
         color = Animator._get_color(draw_entry)
         assert color == IN_COLOR
 
+    def test_get_color_bent_notes(self):
+        """Test color assignment for bent notes (orange)."""
+        from image_converter.consts import BEND_COLOR
+
+        # Bent blow note
+        bent_blow = TabEntry(
+            tab=6, time=0.0, duration=0.5, confidence=0.8, is_bend=True
+        )
+        color = Animator._get_color(bent_blow)
+        assert color == BEND_COLOR
+
+        # Bent draw note
+        bent_draw = TabEntry(
+            tab=-6, time=0.0, duration=0.5, confidence=0.8, is_bend=True
+        )
+        color = Animator._get_color(bent_draw)
+        assert color == BEND_COLOR
+
+    def test_get_color_bend_takes_precedence(self):
+        """Test that bend color takes precedence over blow/draw color."""
+        from image_converter.consts import BEND_COLOR
+
+        # Bend should override normal blow color
+        bent_note = TabEntry(
+            tab=5, time=0.0, duration=0.5, confidence=0.8, is_bend=True
+        )
+        color = Animator._get_color(bent_note)
+        assert color == BEND_COLOR
+        assert color != OUT_COLOR
+
+        # Regular note should use normal color
+        regular_note = TabEntry(
+            tab=5, time=0.0, duration=0.5, confidence=0.8, is_bend=False
+        )
+        color = Animator._get_color(regular_note)
+        assert color == OUT_COLOR
+        assert color != BEND_COLOR
+
     def test_calc_direction_blow_notes(self):
         """Test direction arrow for blow notes."""
         blow_entry = TabEntry(tab=7, time=0.0, duration=0.5, confidence=0.8)

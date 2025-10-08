@@ -732,3 +732,150 @@ class TestTabTextParserCoverageGaps:
 
             with pytest.raises(TabTextParserError, match="Error reading file"):
                 TabTextParser(str(test_file))
+
+
+class TestTabTextParserBendNotation:
+    """Test bend notation parsing and validation."""
+
+    def test_parse_valid_blow_bends(self, temp_test_dir):
+        """Test parsing valid blow bend notation."""
+        test_file = temp_test_dir / "blow_bends.txt"
+        test_file.write_text("Page 1:\n1' 2' 6' 7' 8' 9'")
+
+        parser = TabTextParser(str(test_file))
+        pages = parser.get_pages()
+
+        line = pages["Page 1"][0]
+        # Check that all notes are parsed with bend flag
+        assert len(line) == 6
+        for chord in line:
+            assert len(chord) == 1
+            assert chord[0].is_bend is True
+
+        # Verify hole numbers
+        assert line[0][0].hole_number == 1
+        assert line[1][0].hole_number == 2
+        assert line[2][0].hole_number == 6
+
+    def test_parse_valid_draw_bends(self, temp_test_dir):
+        """Test parsing valid draw bend notation."""
+        test_file = temp_test_dir / "draw_bends.txt"
+        test_file.write_text("Page 1:\n-1' -2' -3' -6' -8' -9'")
+
+        parser = TabTextParser(str(test_file))
+        pages = parser.get_pages()
+
+        line = pages["Page 1"][0]
+        assert len(line) == 6
+        for chord in line:
+            assert len(chord) == 1
+            assert chord[0].is_bend is True
+
+        # Verify negative hole numbers
+        assert line[0][0].hole_number == -1
+        assert line[1][0].hole_number == -2
+        assert line[2][0].hole_number == -3
+
+    def test_parse_mixed_bends_and_regular_notes(self, temp_test_dir):
+        """Test parsing mix of bent and regular notes."""
+        test_file = temp_test_dir / "mixed_bends.txt"
+        test_file.write_text("Page 1:\n1 2' -3 -4' 5 6'")
+
+        parser = TabTextParser(str(test_file))
+        pages = parser.get_pages()
+
+        line = pages["Page 1"][0]
+
+        # Regular notes should have is_bend=False
+        assert line[0][0].is_bend is False  # 1
+        assert line[2][0].is_bend is False  # -3
+        assert line[4][0].is_bend is False  # 5
+
+        # Bent notes should have is_bend=True
+        assert line[1][0].is_bend is True  # 2'
+        assert line[3][0].is_bend is True  # -4'
+        assert line[5][0].is_bend is True  # 6'
+
+    def test_reject_bends_on_chords(self, temp_test_dir):
+        """Test that bend notation on chords is rejected."""
+        test_file = temp_test_dir / "chord_bends.txt"
+        test_file.write_text("Page 1:\n12'")  # Chord with bend - should be rejected
+
+        config = ParseConfig(validate_hole_numbers=True, allow_empty_chords=False)
+
+        with pytest.raises(
+            TabTextParserError, match="Bend notation not allowed on chords"
+        ):
+            TabTextParser(str(test_file), config)
+
+    def test_reject_multiple_apostrophes(self, temp_test_dir):
+        """Test that multiple apostrophes are rejected (second apostrophe not adjacent)."""
+        test_file = temp_test_dir / "multiple_apostrophes.txt"
+        test_file.write_text("Page 1:\n6''")  # Multiple apostrophes
+
+        config = ParseConfig(validate_hole_numbers=True, allow_empty_chords=False)
+
+        with pytest.raises(
+            TabTextParserError,
+            match="Bend notation \\('\\) must be directly adjacent to a note",
+        ):
+            TabTextParser(str(test_file), config)
+
+    def test_apostrophe_must_be_adjacent(self, temp_test_dir):
+        """Test that apostrophe not adjacent to a number raises an error."""
+        test_file = temp_test_dir / "space_before_apostrophe.txt"
+        test_file.write_text("Page 1:\n6 '")  # Space between number and apostrophe
+
+        # Non-adjacent apostrophe raises error with default config
+        config = ParseConfig(allow_empty_chords=False)
+        with pytest.raises(
+            TabTextParserError,
+            match="Bend notation \\('\\) must be directly adjacent to a note",
+        ):
+            TabTextParser(str(test_file), config)
+
+        # With allow_empty_chords, it parses the 6 and warns about the apostrophe
+        config2 = ParseConfig(allow_empty_chords=True, allow_empty_pages=True)
+        parser = TabTextParser(str(test_file), config2)
+        pages = parser.get_pages()
+
+        # Page will be empty because the line failed to parse
+        assert len(pages["Page 1"]) == 0
+
+    def test_get_pages_as_int_drops_bend_info(self, temp_test_dir):
+        """Test that get_pages_as_int() returns integers without bend info."""
+        test_file = temp_test_dir / "bend_to_int.txt"
+        test_file.write_text("Page 1:\n1' 2 -3'")
+
+        parser = TabTextParser(str(test_file))
+
+        # get_pages() should return ParsedNote objects with bend info
+        pages_with_bend = parser.get_pages()
+        assert pages_with_bend["Page 1"][0][0][0].is_bend is True
+        assert pages_with_bend["Page 1"][0][1][0].is_bend is False
+        assert pages_with_bend["Page 1"][0][2][0].is_bend is True
+
+        # get_pages_as_int() should return plain integers
+        pages_as_int = parser.get_pages_as_int()
+        assert pages_as_int == {"Page 1": [[[1], [2], [-3]]]}
+
+    def test_bend_notation_edge_cases(self, temp_test_dir):
+        """Test bend notation on edge case hole numbers (single digits only)."""
+        test_file = temp_test_dir / "bend_edge_cases.txt"
+        test_file.write_text("Page 1:\n1' 9' -1' -9'")
+
+        parser = TabTextParser(str(test_file))
+        pages = parser.get_pages()
+
+        line = pages["Page 1"][0]
+        assert len(line) == 4
+
+        # All should be marked as bent
+        for chord in line:
+            assert chord[0].is_bend is True
+
+        # Verify hole numbers
+        assert line[0][0].hole_number == 1
+        assert line[1][0].hole_number == 9
+        assert line[2][0].hole_number == -1
+        assert line[3][0].hole_number == -9

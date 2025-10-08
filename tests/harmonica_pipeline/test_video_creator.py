@@ -406,6 +406,73 @@ class TestVideoCreatorTextBasedStructure:
         with pytest.raises(VideoCreatorError, match="Tab text parser not available"):
             creator._create_text_based_structure(mock_empty_tabs)
 
+    def test_create_text_based_structure_preserves_bend_info(
+        self, config_with_tabs, create_video_creator_with_mocks
+    ):
+        """Test that bend info from ParsedNote is preserved in TabEntry."""
+        creator = create_video_creator_with_mocks(config_with_tabs)
+
+        # Mock parser with bend notation
+        from tab_phrase_animator.tab_text_parser import ParsedNote
+
+        mock_parser = MagicMock()
+        mock_parser.get_pages.return_value = {
+            "Page 1": [
+                [
+                    [ParsedNote(1, is_bend=False)],  # Regular note
+                    [ParsedNote(2, is_bend=True)],  # Bent note
+                    [ParsedNote(-3, is_bend=True)],  # Bent draw note
+                ]
+            ]
+        }
+        creator.tabs_text_parser = mock_parser
+
+        # MIDI tabs matching text structure
+        midi_tabs = [
+            TabEntry(tab=1, time=0.0, duration=0.5, confidence=0.8),
+            TabEntry(tab=2, time=0.5, duration=0.5, confidence=0.8),
+            TabEntry(tab=-3, time=1.0, duration=0.5, confidence=0.8),
+        ]
+        mock_tabs = MagicMock()
+        mock_tabs.tabs = midi_tabs
+
+        result = creator._create_text_based_structure(mock_tabs)
+
+        # Verify bend info is preserved
+        page1 = result["Page 1"][0]
+        assert page1[0][0].is_bend is False  # Regular note
+        assert page1[1][0].is_bend is True  # Bent note
+        assert page1[2][0].is_bend is True  # Bent draw note
+
+    def test_create_text_only_structure_preserves_bend_info(
+        self, config_with_tabs, create_video_creator_with_mocks
+    ):
+        """Test that bend info is preserved in text-only fallback."""
+        from tab_phrase_animator.tab_text_parser import ParsedNote
+
+        creator = create_video_creator_with_mocks(config_with_tabs)
+
+        parsed_pages = {
+            "Page 1": [
+                [
+                    [ParsedNote(1, is_bend=False)],
+                    [ParsedNote(6, is_bend=True)],
+                    [ParsedNote(-6, is_bend=True)],
+                ]
+            ]
+        }
+
+        result = creator._create_text_only_structure(parsed_pages)
+
+        # Verify bend info is preserved in fallback entries
+        page1 = result["Page 1"][0]
+        assert page1[0][0].tab == 1
+        assert page1[0][0].is_bend is False
+        assert page1[1][0].tab == 6
+        assert page1[1][0].is_bend is True
+        assert page1[2][0].tab == -6
+        assert page1[2][0].is_bend is True
+
 
 class TestVideoCreatorDirectStructure:
     """Test direct MIDI structure creation."""
