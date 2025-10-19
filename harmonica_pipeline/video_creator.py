@@ -175,7 +175,7 @@ class VideoCreator:
                 raise VideoCreatorError(f"{file_type} not found: {file_path}")
 
         # Validate file extensions
-        if not video_path.lower().endswith((".mp4", ".mov", ".avi", ".wav")):
+        if not video_path.lower().endswith((".mp4", ".mov", ".avi", ".m4v", ".wav")):
             raise VideoCreatorError(f"Unsupported video format: {video_path}")
 
         if not tabs_path.lower().endswith(".txt"):
