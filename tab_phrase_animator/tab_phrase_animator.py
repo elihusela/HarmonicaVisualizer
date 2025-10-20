@@ -263,6 +263,18 @@ class TabPhraseAnimator:
         duration = end_time - start_time
         total_frames = int(duration * fps)
 
+        # Debug output
+        print(f"📊 Page {page_idx} ({page_name}) timing:")
+        print(f"   Entries: {len(all_entries)}")
+        print(
+            f"   Entry times: {sorted([e.time for e in all_entries])[:5]}{'...' if len(all_entries) > 5 else ''}"
+        )
+        print(f"   Raw start: {raw_start:.3f}s, Raw end: {raw_end:.3f}s")
+        print(
+            f"   Final: {start_time:.3f}s -> {end_time:.3f}s (duration: {duration:.3f}s)"
+        )
+        print(f"   Frames: {total_frames} ({fps} fps)")
+
         # Prepare text data
         text_lines, line_entries = self._prepare_text_data(page)
 

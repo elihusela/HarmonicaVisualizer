@@ -315,8 +315,8 @@ class VideoCreator:
         Create animation structure based on .txt file page/line definitions.
 
         Uses the parsed .txt file structure to maintain proper page breaks
-        and line organization as specified in the text file, while using
-        MIDI timing for note synchronization in chronological order.
+        and line organization, consuming MIDI entries sequentially to match
+        the exact note count specified in the text file.
         """
         if not self.tabs_text_parser:
             raise VideoCreatorError("Tab text parser not available")
@@ -334,12 +334,18 @@ class VideoCreator:
         sorted_midi_entries: List[TabEntry] = sorted(
             tab_entries_list, key=lambda e: e.time
         )
-        midi_index = 0
+        midi_index = 0  # Global index tracking position in MIDI entries
 
-        # Build structure following .txt file organization with sequential MIDI timing
+        print(
+            f"🔍 Text-based structure matching: {len(parsed_pages)} text pages, "
+            f"{len(sorted_midi_entries)} total MIDI entries"
+        )
+
+        # Build structure following .txt file organization
         animation_structure: Dict[str, List[List[Optional[List[TabEntry]]]]] = {}
 
         for page_name, page_lines in parsed_pages.items():
+            page_start_midi_index = midi_index
             animation_lines: List[List[Optional[List[TabEntry]]]] = []
 
             for line_chords in page_lines:
@@ -350,28 +356,24 @@ class VideoCreator:
                         animation_chords.append(None)
                         continue
 
-                    # Find next matching MIDI entries for this chord in chronological order
+                    # For each note in the chord, take the next MIDI entry sequentially
                     chord_entries = []
                     for parsed_note in chord_tabs:
-                        # Search for the next MIDI entry that matches this tab value
-                        found_entry = None
-                        for i in range(midi_index, len(sorted_midi_entries)):
-                            if sorted_midi_entries[i].tab == parsed_note.hole_number:
-                                # Copy MIDI timing but preserve bend info from parsed note
-                                found_entry = TabEntry(
-                                    tab=sorted_midi_entries[i].tab,
-                                    time=sorted_midi_entries[i].time,
-                                    duration=sorted_midi_entries[i].duration,
-                                    confidence=sorted_midi_entries[i].confidence,
-                                    is_bend=parsed_note.is_bend,
-                                )
-                                midi_index = i + 1  # Move to next entry for next search
-                                break
-
-                        if found_entry:
-                            chord_entries.append(found_entry)
+                        if midi_index < len(sorted_midi_entries):
+                            # Use the next MIDI entry regardless of hole number match
+                            # This ensures we consume exactly the number of notes in the text file
+                            midi_entry = sorted_midi_entries[midi_index]
+                            matched_entry = TabEntry(
+                                tab=midi_entry.tab,  # Use actual MIDI tab value
+                                time=midi_entry.time,
+                                duration=midi_entry.duration,
+                                confidence=midi_entry.confidence,
+                                is_bend=parsed_note.is_bend,  # Preserve bend from text
+                            )
+                            chord_entries.append(matched_entry)
+                            midi_index += 1
                         else:
-                            # If no more MIDI entries match, create a fallback entry
+                            # Ran out of MIDI entries - create placeholder
                             last_time = (
                                 sorted_midi_entries[-1].time
                                 if sorted_midi_entries
@@ -379,12 +381,14 @@ class VideoCreator:
                             )
                             fallback_entry = TabEntry(
                                 tab=parsed_note.hole_number,
-                                time=last_time + 0.5,
+                                time=last_time
+                                + 0.5 * (midi_index - len(sorted_midi_entries) + 1),
                                 duration=0.5,
                                 confidence=0.5,
                                 is_bend=parsed_note.is_bend,
                             )
                             chord_entries.append(fallback_entry)
+                            midi_index += 1
 
                     if chord_entries:
                         animation_chords.append(chord_entries)
@@ -394,11 +398,29 @@ class VideoCreator:
                 animation_lines.append(animation_chords)
 
             animation_structure[page_name] = animation_lines
+            page_midi_count = midi_index - page_start_midi_index
+
+            # Count actual notes in text for this page
+            text_note_count = sum(
+                len(chord_tabs)
+                for line_chords in page_lines
+                for chord_tabs in line_chords
+                if chord_tabs
+            )
+
+            print(
+                f"   📄 {page_name}: consumed {page_midi_count} MIDI entries (text specified {text_note_count} notes)"
+            )
 
         print(f"📖 Created {len(animation_structure)} pages using .txt file structure")
-        print(
-            f"🎵 Mapped {midi_index}/{len(sorted_midi_entries)} MIDI entries to text structure"
-        )
+        print(f"🎵 Consumed {midi_index}/{len(sorted_midi_entries)} total MIDI entries")
+
+        if midi_index != len(sorted_midi_entries):
+            remaining = len(sorted_midi_entries) - midi_index
+            print(
+                f"⚠️  Warning: {remaining} MIDI entries unused (text file has fewer notes than MIDI)"
+            )
+
         return animation_structure
 
     def _create_text_only_structure(

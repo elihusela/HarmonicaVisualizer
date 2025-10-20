@@ -175,10 +175,10 @@ New CLI options for targeted video creation:
 python cli.py create-video MySong.wav MySong.txt
 
 # Create only tab phrase animations (skip harmonica)
-python cli.py create-video MySong.wav MySong.txt --only-tabs
+python cli.py create-video PMH.m4v PMH.txt --only-tabs
 
 # Create only harmonica animation (skip tab phrases)
-python cli.py create-video MySong.wav MySong.txt --only-harmonica
+python cli.py create-video PMH.m4v PMH.txt --only-harmonica
 
 # Skip all tab generation (original option)
 python cli.py create-video MySong.wav MySong.txt --no-produce-tabs

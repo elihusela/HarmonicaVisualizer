@@ -358,11 +358,11 @@ class TestVideoCreatorTextBasedStructure:
 
         # Last two positions should get fallback entries
         assert page1[2][0].tab == 3
-        assert page1[2][0].time == 1.0  # last_time + 0.5
+        assert page1[2][0].time == 1.0  # last_time + 0.5 * 1
         assert page1[2][0].confidence == 0.5  # fallback confidence
 
         assert page1[3][0].tab == 4
-        assert page1[3][0].time == 1.0  # last_time + 0.5
+        assert page1[3][0].time == 1.5  # last_time + 0.5 * 2 (incremental)
         assert page1[3][0].confidence == 0.5
 
     def test_create_text_only_structure_fallback(
