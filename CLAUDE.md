@@ -194,7 +194,163 @@ python cli.py create-video MySong.wav MySong.txt --only-tabs --only-harmonica
 - **Debugging**: Isolate issues to specific animation types
 - **Workflow**: Generate harmonica first, then tabs after review
 
-## Next Session Tasks - Phase 2 Refactoring
+---
+
+## 🎯 NEXT FEATURE: Full Tab Video Compositor
+
+### **Feature Overview**
+Create a **single continuous video** where tab pages appear/disappear in sync with the audio, with individual notes lighting up precisely as they play. This stitches together all tab pages into one video for easy Final Cut Pro compositing.
+
+### **Current State**
+- ✅ TabPhraseAnimator generates **separate** page videos (`page1_tabs.mov`, `page2_tabs.mov`, etc.)
+- ✅ Each page video has notes lighting up in sync with timing
+- ✅ Works great, but requires manual stitching in editing software
+
+### **What We're Building**
+**Output:** `MySong_full_tabs.mov` - One continuous video file where:
+1. **Page-by-page display** (NOT scrolling)
+2. **Pages appear/disappear** at exact times based on note timing
+3. **Notes light up individually** within each visible page
+4. **Transparent background** (for compositing on original video)
+5. **Synced to audio duration** (precise timing)
+
+### **Visual Behavior**
+```
+Timeline Example (song.wav = 30 seconds):
+[0.0-0.1s]   Blank (transparent)
+[0.1-10.2s]  Page 1 visible, notes glow as they play (first note at 0.1s, last at 10.1s)
+[10.2-10.3s] Blank transition
+[10.3-20.1s] Page 2 visible, notes glow as they play
+[20.1-20.2s] Blank transition
+[20.2-30.0s] Page 3 visible, notes glow as they play
+```
+
+### **Page Timing Logic**
+Each page visibility window calculated from note timings:
+- `page_start = first_note_time - 0.1s` (small padding before)
+- `page_end = last_note_time + 0.1s` (small padding after)
+- **Instant cut** between pages (no fade)
+- **Blank (transparent) frames** during gaps
+
+### **Requirements (Clarified)**
+✅ **Don't touch harmonica animation** - stays separate for manual Final Cut compositing
+✅ **Same rendering style** - reuse existing tab page rendering
+✅ **Transparent background** - for video overlay
+✅ **Same note glow effect** - as current TabPhraseAnimator
+✅ **Page always visible** - notes glow individually, page stays on screen
+✅ **Instant transitions** - no fade, just cut between pages
+
+### **Architecture Decision**
+
+#### **New Module:** `tab_phrase_animator/full_tab_video_compositor.py`
+
+**Class:** `FullTabVideoCompositor`
+
+**Approach: Reuse Existing Page Videos** (Option A - Recommended)
+- Leverage already-generated page videos from `TabPhraseAnimator`
+- Read `page1_tabs.mov`, `page2_tabs.mov`, etc.
+- Calculate precise timing windows from note data
+- Stitch videos with blank (transparent) frames in between
+- Faster iteration, reuses existing work
+
+**Alternative: Generate Fresh** (Option B - Cleaner but slower)
+- Similar to TabPhraseAnimator but render all pages into ONE video
+- More control but duplicate work
+
+### **CLI Integration**
+
+```bash
+# Default: Generate individual pages + full video
+python cli.py create-video song.wav song.txt
+
+# Skip full video (only individual pages)
+python cli.py create-video song.wav song.txt --no-full-tab-video
+
+# Only full video (skip individual pages)
+python cli.py create-video song.wav song.txt --only-full-tab-video
+
+# Existing flags still work
+python cli.py create-video song.wav song.txt --only-tabs  # No harmonica, yes tabs
+```
+
+### **File Outputs**
+```
+outputs/
+├── MySong_harmonica.mov       (unchanged - harmonica hole animation)
+├── MySong_tabs.mov            (existing - individual tab pages stitched)
+└── MySong_full_tabs.mov       (NEW - continuous page-by-page video)
+```
+
+### **Implementation Steps**
+
+#### **Phase 1: Core Compositor Class**
+1. Create `tab_phrase_animator/full_tab_video_compositor.py`
+2. Implement `FullTabVideoCompositor` class:
+   - Constructor: takes page videos, note timing data, audio duration
+   - `calculate_page_windows()` - determine when each page appears/disappears
+   - `create_blank_frame()` - generate transparent frame
+   - `stitch_videos()` - concatenate page videos with blank frames
+   - `generate()` - main entry point, outputs full video
+
+#### **Phase 2: VideoCreator Integration**
+1. Add flag to `VideoCreatorConfig`: `produce_full_tab_video` (default: `True`)
+2. Modify `VideoCreator.create()`:
+   - After generating individual pages
+   - If `produce_full_tab_video` enabled
+   - Call `FullTabVideoCompositor.generate()`
+3. Pass through all necessary data (page videos, timing, audio length)
+
+#### **Phase 3: CLI Flags**
+1. Add `--no-full-tab-video` flag to `cli.py`
+2. Add `--only-full-tab-video` flag to `cli.py`
+3. Update help text and documentation
+
+#### **Phase 4: Testing**
+1. Create `tests/tab_phrase_animator/test_full_tab_video_compositor.py`
+2. Test timing calculations
+3. Test video stitching logic
+4. Integration test with real page videos
+
+### **Technical Considerations**
+
+**Video Library:** Use `moviepy` (already in dependencies)
+```python
+from moviepy.editor import VideoFileClip, concatenate_videoclips, ColorClip
+
+# Read existing page videos
+page1 = VideoFileClip("page1_tabs.mov")
+page2 = VideoFileClip("page2_tabs.mov")
+
+# Create blank (transparent) frames
+blank = ColorClip(size=(1920, 1080), color=(0,0,0,0), duration=0.1)
+
+# Concatenate with timing
+final = concatenate_videoclips([blank, page1, blank, page2, ...])
+```
+
+**Timing Data Source:** Use existing `TabMatcher` output or MIDI timing
+
+**Precision:** Use MIDI timing data (already accurate to milliseconds)
+
+### **Success Criteria**
+✅ Single video file generated
+✅ Pages appear/disappear at correct times
+✅ Notes light up in sync with audio
+✅ Transparent background maintained
+✅ Total video duration matches audio duration
+✅ Instant cuts between pages (no fade)
+✅ CLI flags work as expected
+✅ Tests passing
+
+### **Next Session: Start Here** 🚀
+1. Create `tab_phrase_animator/full_tab_video_compositor.py`
+2. Implement `FullTabVideoCompositor` class skeleton
+3. Write timing calculation logic
+4. Test with one song's page videos
+
+---
+
+## Next Session Tasks - Phase 2 Refactoring (OUTDATED)
 
 ### 1. Phase 2 Code Review & Simplification
 - **VideoCreator class**: Review for OOP improvements
