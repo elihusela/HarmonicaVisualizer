@@ -11,6 +11,11 @@ from pathlib import Path  # noqa: E402
 
 from tab_converter.models import TabEntry, Tabs, NoteEvent  # noqa: E402
 
+# Import pipeline modules early to avoid pkg_resources initialization issues
+# when running CLI tests in isolation
+from harmonica_pipeline.midi_generator import MidiGenerator  # noqa: F401, E402
+from harmonica_pipeline.video_creator import VideoCreator  # noqa: F401, E402
+
 
 @pytest.fixture
 def sample_tab_entry():

@@ -1,4 +1,10 @@
-"""Tests for CLI module."""
+"""
+Tests for CLI module.
+
+NOTE: These tests require early imports in conftest.py (MidiGenerator, VideoCreator)
+to avoid pkg_resources initialization issues when run in isolation. If these tests
+fail when run alone but pass in the full suite, check that conftest.py imports are present.
+"""
 
 from unittest.mock import MagicMock, patch
 
