@@ -175,10 +175,10 @@ New CLI options for targeted video creation:
 python cli.py create-video MySong.wav MySong.txt
 
 # Create only tab phrase animations (skip harmonica)
-python cli.py create-video PMH.m4v PMH.txt --only-tabs
+python cli.py create-video PMV.m4v PMV.txt --only-tabs
 
 # Create only harmonica animation (skip tab phrases)
-python cli.py create-video PMH.m4v PMH.txt --only-harmonica
+python cli.py create-video PMV.m4v PMV.txt --only-harmonica
 
 # Skip all tab generation (original option)
 python cli.py create-video MySong.wav MySong.txt --no-produce-tabs
@@ -221,119 +221,109 @@ python cli.py create-video MySong.wav MySong.txt --only-tabs --only-harmonica
 
 ## Testing Strategy - Bottom-Up Implementation Plan
 
-### 🧪 **Current Status: Phase 2 Core Business Logic COMPLETE ✅**
+### 🧪 **Current Status: Phase 3 COMPLETE! ✅ 502/502 Tests Passing**
 - ✅ **Phase 1 DONE**: Data models tests (TabEntry, Tabs, NoteEvent) - 17 tests
-- ✅ **Phase 2 DONE**: Core business logic - 110+ tests
+- ✅ **Phase 2 DONE**: Core business logic - 120 tests
   - ✅ TabMapper (MIDI→Tab conversion) - 24 tests
   - ✅ MidiGenerator (Audio→MIDI pipeline) - 26 tests
   - ✅ AudioProcessor (Audio processing workflow) - 23 tests
-  - ✅ TabTextParser (.txt file parsing) - 37 tests (32 passing, 5 edge case failures)
-- 🚧 **NEXT SESSION STARTS HERE** 🚧
+  - ✅ TabTextParser (.txt file parsing) - 53 tests ✨ All edge cases fixed!
+- ✅ **Phase 3 DONE**: Complex Integration & Components - 365 tests
+  - ✅ VideoCreator (text-based structure) - 40 tests
+  - ✅ AudioExtractor (audio extraction) - 54 tests
+  - ✅ Utils (directory management, MIDI) - 33 tests
+  - ✅ TabPhraseAnimator - 36 tests
+  - ✅ TabMatcher (tab timing alignment) - 28 tests
+  - ✅ Animator (animation system) - 39 tests
+  - ✅ ColorScheme - 18 tests
+  - ✅ Consts - 14 tests
+  - ✅ FigureFactory - 29 tests
+  - ✅ HarmonicaLayout - 35 tests
+  - ✅ VideoProcessor - 33 tests
+- 🚧 **NEXT: Final Testing Phase** 🚧
 
 ### 📁 **Test Structure (1:1 Source Mapping)**
 ```
 Source Structure                Test Structure                        Status
 ─────────────────              ──────────────────                    ──────
 tab_converter/                  tests/tab_converter/
-├── models.py          →        ├── test_models.py                    ✅ DONE
-├── tab_mapper.py      →        ├── test_tab_mapper.py                ✅ DONE
+├── models.py          →        ├── test_models.py                    ✅ DONE (17 tests)
+├── tab_mapper.py      →        ├── test_tab_mapper.py                ✅ DONE (24 tests)
 ├── consts.py          →        └── conftest.py                       ✅ DONE
 
 harmonica_pipeline/             tests/harmonica_pipeline/
-├── video_creator.py   →        ├── test_video_creator.py             🚧 NEXT
-├── midi_generator.py  →        ├── test_midi_generator.py            ✅ DONE
+├── video_creator.py   →        ├── test_video_creator.py             ✅ DONE (40 tests)
+├── midi_generator.py  →        ├── test_midi_generator.py            ✅ DONE (26 tests)
 └── midi_processor.py  →        └── conftest.py                       ✅ DONE
 
 utils/                          tests/utils/
-├── audio_extractor.py →        ├── test_audio_extractor.py           🚧 NEXT
-├── audio_processor.py →        ├── test_audio_processor.py           ✅ DONE
-└── utils.py          →         ├── test_utils.py                     🚧 NEXT
+├── audio_extractor.py →        ├── test_audio_extractor.py           ✅ DONE (54 tests)
+├── audio_processor.py →        ├── test_audio_processor.py           ✅ DONE (23 tests)
+└── utils.py          →         ├── test_utils.py                     ✅ DONE (33 tests)
                                 └── conftest.py                       ✅ DONE
 
 tab_phrase_animator/            tests/tab_phrase_animator/
-├── tab_text_parser.py →        ├── test_tab_text_parser.py           ✅ DONE (5 edge cases)
-├── tab_phrase_animator.py →    ├── test_tab_phrase_animator.py       🚧 NEXT
-└── tab_matcher.py     →        ├── test_tab_matcher.py               🚧 NEXT
+├── tab_text_parser.py →        ├── test_tab_text_parser.py           ✅ DONE (53 tests)
+├── tab_phrase_animator.py →    ├── test_tab_phrase_animator.py       ✅ DONE (36 tests)
+└── tab_matcher.py     →        ├── test_tab_matcher.py               ✅ DONE (28 tests)
                                 └── conftest.py                       ✅ DONE
 
-image_converter/                tests/image_converter/                🚧 NEXT
-├── animator.py        →        ├── test_animator.py                  🚧 NEW
-├── consts.py          →        ├── test_consts.py                    🚧 NEW
-└── ...                →        └── conftest.py                       🚧 NEW
+image_converter/                tests/image_converter/
+├── animator.py        →        ├── test_animator.py                  ✅ DONE (39 tests)
+├── color_scheme.py    →        ├── test_color_scheme.py              ✅ DONE (18 tests)
+├── consts.py          →        ├── test_consts.py                    ✅ DONE (14 tests)
+├── figure_factory.py  →        ├── test_figure_factory.py            ✅ DONE (29 tests)
+├── harmonica_layout.py →       ├── test_harmonica_layout.py          ✅ DONE (35 tests)
+├── video_processor.py →        ├── test_video_processor.py           ✅ DONE (33 tests)
+└── ...                →        └── conftest.py                       ✅ DONE
 
 ./                              tests/
-├── cli.py             →        ├── test_cli.py                       🚧 NEXT
-├── main.py            →        ├── test_main.py                      🚧 NEXT
+├── cli.py             →        ├── test_cli.py                       📝 TODO
 └── ...                →        ├── conftest.py                       ✅ DONE
-                                └── test_integration.py                🚧 NEXT
+                                └── test_integration.py                📝 TODO
 ```
 
-### 🎯 **Remaining Implementation Plan**
+### 🎯 **Final Testing Phase - Remaining Work**
 
-#### **Step 1: Fix TabTextParser Edge Cases (1 commit) - IMMEDIATE NEXT**
-- Fix 5 failing edge case tests in TabTextParser
-- Issues: colon handling, hole validation timing, empty page counting
-- Target: 37/37 tests passing for complete TabTextParser coverage
+#### **Phase 4: Coverage Analysis & CLI Testing (2-3 commits)**
+1. **test_cli.py** - Command-line interface testing (generate-midi, create-video commands)
+2. **test_integration.py** - End-to-end workflow validation
+3. **Coverage analysis** - Run pytest-cov to identify untested code paths
+4. **Fill coverage gaps** - Add tests for missed functions/edge cases
 
-#### **Step 2: Phase 3 - Complex Integration & Missing Components (4-5 commits)**
-1. **tests/harmonica_pipeline/test_video_creator.py** - Text-based structure ✨ (our major changes)
-2. **tests/utils/test_audio_extractor.py** - Audio extraction with ffmpeg fallback
-3. **tests/utils/test_utils.py** - Directory management, MIDI processing utilities
-4. **tests/tab_phrase_animator/test_tab_phrase_animator.py** - Tab phrase animation
-5. **tests/tab_phrase_animator/test_tab_matcher.py** - Tab timing alignment
-
-#### **Step 3: Complete Coverage - All Remaining Files (3-4 commits)**
-6. **tests/image_converter/** - Animation system (animator.py, consts.py)
-7. **tests/test_cli.py** - Command-line interface testing
-8. **tests/test_main.py** - Legacy main.py functionality
-9. **tests/test_integration.py** - End-to-end workflow validation
-
-#### **Step 4: 100% Coverage Analysis & Cleanup (2 commits)**
-10. **Coverage analysis**: Run coverage tools to identify untested code paths
-11. **Fill coverage gaps**: Add tests for any missed functions/edge cases
-12. **Performance testing**: Benchmark critical paths and memory usage
-
-#### **Step 5: TODO Review & Implementation (2-3 commits)**
-13. **Review all TODOs**: Scan codebase for TODO comments added during testing
-14. **Implement high-priority TODOs**: Address critical functionality gaps
-15. **Document remaining TODOs**: Create GitHub issues for future work
+#### **Phase 5: Code Quality & Cleanup (2-3 commits)**
+5. **TODO review** - Scan codebase for TODO comments, prioritize fixes
+6. **Performance testing** - Benchmark critical paths and memory usage
+7. **Documentation** - Update docstrings, add inline comments where needed
+8. **Type hints** - Ensure comprehensive type annotations
 
 ### 🚀 **Updated Commit Strategy**
 ```bash
-# IMMEDIATE NEXT:
-1. test: Fix TabTextParser edge cases (colon handling, validation timing)
+# Phase 4 - Final Testing:
+1. test: Add CLI integration tests (generate-midi, create-video commands)
+2. test: Add end-to-end integration test suite
+3. test: Achieve 90%+ code coverage with gap-filling tests
 
-# Phase 3 - Complex Integration:
-2. test: Add VideoCreator text-based structure tests
-3. test: Add AudioExtractor and ffmpeg fallback tests
-4. test: Add utils module tests (directory management, MIDI utilities)
-5. test: Add TabPhraseAnimator and TabMatcher tests
-6. test: Add ImageConverter animation system tests
-
-# Complete Coverage:
-7. test: Add CLI and main.py integration tests
-8. test: Add end-to-end integration test suite
-9. test: Achieve 100% code coverage and performance benchmarks
-
-# TODO Implementation:
-10. fix: Implement realistic harmonica chord validation (consecutive holes, max 2-note chords)
-11. fix: Address all high-priority TODOs discovered during testing
-12. docs: Document remaining TODOs and create GitHub issues
+# Phase 5 - Quality & Cleanup:
+4. fix: Address high-priority TODOs discovered during testing
+5. perf: Add performance benchmarking and optimization
+6. docs: Update documentation, docstrings, and type hints
+7. docs: Create GitHub issues for remaining TODOs
 ```
 
 ### 📊 **Current Testing Metrics**
-- **Total Tests**: 110+ (127 collected by pytest)
-- **Coverage**: ~60% estimated (core business logic complete)
-- **Modules Tested**: 6/15+ source modules
-- **TODOs Added**: 1 confirmed (TabTextParser chord validation)
-- **Target**: 100% coverage, all TODOs addressed
+- **Total Tests**: 502 tests (ALL PASSING ✅)
+- **Coverage**: ~85% estimated (all major components tested)
+- **Modules Tested**: 16/18 source modules (missing: cli.py, integration)
+- **Test Files**: 16 test modules across 4 packages
+- **Target**: 90%+ coverage, all high-priority TODOs addressed
 
 ### 📝 **Next Session Action Items**
-1. **Fix TabTextParser edge cases** - 5 failing tests to 37/37 passing
-2. **Create VideoCreator tests** - Text-based structure implementation
-3. **AudioExtractor tests** - Video→audio extraction with fallbacks
-4. **Utils tests** - Directory management and MIDI utilities
-5. **Coverage analysis** - Identify remaining untested code paths
+1. **Run coverage analysis** - `pytest --cov` to identify gaps
+2. **Add test_cli.py** - CLI command testing
+3. **Add test_integration.py** - End-to-end pipeline tests
+4. **Review TODOs** - Scan for TODO comments in codebase
+5. **Performance benchmarking** - Profile critical functions
 
 ### 🎨 **Conftest Architecture Strategy** ✅
 - **Global fixtures**: Core data structures, common utilities
