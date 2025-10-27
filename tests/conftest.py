@@ -1,9 +1,15 @@
 """Global test fixtures for HarmonicaTabs project."""
 
-import pytest
-from pathlib import Path
+# Configure matplotlib to use non-interactive backend for testing
+# Must be done before any matplotlib imports
+import matplotlib
 
-from tab_converter.models import TabEntry, Tabs, NoteEvent
+matplotlib.use("Agg")
+
+import pytest  # noqa: E402
+from pathlib import Path  # noqa: E402
+
+from tab_converter.models import TabEntry, Tabs, NoteEvent  # noqa: E402
 
 
 @pytest.fixture
