@@ -11,10 +11,10 @@ from typing import List, Tuple, Optional, Dict, Union
 from harmonica_pipeline.midi_processor import MidiProcessor, MidiProcessorError
 from harmonica_pipeline.video_creator_config import VideoCreatorConfig
 from image_converter.animator import Animator
-from image_converter.consts import C_NEW_MODEL_HOLE_MAPPING
+from image_converter.consts import G_MODEL_HOLE_MAPPING
 from image_converter.figure_factory import FigureFactory
 from image_converter.harmonica_layout import HarmonicaLayout
-from tab_converter.consts import C_HARMONICA_MAPPING
+from tab_converter.consts import G_HARMONICA_MAPPING
 from tab_converter.models import Tabs, TabEntry
 from tab_converter.tab_mapper import TabMapper
 from tab_phrase_animator.tab_matcher import TabMatcher
@@ -105,7 +105,7 @@ class VideoCreator:
 
             # MIDI and tab processing setup
             self.midi_processor = MidiProcessor(config.midi_path)
-            self.tab_mapper = TabMapper(C_HARMONICA_MAPPING, TEMP_DIR)
+            self.tab_mapper = TabMapper(G_HARMONICA_MAPPING, TEMP_DIR)
 
             # Tab text parsing setup (always load if producing tabs)
             self.tabs_text_parser: Optional[TabTextParser]
@@ -127,7 +127,8 @@ class VideoCreator:
 
             # Animation setup
             harmonica_layout = HarmonicaLayout(
-                config.harmonica_path, C_NEW_MODEL_HOLE_MAPPING
+                config.harmonica_path, G_MODEL_HOLE_MAPPING
+
             )
             figure_factory = FigureFactory(config.harmonica_path)
 

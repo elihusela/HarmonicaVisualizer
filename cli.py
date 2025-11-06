@@ -15,7 +15,7 @@ from typing import Optional
 from utils.utils import VIDEO_FILES_DIR, OUTPUTS_DIR, TAB_FILES_DIR, MIDI_DIR
 
 # Configuration constants
-DEFAULT_HARMONICA_MODEL = "CNewModel.png"
+DEFAULT_HARMONICA_MODEL = "harmonica_4_G.png"
 MIDI_SUFFIX = "_fixed.mid"
 
 

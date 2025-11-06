@@ -33,3 +33,16 @@ C_NEW_MODEL_HOLE_MAPPING = {
     9: {"top_left": {"x": 1041, "y": 333}, "bottom_right": {"x": 1097, "y": 403}},
     10: {"top_left": {"x": 1135, "y": 333}, "bottom_right": {"x": 1187, "y": 399}},
 }
+
+G_MODEL_HOLE_MAPPING = {
+    1: {"top_left": {"x": 243, "y": 355}, "bottom_right": {"x": 308, "y": 430}},
+    2: {"top_left": {"x": 350, "y": 355}, "bottom_right": {"x": 412, "y": 430}},
+    3: {"top_left": {"x": 454, "y": 355}, "bottom_right": {"x": 516, "y": 430}},
+    4: {"top_left": {"x": 558, "y": 355}, "bottom_right": {"x": 623, "y": 430}},
+    5: {"top_left": {"x": 661, "y": 355}, "bottom_right": {"x": 728, "y": 430}},
+    6: {"top_left": {"x": 768, "y": 355}, "bottom_right": {"x": 833, "y": 430}},
+    7: {"top_left": {"x": 873, "y": 355}, "bottom_right": {"x": 936, "y": 430}},
+    8: {"top_left": {"x": 977, "y": 355}, "bottom_right": {"x": 1042, "y": 430}},
+    9: {"top_left": {"x": 1085, "y": 355}, "bottom_right": {"x": 1147, "y": 430}},
+    10: {"top_left": {"x": 1191, "y": 355}, "bottom_right": {"x": 1251, "y": 430}},
+}
