@@ -75,6 +75,16 @@ Examples:
         action="store_true",
         help="Only create harmonica animation (skip tabs)",
     )
+    video_parser.add_argument(
+        "--no-full-tab-video",
+        action="store_true",
+        help="Skip full tab video generation (only create individual page videos)",
+    )
+    video_parser.add_argument(
+        "--only-full-tab-video",
+        action="store_true",
+        help="Only create full tab video (skip individual page videos)",
+    )
 
     # Full pipeline (for testing)
     full_parser = subparsers.add_parser(
@@ -99,6 +109,16 @@ Examples:
         "--only-harmonica",
         action="store_true",
         help="Only create harmonica animation (skip tabs)",
+    )
+    full_parser.add_argument(
+        "--no-full-tab-video",
+        action="store_true",
+        help="Skip full tab video generation (only create individual page videos)",
+    )
+    full_parser.add_argument(
+        "--only-full-tab-video",
+        action="store_true",
+        help="Only create full tab video (skip individual page videos)",
     )
 
     return parser
@@ -166,13 +186,22 @@ def create_video_phase(
     produce_tabs: bool = True,
     only_tabs: bool = False,
     only_harmonica: bool = False,
+    no_full_tab_video: bool = False,
+    only_full_tab_video: bool = False,
 ) -> None:
     """Phase 2: Create video from fixed MIDI."""
     from harmonica_pipeline.video_creator import VideoCreator
+    from harmonica_pipeline.video_creator_config import VideoCreatorConfig
 
     # Handle conflicting options
     if only_tabs and only_harmonica:
         print("❌ Error: Cannot specify both --only-tabs and --only-harmonica")
+        sys.exit(1)
+
+    if no_full_tab_video and only_full_tab_video:
+        print(
+            "❌ Error: Cannot specify both --no-full-tab-video and --only-full-tab-video"
+        )
         sys.exit(1)
 
     # Determine what to create based on options
@@ -180,6 +209,11 @@ def create_video_phase(
     create_tabs = (
         produce_tabs and not only_harmonica
     )  # Create tabs unless only harmonica requested
+
+    # Determine full tab video behavior
+    # Note: If only_full_tab_video is set, we still need to generate individual pages first
+    # as the compositor stitches them together
+    produce_full_tab_video = not no_full_tab_video
 
     # Generate smart defaults
     base_name = get_video_base_name(video)
@@ -211,20 +245,32 @@ def create_video_phase(
     print(f"📄 Tabs: {tabs_path}")
     print(f"🎭 Model: {harmonica_path}")
     print(f"🎥 Output: {output_video_path}")
+    if create_tabs and tabs_output_path:
+        print(f"📄 Tabs output: {tabs_output_path}")
+        if produce_full_tab_video:
+            full_tab_path = tabs_output_path.replace("_tabs.mov", "_full_tabs.mov")
+            print(f"🎬 Full tabs: {full_tab_path}")
 
-    creator = VideoCreator(
-        video_path,  # First positional parameter is config_or_video_path
+    # Create configuration object
+    config = VideoCreatorConfig(
+        video_path=video_path,
         tabs_path=tabs_path,
         harmonica_path=harmonica_path,
         midi_path=midi_path,
         output_video_path=output_video_path,
         tabs_output_path=tabs_output_path,
         produce_tabs=create_tabs,
+        produce_full_tab_video=produce_full_tab_video,
     )
+
+    creator = VideoCreator(config)
     creator.create(create_harmonica=create_harmonica, create_tabs=create_tabs)
 
     print("✅ Phase 2 Complete!")
     print(f"🎥 Video saved to: {output_video_path}")
+    if only_full_tab_video and create_tabs and tabs_output_path:
+        full_tab_path = tabs_output_path.replace("_tabs.mov", "_full_tabs.mov")
+        print(f"📄 Full tab video saved to: {full_tab_path}")
 
 
 def full_pipeline(
@@ -234,6 +280,8 @@ def full_pipeline(
     produce_tabs: bool = True,
     only_tabs: bool = False,
     only_harmonica: bool = False,
+    no_full_tab_video: bool = False,
+    only_full_tab_video: bool = False,
 ) -> None:
     """Run complete pipeline for testing (no manual MIDI editing)."""
     print("🎬 Starting Full Pipeline (Testing Mode)")
@@ -247,7 +295,14 @@ def full_pipeline(
 
     # Phase 2: Create video (MIDI is already in the right location)
     create_video_phase(
-        video, tabs, harmonica_model, produce_tabs, only_tabs, only_harmonica
+        video,
+        tabs,
+        harmonica_model,
+        produce_tabs,
+        only_tabs,
+        only_harmonica,
+        no_full_tab_video,
+        only_full_tab_video,
     )
 
 
@@ -271,6 +326,8 @@ def main():
                 not args.no_produce_tabs,
                 args.only_tabs,
                 args.only_harmonica,
+                args.no_full_tab_video,
+                args.only_full_tab_video,
             )
 
         elif args.command == "full":
@@ -281,6 +338,8 @@ def main():
                 not args.no_produce_tabs,
                 args.only_tabs,
                 args.only_harmonica,
+                args.no_full_tab_video,
+                args.only_full_tab_video,
             )
 
     except KeyboardInterrupt:

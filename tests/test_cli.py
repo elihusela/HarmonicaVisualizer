@@ -305,8 +305,10 @@ class TestCreateVideoPhase:
         create_video_phase("test.mp4", "tabs.txt", harmonica_model="custom.png")
 
         # Verify harmonica path includes custom model
-        call_kwargs = mock_creator_class.call_args[1]
-        assert "custom.png" in call_kwargs["harmonica_path"]
+        # VideoCreator is now called with a config object
+        call_args = mock_creator_class.call_args[0]
+        config = call_args[0]
+        assert "custom.png" in config.harmonica_path
 
     @patch("harmonica_pipeline.video_creator.VideoCreator")
     @patch("cli.os.path.exists")
@@ -319,8 +321,9 @@ class TestCreateVideoPhase:
         create_video_phase("test.mp4", "tabs.txt", produce_tabs=False)
 
         # Verify tabs_output_path is None
-        call_kwargs = mock_creator_class.call_args[1]
-        assert call_kwargs["tabs_output_path"] is None
+        call_args = mock_creator_class.call_args[0]
+        config = call_args[0]
+        assert config.tabs_output_path is None
 
         # Verify create() called with create_tabs=False
         mock_creator.create.assert_called_once_with(
@@ -415,7 +418,14 @@ class TestFullPipeline:
         # Verify both phases were called
         mock_generate.assert_called_once_with("test.mp4", "test")
         mock_create.assert_called_once_with(
-            "test.mp4", "tabs.txt", DEFAULT_HARMONICA_MODEL, True, False, False
+            "test.mp4",
+            "tabs.txt",
+            DEFAULT_HARMONICA_MODEL,
+            True,
+            False,
+            False,
+            False,
+            False,
         )
 
         captured = capsys.readouterr()
@@ -439,7 +449,7 @@ class TestFullPipeline:
 
         # Verify create_video_phase called with options
         mock_create.assert_called_once_with(
-            "test.mp4", "tabs.txt", "custom.png", False, True, False
+            "test.mp4", "tabs.txt", "custom.png", False, True, False, False, False
         )
 
 
@@ -459,7 +469,14 @@ class TestMain:
         """Test main with create-video command."""
         main()
         mock_create.assert_called_once_with(
-            "test.mp4", "tabs.txt", DEFAULT_HARMONICA_MODEL, True, False, False
+            "test.mp4",
+            "tabs.txt",
+            DEFAULT_HARMONICA_MODEL,
+            True,
+            False,
+            False,
+            False,
+            False,
         )
 
     @patch("cli.full_pipeline")
@@ -520,7 +537,14 @@ class TestMain:
         """Test main with --only-tabs option."""
         main()
         mock_create.assert_called_once_with(
-            "test.mp4", "tabs.txt", DEFAULT_HARMONICA_MODEL, True, True, False
+            "test.mp4",
+            "tabs.txt",
+            DEFAULT_HARMONICA_MODEL,
+            True,
+            True,
+            False,
+            False,
+            False,
         )
 
     @patch("cli.create_video_phase")
@@ -532,7 +556,14 @@ class TestMain:
         """Test main with --only-harmonica option."""
         main()
         mock_create.assert_called_once_with(
-            "test.mp4", "tabs.txt", DEFAULT_HARMONICA_MODEL, True, False, True
+            "test.mp4",
+            "tabs.txt",
+            DEFAULT_HARMONICA_MODEL,
+            True,
+            False,
+            True,
+            False,
+            False,
         )
 
     @patch("cli.create_video_phase")
@@ -544,7 +575,14 @@ class TestMain:
         """Test main with --no-produce-tabs option."""
         main()
         mock_create.assert_called_once_with(
-            "test.mp4", "tabs.txt", DEFAULT_HARMONICA_MODEL, False, False, False
+            "test.mp4",
+            "tabs.txt",
+            DEFAULT_HARMONICA_MODEL,
+            False,
+            False,
+            False,
+            False,
+            False,
         )
 
 
@@ -575,7 +613,8 @@ class TestCLIIntegration:
         create_video_phase("MySong.wav", "MySong.txt")
 
         # Verify paths are correct
-        call_kwargs = mock_creator_class.call_args[1]
-        assert "MySong_fixed.mid" in call_kwargs["midi_path"]
-        assert "MySong_harmonica.mov" in call_kwargs["output_video_path"]
-        assert "MySong_tabs.mov" in call_kwargs["tabs_output_path"]
+        call_args = mock_creator_class.call_args[0]
+        config = call_args[0]
+        assert "MySong_fixed.mid" in config.midi_path
+        assert "MySong_harmonica.mov" in config.output_video_path
+        assert "MySong_tabs.mov" in config.tabs_output_path

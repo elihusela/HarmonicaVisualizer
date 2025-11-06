@@ -24,6 +24,7 @@ class VideoCreatorConfig:
 
     # Options
     produce_tabs: bool = True
+    produce_full_tab_video: bool = True  # Generate single continuous tab video
     enable_tab_matching: bool = False  # Tab matching with text files (experimental)
 
     def __post_init__(self) -> None:
@@ -65,6 +66,7 @@ class VideoCreatorConfig:
         output_video_path: str,
         tabs_output_path: Optional[str] = None,
         produce_tabs: bool = True,
+        produce_full_tab_video: bool = True,
     ) -> "VideoCreatorConfig":
         """
         Create configuration from CLI arguments.
@@ -77,6 +79,7 @@ class VideoCreatorConfig:
             output_video_path: Path for output harmonica video
             tabs_output_path: Optional path for tab phrase video
             produce_tabs: Whether to generate tab phrase animations
+            produce_full_tab_video: Whether to generate single continuous tab video
 
         Returns:
             VideoCreatorConfig instance
@@ -89,4 +92,5 @@ class VideoCreatorConfig:
             output_video_path=output_video_path,
             tabs_output_path=tabs_output_path,
             produce_tabs=produce_tabs,
+            produce_full_tab_video=produce_full_tab_video,
         )

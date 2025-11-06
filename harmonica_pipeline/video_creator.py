@@ -17,8 +17,9 @@ from image_converter.harmonica_layout import HarmonicaLayout
 from tab_converter.consts import G_HARMONICA_MAPPING
 from tab_converter.models import Tabs, TabEntry
 from tab_converter.tab_mapper import TabMapper
+from tab_phrase_animator.full_tab_video_compositor import FullTabVideoCompositor
 from tab_phrase_animator.tab_matcher import TabMatcher
-from tab_phrase_animator.tab_phrase_animator import TabPhraseAnimator
+from tab_phrase_animator.tab_phrase_animator import TabPhraseAnimator, PageStatistics
 from tab_phrase_animator.tab_text_parser import TabTextParser
 from utils.audio_extractor import AudioExtractor
 from utils.utils import TEMP_DIR
@@ -128,7 +129,6 @@ class VideoCreator:
             # Animation setup
             harmonica_layout = HarmonicaLayout(
                 config.harmonica_path, G_MODEL_HOLE_MAPPING
-
             )
             figure_factory = FigureFactory(config.harmonica_path)
 
@@ -136,6 +136,7 @@ class VideoCreator:
             self.tab_phrase_animator = TabPhraseAnimator(
                 harmonica_layout, figure_factory
             )
+            self.full_tab_compositor = FullTabVideoCompositor()
 
         except MidiProcessorError as e:
             raise VideoCreatorError(f"MIDI processing error: {e}")
@@ -477,12 +478,76 @@ class VideoCreator:
     def _create_tab_animations(
         self, matched_tabs: Dict[str, List[List[Optional[List[TabEntry]]]]]
     ) -> None:
-        """Create tab phrase animation video."""
+        """Create tab phrase animation videos (individual pages and full video)."""
         if self.tabs_output_path is None:
             return
+
         start = time.perf_counter()
-        self.tab_phrase_animator.create_animations(
-            matched_tabs, self.extracted_audio_path, self.tabs_output_path
+
+        # Create individual page animations
+        page_statistics: List[PageStatistics] = (
+            self.tab_phrase_animator.create_animations(
+                matched_tabs, self.extracted_audio_path, self.tabs_output_path
+            )
         )
+
         duration = time.perf_counter() - start
         print(f"⏱ Tab phrase animation completed in {duration:.2f}s")
+
+        # Create full tab video if enabled
+        if self.config.produce_full_tab_video and page_statistics:
+            print("🎬 Creating full tab video...")
+            full_start = time.perf_counter()
+
+            # Get audio duration
+            audio_duration = self._get_audio_duration(self.extracted_audio_path)
+
+            # Generate full tab video path
+            full_tab_output = self.tabs_output_path.replace(
+                "_tabs.mov", "_full_tabs.mov"
+            )
+            if full_tab_output == self.tabs_output_path:
+                # If replacement didn't work, append _full
+                full_tab_output = self.tabs_output_path.replace(".mov", "_full.mov")
+
+            try:
+                self.full_tab_compositor.generate(
+                    page_statistics, audio_duration, full_tab_output
+                )
+                full_duration = time.perf_counter() - full_start
+                print(f"⏱ Full tab video completed in {full_duration:.2f}s")
+            except Exception as e:
+                print(f"⚠️  Warning: Failed to create full tab video: {e}")
+
+    def _get_audio_duration(self, audio_path: str) -> float:
+        """
+        Get the duration of an audio file using ffprobe.
+
+        Args:
+            audio_path: Path to the audio file
+
+        Returns:
+            Duration in seconds
+
+        Raises:
+            VideoCreatorError: If duration cannot be determined
+        """
+        import subprocess
+        import json
+
+        try:
+            cmd = [
+                "ffprobe",
+                "-v",
+                "quiet",
+                "-print_format",
+                "json",
+                "-show_format",
+                audio_path,
+            ]
+            result = subprocess.run(cmd, capture_output=True, text=True, check=True)
+            data = json.loads(result.stdout)
+            duration = float(data["format"]["duration"])
+            return duration
+        except Exception as e:
+            raise VideoCreatorError(f"Failed to get audio duration: {e}")
