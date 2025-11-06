@@ -66,6 +66,7 @@ class FullTabVideoCompositor:
         page_statistics: List[PageStatistics],
         audio_duration: float,
         output_path: str,
+        audio_path: Optional[str] = None,
     ) -> str:
         """
         Generate the full tab video from individual page videos.
@@ -74,6 +75,7 @@ class FullTabVideoCompositor:
             page_statistics: List of PageStatistics from TabPhraseAnimator
             audio_duration: Total duration of the audio file
             output_path: Path for the output video file
+            audio_path: Optional path to audio file to add to video
 
         Returns:
             Path to the generated full tab video
@@ -94,7 +96,13 @@ class FullTabVideoCompositor:
         self._validate_page_videos()
 
         # Stitch videos together
-        final_path = self._stitch_videos(audio_duration, output_path)
+        video_only_path = self._stitch_videos(audio_duration, output_path)
+
+        # Add audio track if provided
+        if audio_path:
+            final_path = self._add_audio_track(video_only_path, audio_path, output_path)
+        else:
+            final_path = video_only_path
 
         print(f"✅ Full tab video created: {final_path}")
         return final_path
@@ -150,20 +158,22 @@ class FullTabVideoCompositor:
                     f"Page video not found: {window.video_path}"
                 )
 
-    def _stitch_videos(self, audio_duration: float, output_path: str) -> str:
+    def _stitch_videos(self, audio_duration: float, final_output_path: str) -> str:
         """
         Stitch page videos together with transparent gaps using ffmpeg.
 
         Args:
             audio_duration: Total audio duration
-            output_path: Path for the output video
+            final_output_path: Path for the final output video
 
         Returns:
-            Path to the final stitched video
+            Path to the video-only stitched video (without audio)
 
         Raises:
             FullTabVideoCompositorError: If video stitching fails
         """
+        # Create temporary video-only output path
+        output_path = final_output_path.replace(".mov", "_noaudio.mov")
         try:
             # Get video dimensions from first page
             video_size = self._get_video_dimensions(self._page_windows[0].video_path)
@@ -349,6 +359,61 @@ class FullTabVideoCompositor:
         except subprocess.CalledProcessError as e:
             raise FullTabVideoCompositorError(
                 f"Video concatenation failed: {e.stderr}"
+            ) from e
+
+    def _add_audio_track(
+        self, video_path: str, audio_path: str, output_path: str
+    ) -> str:
+        """
+        Add audio track to video using ffmpeg.
+
+        Args:
+            video_path: Path to video file (without audio)
+            audio_path: Path to audio file
+            output_path: Path for output video with audio
+
+        Returns:
+            Path to the final video with audio
+
+        Raises:
+            FullTabVideoCompositorError: If audio addition fails
+        """
+        try:
+            print(f"   🎵 Adding audio track from {os.path.basename(audio_path)}")
+
+            cmd = [
+                "ffmpeg",
+                "-y",
+                "-i",
+                video_path,
+                "-i",
+                audio_path,
+                "-c:v",
+                "copy",  # Copy video stream without re-encoding
+                "-c:a",
+                "aac",  # Encode audio as AAC
+                "-map",
+                "0:v:0",  # Use video from first input
+                "-map",
+                "1:a:0",  # Use audio from second input
+                "-shortest",  # Match shortest stream duration
+                output_path,
+            ]
+
+            subprocess.run(cmd, capture_output=True, text=True, check=True)
+
+            # Clean up temporary video-only file
+            if os.path.exists(video_path) and video_path != output_path:
+                try:
+                    os.remove(video_path)
+                except OSError:
+                    pass  # Ignore cleanup errors
+
+            return output_path
+
+        except subprocess.CalledProcessError as e:
+            raise FullTabVideoCompositorError(
+                f"Failed to add audio track: {e.stderr}"
             ) from e
 
     def get_page_windows(self) -> List[PageWindow]:

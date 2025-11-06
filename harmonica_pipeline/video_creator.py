@@ -512,10 +512,24 @@ class VideoCreator:
 
             try:
                 self.full_tab_compositor.generate(
-                    page_statistics, audio_duration, full_tab_output
+                    page_statistics,
+                    audio_duration,
+                    full_tab_output,
+                    audio_path=self.extracted_audio_path,
                 )
                 full_duration = time.perf_counter() - full_start
                 print(f"⏱ Full tab video completed in {full_duration:.2f}s")
+
+                # Clean up individual page files if only full video requested
+                if self.config.only_full_tab_video:
+                    print("🗑️  Cleaning up individual page files...")
+                    for stat in page_statistics:
+                        try:
+                            if os.path.exists(stat.output_file):
+                                os.remove(stat.output_file)
+                        except OSError:
+                            pass  # Ignore cleanup errors
+
             except Exception as e:
                 print(f"⚠️  Warning: Failed to create full tab video: {e}")
 

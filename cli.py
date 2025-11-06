@@ -205,10 +205,15 @@ def create_video_phase(
         sys.exit(1)
 
     # Determine what to create based on options
-    create_harmonica = not only_tabs  # Create harmonica unless only tabs requested
-    create_tabs = (
-        produce_tabs and not only_harmonica
-    )  # Create tabs unless only harmonica requested
+    # If only_full_tab_video, skip harmonica and only create tabs (for stitching)
+    if only_full_tab_video:
+        create_harmonica = False
+        create_tabs = True
+    else:
+        create_harmonica = not only_tabs  # Create harmonica unless only tabs requested
+        create_tabs = (
+            produce_tabs and not only_harmonica
+        )  # Create tabs unless only harmonica requested
 
     # Determine full tab video behavior
     # Note: If only_full_tab_video is set, we still need to generate individual pages first
@@ -261,6 +266,7 @@ def create_video_phase(
         tabs_output_path=tabs_output_path,
         produce_tabs=create_tabs,
         produce_full_tab_video=produce_full_tab_video,
+        only_full_tab_video=only_full_tab_video,
     )
 
     creator = VideoCreator(config)

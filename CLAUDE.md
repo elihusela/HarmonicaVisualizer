@@ -267,7 +267,7 @@ python cli.py create-video BDAY.mov BDAY.txt
 python cli.py create-video song.wav song.txt --no-full-tab-video
 
 # Only full video (skip individual pages)
-python cli.py create-video song.wav song.txt --only-full-tab-video
+python cli.py create-video BLCKBRD.m4v BLCKBRD.txt --only-full-tab-video
 
 # Existing flags still work
 python cli.py create-video song.wav song.txt --only-tabs  # No harmonica, yes tabs

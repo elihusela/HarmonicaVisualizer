@@ -25,6 +25,9 @@ class VideoCreatorConfig:
     # Options
     produce_tabs: bool = True
     produce_full_tab_video: bool = True  # Generate single continuous tab video
+    only_full_tab_video: bool = (
+        False  # Only output full video, clean up individual pages
+    )
     enable_tab_matching: bool = False  # Tab matching with text files (experimental)
 
     def __post_init__(self) -> None:
@@ -67,6 +70,7 @@ class VideoCreatorConfig:
         tabs_output_path: Optional[str] = None,
         produce_tabs: bool = True,
         produce_full_tab_video: bool = True,
+        only_full_tab_video: bool = False,
     ) -> "VideoCreatorConfig":
         """
         Create configuration from CLI arguments.
@@ -80,6 +84,7 @@ class VideoCreatorConfig:
             tabs_output_path: Optional path for tab phrase video
             produce_tabs: Whether to generate tab phrase animations
             produce_full_tab_video: Whether to generate single continuous tab video
+            only_full_tab_video: Only output full video, clean up individual pages
 
         Returns:
             VideoCreatorConfig instance
@@ -93,4 +98,5 @@ class VideoCreatorConfig:
             tabs_output_path=tabs_output_path,
             produce_tabs=produce_tabs,
             produce_full_tab_video=produce_full_tab_video,
+            only_full_tab_video=only_full_tab_video,
         )
