@@ -49,6 +49,41 @@ Generates animated harmonica tablature videos from input videos, tab files, and 
 - Current entry point: `main.py` with 6+ arguments
 - MIDI files stored in `fixed_midis/` directory
 
+## Context7 MCP Server - Library Documentation
+**IMPORTANT**: Always use the context7 MCP server when working with external libraries or when documentation is needed.
+
+### When to Use Context7
+- Need up-to-date API documentation for any library (moviepy, numpy, matplotlib, etc.)
+- Working with unfamiliar library features or methods
+- Need code examples for specific library functionality
+- Debugging library-specific issues
+- Verifying correct usage patterns before implementation
+
+### How to Use
+1. **First**: Call `resolve-library-id` to get the Context7-compatible library ID
+2. **Then**: Call `get-library-docs` with the library ID and optional topic
+
+### Examples
+```python
+# When working with moviepy video editing
+# 1. Resolve: mcp__context7__resolve-library-id(libraryName="moviepy")
+# 2. Get docs: mcp__context7__get-library-docs(context7CompatibleLibraryID="/Zulko/moviepy", topic="concatenate videos")
+
+# When working with basic_pitch for MIDI generation
+# 1. Resolve: mcp__context7__resolve-library-id(libraryName="basic-pitch")
+# 2. Get docs: mcp__context7__get-library-docs(context7CompatibleLibraryID="/spotify/basic-pitch", topic="thresholds")
+
+# When working with matplotlib for figure rendering
+# 1. Resolve: mcp__context7__resolve-library-id(libraryName="matplotlib")
+# 2. Get docs: mcp__context7__get-library-docs(context7CompatibleLibraryID="/matplotlib/matplotlib", topic="transparent background")
+```
+
+### Guidelines
+- Always fetch docs BEFORE implementing new library features
+- Use specific topics to get targeted documentation
+- Verify API usage against latest docs (knowledge cutoff: Jan 2025)
+- Especially important for: moviepy, basic_pitch, matplotlib, numpy, PIL
+
 ## Technical Architecture & Components
 
 ### Harmonica Note Mappings
@@ -130,7 +165,7 @@ TabMatcher → Animator → Final Video
 ### 🎵 **Simplified 2-Phase Workflow:**
 ```bash
 # Phase 1: Video/Audio → MIDI (auto-naming, WAV extraction)
-python cli.py generate-midi BLCKBRD.m4v
+python cli.py generate-midi BDAY.mov
 
 # Fix MIDI in DAW → save as fixed_midis/MySong_fixed.mid
 
