@@ -183,25 +183,54 @@ class FullTabVideoCompositor:
             temp_files = []
             current_time = 0.0
 
-            # Build list of video segments (blank clips and page videos)
+            # Build list of video segments placing each at absolute timestamp
             video_segments = []
+            video_durations = []  # Track duration for each segment
 
             for window in self._page_windows:
-                # Add blank gap if there's time before this page starts
-                gap_before = window.start_time - current_time
-                if gap_before > 0.01:  # Small threshold to avoid tiny gaps
+                # Calculate where this page should appear in the final timeline
+                if current_time < window.start_time:
+                    # Add blank gap before this page
+                    gap_before = window.start_time - current_time
+                    print(
+                        f"   🔲 Adding {gap_before:.3f}s blank before page {window.page_idx}"
+                    )
                     blank_video = self._create_blank_video(gap_before, video_size)
                     video_segments.append(blank_video)
+                    video_durations.append(gap_before)
                     temp_files.append(blank_video)
-                    print(
-                        f"   🔲 Added {gap_before:.3f}s blank before page {window.page_idx}"
-                    )
                     current_time = window.start_time
 
-                # Add page video
+                elif current_time > window.start_time:
+                    # Page overlaps with previous - need to truncate the previous segment
+                    overlap = current_time - window.start_time
+                    print(
+                        f"   ⚠️  Page {window.page_idx} overlaps previous by {overlap:.3f}s"
+                    )
+                    # Trim overlap from the last segment that was added
+                    if video_segments and video_durations:
+                        prev_duration = video_durations[-1]
+                        new_duration = prev_duration - overlap
+                        if new_duration > 0.01:
+                            # Re-add the previous segment with trimmed duration
+                            prev_segment = video_segments.pop()
+                            prev_duration_val = video_durations.pop()
+                            trimmed_video = self._trim_video(
+                                prev_segment, 0, new_duration, video_size
+                            )
+                            video_segments.append(trimmed_video)
+                            video_durations.append(new_duration)
+                            temp_files.append(trimmed_video)
+                            print(
+                                f"   ✂️  Trimmed previous segment from {prev_duration_val:.3f}s to {new_duration:.3f}s"
+                            )
+                        current_time = window.start_time
+
+                # Add page video at correct position
                 video_segments.append(window.video_path)
+                video_durations.append(window.duration)
                 print(
-                    f"   🎬 Added page {window.page_idx} video ({window.duration:.3f}s)"
+                    f"   🎬 Added page {window.page_idx} at {current_time:.3f}s (duration: {window.duration:.3f}s)"
                 )
                 current_time = window.end_time
 
@@ -277,6 +306,57 @@ class FullTabVideoCompositor:
             )
             return (1920, 1080)
 
+    def _trim_video(
+        self, video_path: str, start_time: float, end_time: float, size: tuple[int, int]
+    ) -> str:
+        """
+        Trim a video to a specific time range.
+
+        Args:
+            video_path: Path to source video
+            start_time: Start time in seconds
+            end_time: End time in seconds
+            size: Video dimensions (width, height)
+
+        Returns:
+            Path to trimmed video file
+
+        Raises:
+            FullTabVideoCompositorError: If trimming fails
+        """
+        import time
+
+        timestamp = str(int(time.time() * 1000000))
+        trimmed_path = os.path.join(TEMP_DIR, f"trimmed_{timestamp}.mov")
+
+        try:
+            duration = end_time - start_time
+            cmd = [
+                "ffmpeg",
+                "-y",
+                "-i",
+                video_path,
+                "-ss",
+                f"{start_time:.3f}",
+                "-t",
+                f"{duration:.3f}",
+                "-c:v",
+                "prores_ks",
+                "-profile:v",
+                "4",
+                "-pix_fmt",
+                "yuva444p10le",
+                trimmed_path,
+            ]
+
+            subprocess.run(cmd, capture_output=True, text=True, check=True)
+            return trimmed_path
+
+        except subprocess.CalledProcessError as e:
+            raise FullTabVideoCompositorError(
+                f"Failed to trim video: {e.stderr}"
+            ) from e
+
     def _create_blank_video(self, duration: float, size: tuple[int, int]) -> str:
         """
         Create a blank (transparent) video file using ffmpeg.
@@ -340,6 +420,8 @@ class FullTabVideoCompositor:
             FullTabVideoCompositorError: If concatenation fails
         """
         try:
+            # Force re-encoding to ensure precise timing
+            # Using ProRes 4444 to preserve alpha channel and quality
             cmd = [
                 "ffmpeg",
                 "-y",
@@ -349,8 +431,14 @@ class FullTabVideoCompositor:
                 "0",
                 "-i",
                 concat_file,
-                "-c",
-                "copy",
+                "-c:v",
+                "prores_ks",
+                "-profile:v",
+                "4",  # ProRes 4444 profile (supports alpha)
+                "-pix_fmt",
+                "yuva444p10le",  # Preserve alpha channel
+                "-fps_mode",
+                "cfr",  # Constant frame rate mode for precise timing
                 output_path,
             ]
 
