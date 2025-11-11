@@ -41,7 +41,7 @@ G_MODEL_HOLE_MAPPING = {
     4: {"top_left": {"x": 558, "y": 355}, "bottom_right": {"x": 623, "y": 430}},
     5: {"top_left": {"x": 661, "y": 355}, "bottom_right": {"x": 728, "y": 430}},
     6: {"top_left": {"x": 768, "y": 355}, "bottom_right": {"x": 833, "y": 430}},
-    7: {"top_left": {"x": 873, "y": 355}, "bottom_right": {"x": 936, "y": 430}},
+    7: {"top_left": {"x": 873, "y": 355}, "bottom_right": {"x": 938, "y": 430}},
     8: {"top_left": {"x": 977, "y": 355}, "bottom_right": {"x": 1042, "y": 430}},
     9: {"top_left": {"x": 1085, "y": 355}, "bottom_right": {"x": 1147, "y": 430}},
     10: {"top_left": {"x": 1191, "y": 355}, "bottom_right": {"x": 1251, "y": 430}},
