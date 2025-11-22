@@ -366,7 +366,7 @@ class VideoCreator:
                             # This ensures we consume exactly the number of notes in the text file
                             midi_entry = sorted_midi_entries[midi_index]
                             matched_entry = TabEntry(
-                                tab=midi_entry.tab,  # Use actual MIDI tab value
+                                tab=parsed_note.hole_number,  # Preserve text file notation
                                 time=midi_entry.time,
                                 duration=midi_entry.duration,
                                 confidence=midi_entry.confidence,

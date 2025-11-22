@@ -289,9 +289,10 @@ class TabTextParser:
                 digits_str = line[start_pos:i]
 
                 # Check if there's a bend marker after all digits
-                has_bend_marker = i < len(line) and line[i] == "'"
+                # Supports: ' (straight), ' (curly U+2019), * (asterisk)
+                has_bend_marker = i < len(line) and line[i] in ("'", "*", "\u2019")
                 if has_bend_marker:
-                    i += 1  # consume the apostrophe
+                    i += 1  # consume the bend marker
 
                 # Parse each digit as a separate hole number in the chord
                 for idx, digit_char in enumerate(digits_str):
@@ -313,9 +314,10 @@ class TabTextParser:
                 digits_str = line[start_pos:i]
 
                 # Check if there's a bend marker after all digits
-                has_bend_marker = i < len(line) and line[i] == "'"
+                # Supports: ' (straight), ' (curly U+2019), * (asterisk)
+                has_bend_marker = i < len(line) and line[i] in ("'", "*", "\u2019")
                 if has_bend_marker:
-                    i += 1  # consume the apostrophe
+                    i += 1  # consume the bend marker
 
                 # Parse each digit as a separate hole number in the chord
                 for idx, digit_char in enumerate(digits_str):
@@ -337,10 +339,10 @@ class TabTextParser:
                     current_chord = []
                 i += 1
 
-            elif char == "'":
-                # Apostrophe without adjacent digit - invalid
+            elif char in ("'", "*", "\u2019"):
+                # Bend marker without adjacent digit - invalid
                 raise TabTextParserError(
-                    f"Bend notation (') must be directly adjacent to a note at position {i}"
+                    f"Bend notation ({char}) must be directly adjacent to a note at position {i}"
                 )
 
             else:
