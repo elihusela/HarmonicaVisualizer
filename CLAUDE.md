@@ -159,20 +159,26 @@ TabMatcher → Animator → Final Video
 - ✅ **Text-based structure implementation** (.txt file page/line organization preserved)
 - ✅ **Chronological MIDI timing** (left-to-right note lighting order fixed)
 - ✅ **TabEntry constructor fixes** (confidence parameter added)
+- ✅ **All 12 harmonica keys supported** (--key CLI flag with A, Ab, B, Bb, C, C#, D, E, Eb, F, F#, G)
 
 ## Latest Architecture (Sept 2024)
 
 ### 🎵 **Simplified 2-Phase Workflow:**
 ```bash
 # Phase 1: Video/Audio → MIDI (auto-naming, WAV extraction)
-python cli.py generate-midi BDAY.mov
+python cli.py generate-midi BLick_C.MOV
 
 # Fix MIDI in DAW → save as fixed_midis/MySong_fixed.mid
 
 # Phase 2: WAV → Video (reuses extracted audio)
-python cli.py create-video BLCKBRD.m4v BLCKBRD.txt --only-tabs
+python cli.py create-video BLick_C.MOV BLick_C.txt --key C
 
-# Selective Generation Options (NEW):
+# With different harmonica keys:
+python cli.py create-video AMEDI_Bb.m4v AMEDI.txt --key Bb
+python cli.py create-video song.wav song.txt --key F#   # F-sharp harmonica
+python cli.py create-video song.wav song.txt --key D    # D harmonica
+
+# Selective Generation Options:
 python cli.py create-video MySong.wav MySong.txt --only-tabs        # Only tab phrase animations
 python cli.py create-video MySong.wav MySong.txt --only-harmonica   # Only harmonica animation
 ```
@@ -385,208 +391,85 @@ final = concatenate_videoclips([blank, page1, blank, page2, ...])
 
 ---
 
-## 🎹 NEXT FEATURE: Configurable Harmonica Key
+## 🎹 Harmonica Key Selection (--key flag) ✅ COMPLETED
 
-### **Feature Overview**
-Add CLI argument to specify harmonica key (C, D, G, etc.), automatically selecting the correct harmonica model image and MIDI mapping for that key. This replaces hardcoded key selection with flexible runtime configuration.
+### **Overview**
+All 12 harmonica keys are fully supported via the `--key` CLI flag. The system automatically selects the correct:
+- Harmonica model image (PNG)
+- MIDI note mapping (pitch → hole number)
+- Hole coordinate mapping (for animation)
 
-### **Current State**
-- ✅ G harmonica model and mapping exist (G_HARMONICA_MAPPING, G_MODEL_HOLE_MAPPING)
-- ✅ C harmonica model and mapping exist (C_HARMONICA_MAPPING, C_NEW_MODEL_HOLE_MAPPING)
-- ❌ Key is hardcoded in VideoCreator (currently using G)
-- ❌ No CLI argument to select key
-- ❌ No registry/mapping system for keys
-
-### **What We're Building**
-Add `--key` argument to CLI commands that:
-1. Accepts single letter (C, D, G, etc.)
-2. Defaults to C (standard harmonica)
-3. Automatically selects correct harmonica model image
-4. Automatically selects correct MIDI mapping
-5. Validates key is supported (error if mapping doesn't exist)
+### **Supported Keys (12 total)**
+| Key | Model Image | Notes |
+|-----|-------------|-------|
+| A   | A.png       | 19 MIDI notes |
+| Ab  | Ab.png      | 19 MIDI notes |
+| B   | b.png       | 19 MIDI notes |
+| Bb  | Bb.png      | 19 MIDI notes |
+| C   | CNewModel.png | 19 MIDI notes (default) |
+| C#  | c#.png      | 19 MIDI notes |
+| D   | D.png       | 19 MIDI notes |
+| E   | E.png       | 19 MIDI notes |
+| Eb  | Eb.png      | 19 MIDI notes |
+| F   | F.png       | 19 MIDI notes |
+| F#  | F#.png      | 19 MIDI notes |
+| G   | G.png       | 19 MIDI notes |
 
 ### **CLI Usage**
 ```bash
-# Default: Use C harmonica (existing behavior after reverting G commit)
+# Default: Use C harmonica
 python cli.py create-video song.wav song.txt
 
-# Explicit C harmonica
-python cli.py create-video song.wav song.txt --key C
-
-# Use G harmonica
+# Specify a key (case-insensitive)
 python cli.py create-video song.wav song.txt --key G
+python cli.py create-video song.wav song.txt --key Bb
+python cli.py create-video song.wav song.txt --key F#
+python cli.py create-video song.wav song.txt --key Ab
 
-# Use D harmonica (future)
-python cli.py create-video song.wav song.txt --key D
+# Works with full pipeline too
+python cli.py full song.mp4 song.txt --key D
 
-# Works with all commands
-python cli.py generate-midi song.mov --key G
-python cli.py full song.mov song.txt --key D
+# Key aliases work (F# = FS, C# = CS, etc.)
+python cli.py create-video song.wav song.txt --key f#   # Same as --key FS
 ```
 
-### **Implementation Architecture**
+### **Key Features**
+- ✅ **Case-insensitive**: `C`, `c`, `G`, `g` all work
+- ✅ **Common aliases**: `F#` → FS, `C#` → CS, `Bb` → BB, `Ab` → AB, `Eb` → EB
+- ✅ **Auto-selection**: Model image, MIDI mapping, and hole coordinates selected automatically
+- ✅ **Validation**: Clear error messages for unsupported keys
+- ✅ **Override option**: Can still use `--harmonica-model` for custom images
 
-#### **1. Key Registry System**
-Create centralized registry mapping keys to their resources:
+### **Architecture**
+```
+harmonica_pipeline/
+├── harmonica_key_registry.py   # Central registry for all keys
+│   ├── HarmonicaKeyConfig      # Dataclass for key configuration
+│   ├── HARMONICA_KEY_REGISTRY  # Dict mapping key → config
+│   ├── get_harmonica_config()  # Lookup with validation + aliases
+│   └── get_supported_keys()    # List all available keys
 
-**Location:** `harmonica_pipeline/harmonica_key_registry.py`
-```python
-from dataclasses import dataclass
-from typing import Dict
+tab_converter/
+└── consts.py                   # MIDI mappings for all 12 keys
+    ├── C_HARMONICA_MAPPING
+    ├── G_HARMONICA_MAPPING
+    ├── BB_HARMONICA_MAPPING
+    ├── ... (all 12 keys)
 
-@dataclass
-class HarmonicaKeyConfig:
-    """Configuration for a specific harmonica key."""
-    key: str  # "C", "G", "D", etc.
-    model_image: str  # Path to PNG file
-    midi_mapping: Dict[int, int]  # MIDI note -> harmonica hole
-    hole_mapping: Dict[int, Dict]  # Hole -> coordinates
-
-# Registry of supported keys
-HARMONICA_KEY_REGISTRY: Dict[str, HarmonicaKeyConfig] = {
-    "C": HarmonicaKeyConfig(
-        key="C",
-        model_image="CNewModel.png",
-        midi_mapping=C_HARMONICA_MAPPING,
-        hole_mapping=C_NEW_MODEL_HOLE_MAPPING,
-    ),
-    "G": HarmonicaKeyConfig(
-        key="G",
-        model_image="harmonica_4_G.png",
-        midi_mapping=G_HARMONICA_MAPPING,
-        hole_mapping=G_MODEL_HOLE_MAPPING,
-    ),
-    # Future: Add D, A, etc.
-}
-
-def get_harmonica_config(key: str) -> HarmonicaKeyConfig:
-    """Get configuration for harmonica key, with validation."""
-    key = key.upper()
-    if key not in HARMONICA_KEY_REGISTRY:
-        supported = ", ".join(HARMONICA_KEY_REGISTRY.keys())
-        raise ValueError(f"Unsupported harmonica key: {key}. Supported: {supported}")
-    return HARMONICA_KEY_REGISTRY[key]
+image_converter/
+└── consts.py                   # Hole coordinate mappings
+    ├── C_NEW_MODEL_HOLE_MAPPING
+    ├── G_MODEL_HOLE_MAPPING
+    ├── STANDARD_MODEL_HOLE_MAPPING
+    └── ... (aliases for all keys)
 ```
 
-#### **2. VideoCreatorConfig Update**
-Add `harmonica_key` field:
-
-**Location:** `harmonica_pipeline/video_creator_config.py`
-```python
-@dataclass
-class VideoCreatorConfig:
-    # ... existing fields ...
-    harmonica_key: str = "C"  # Default to C harmonica
-
-    def __post_init__(self):
-        # Validate key and get config
-        from harmonica_pipeline.harmonica_key_registry import get_harmonica_config
-        self.key_config = get_harmonica_config(self.harmonica_key)
-
-        # Override harmonica_path if not explicitly set
-        if self.harmonica_path == "default":
-            self.harmonica_path = f"harmonica-models/{self.key_config.model_image}"
+### **Error Handling**
+```bash
+# Invalid key shows helpful error
+python cli.py create-video song.wav song.txt --key X
+# ❌ Error: Unsupported harmonica key: X. Supported keys: A, AB, B, BB, C, CS, D, E, EB, F, FS, G
 ```
-
-#### **3. VideoCreator Update**
-Use key config instead of hardcoded mappings:
-
-**Location:** `harmonica_pipeline/video_creator.py`
-```python
-class VideoCreator:
-    def __init__(self, config: VideoCreatorConfig):
-        # Get key configuration
-        key_config = config.key_config
-
-        # Use key-specific mappings
-        self.tab_mapper = TabMapper(key_config.midi_mapping, TEMP_DIR)
-
-        # Use key-specific hole mapping
-        harmonica_layout = HarmonicaLayout(
-            config.harmonica_path, key_config.hole_mapping
-        )
-```
-
-#### **4. CLI Integration**
-
-**Location:** `cli.py`
-```python
-# Add to video_parser
-video_parser.add_argument(
-    "--key",
-    type=str,
-    default="C",
-    help="Harmonica key (C, G, D, etc.). Default: C",
-)
-
-# Add to full_parser
-full_parser.add_argument(
-    "--key",
-    type=str,
-    default="C",
-    help="Harmonica key (C, G, D, etc.). Default: C",
-)
-
-# Update create_video_phase signature
-def create_video_phase(
-    video: str,
-    tabs: str,
-    harmonica_model: Optional[str] = None,
-    harmonica_key: str = "C",  # NEW
-    # ... other params ...
-):
-    # Pass key to config
-    config = VideoCreatorConfig(
-        # ... existing params ...
-        harmonica_key=harmonica_key,
-    )
-```
-
-### **Migration Strategy**
-1. **Add registry** - Create centralized key registry
-2. **Update config** - Add harmonica_key field with validation
-3. **Update VideoCreator** - Use key config instead of hardcoded imports
-4. **Add CLI args** - Add --key to all commands
-5. **Update tests** - Test key validation and selection
-6. **Revert G commit** - Change default back to C
-7. **Documentation** - Update README with --key usage
-
-### **Validation & Error Handling**
-```python
-# Invalid key
-python cli.py create-video song.wav song.txt --key Z
-# ❌ Error: Unsupported harmonica key: Z. Supported: C, G
-
-# Case insensitive
-python cli.py create-video song.wav song.txt --key g
-# ✅ Works, normalized to G
-
-# Override model path (advanced usage)
-python cli.py create-video song.wav song.txt --key G --harmonica-model custom.png
-# ✅ Uses G mapping but custom image
-```
-
-### **Testing Requirements**
-1. **test_harmonica_key_registry.py** - Registry validation, key lookup
-2. **test_video_creator_config.py** - Key config integration
-3. **test_cli.py** - CLI argument parsing and validation
-4. **Integration test** - Full pipeline with different keys
-
-### **Success Criteria**
-✅ CLI accepts --key argument (C, G, D, etc.)
-✅ Default key is C (standard harmonica)
-✅ Key determines model image automatically
-✅ Key determines MIDI mapping automatically
-✅ Invalid keys show clear error message
-✅ Case-insensitive key handling
-✅ Tests passing for all supported keys
-✅ Documentation updated
-
-### **Future Enhancements**
-- Auto-detect key from MIDI file pitch analysis
-- Support for chromatic harmonicas
-- Custom key configurations via config file
-- Key transposition (play C tabs on G harmonica)
 
 ---
 
