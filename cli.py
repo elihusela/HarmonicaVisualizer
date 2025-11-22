@@ -58,9 +58,15 @@ Examples:
     video_parser.add_argument("video", help="Input video file (in video-files/)")
     video_parser.add_argument("tabs", help="Tab file (in tab-files/)")
     video_parser.add_argument(
+        "--key",
+        type=str,
+        default="C",
+        help="Harmonica key (C, G, BB, etc.). Default: C",
+    )
+    video_parser.add_argument(
         "--harmonica-model",
         default=DEFAULT_HARMONICA_MODEL,
-        help=f"Harmonica image (default: {DEFAULT_HARMONICA_MODEL})",
+        help="Harmonica image (default: auto-selected based on --key)",
     )
     video_parser.add_argument(
         "--no-produce-tabs", action="store_true", help="Skip tab phrase generation"
@@ -93,9 +99,15 @@ Examples:
     full_parser.add_argument("video", help="Input video file (in video-files/)")
     full_parser.add_argument("tabs", help="Tab file (in tab-files/)")
     full_parser.add_argument(
+        "--key",
+        type=str,
+        default="C",
+        help="Harmonica key (C, G, BB, etc.). Default: C",
+    )
+    full_parser.add_argument(
         "--harmonica-model",
         default=DEFAULT_HARMONICA_MODEL,
-        help=f"Harmonica image (default: {DEFAULT_HARMONICA_MODEL})",
+        help="Harmonica image (default: auto-selected based on --key)",
     )
     full_parser.add_argument(
         "--no-produce-tabs", action="store_true", help="Skip tab phrase generation"
@@ -182,6 +194,7 @@ def generate_midi_phase(video: str, output_name: Optional[str] = None) -> str:
 def create_video_phase(
     video: str,
     tabs: str,
+    harmonica_key: str = "C",
     harmonica_model: str = DEFAULT_HARMONICA_MODEL,
     produce_tabs: bool = True,
     only_tabs: bool = False,
@@ -248,6 +261,7 @@ def create_video_phase(
     print(f"📹 Video: {video_path}")
     print(f"🎼 MIDI: {midi_path}")
     print(f"📄 Tabs: {tabs_path}")
+    print(f"🎹 Key: {harmonica_key}")
     print(f"🎭 Model: {harmonica_path}")
     print(f"🎥 Output: {output_video_path}")
     if create_tabs and tabs_output_path:
@@ -267,6 +281,7 @@ def create_video_phase(
         produce_tabs=create_tabs,
         produce_full_tab_video=produce_full_tab_video,
         only_full_tab_video=only_full_tab_video,
+        harmonica_key=harmonica_key,
     )
 
     creator = VideoCreator(config)
@@ -282,6 +297,7 @@ def create_video_phase(
 def full_pipeline(
     video: str,
     tabs: str,
+    harmonica_key: str = "C",
     harmonica_model: str = DEFAULT_HARMONICA_MODEL,
     produce_tabs: bool = True,
     only_tabs: bool = False,
@@ -303,6 +319,7 @@ def full_pipeline(
     create_video_phase(
         video,
         tabs,
+        harmonica_key,
         harmonica_model,
         produce_tabs,
         only_tabs,
@@ -328,6 +345,7 @@ def main():
             create_video_phase(
                 args.video,
                 args.tabs,
+                args.key,
                 args.harmonica_model,
                 not args.no_produce_tabs,
                 args.only_tabs,
@@ -340,6 +358,7 @@ def main():
             full_pipeline(
                 args.video,
                 args.tabs,
+                args.key,
                 args.harmonica_model,
                 not args.no_produce_tabs,
                 args.only_tabs,

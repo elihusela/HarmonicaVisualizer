@@ -420,6 +420,7 @@ class TestFullPipeline:
         mock_create.assert_called_once_with(
             "test.mp4",
             "tabs.txt",
+            "C",  # Default harmonica key
             DEFAULT_HARMONICA_MODEL,
             True,
             False,
@@ -441,6 +442,7 @@ class TestFullPipeline:
         full_pipeline(
             "test.mp4",
             "tabs.txt",
+            harmonica_key="G",
             harmonica_model="custom.png",
             produce_tabs=False,
             only_tabs=True,
@@ -449,7 +451,7 @@ class TestFullPipeline:
 
         # Verify create_video_phase called with options
         mock_create.assert_called_once_with(
-            "test.mp4", "tabs.txt", "custom.png", False, True, False, False, False
+            "test.mp4", "tabs.txt", "G", "custom.png", False, True, False, False, False
         )
 
 
@@ -471,6 +473,7 @@ class TestMain:
         mock_create.assert_called_once_with(
             "test.mp4",
             "tabs.txt",
+            "C",  # Default harmonica key
             DEFAULT_HARMONICA_MODEL,
             True,
             False,
@@ -539,6 +542,7 @@ class TestMain:
         mock_create.assert_called_once_with(
             "test.mp4",
             "tabs.txt",
+            "C",  # Default harmonica key
             DEFAULT_HARMONICA_MODEL,
             True,
             True,
@@ -558,6 +562,7 @@ class TestMain:
         mock_create.assert_called_once_with(
             "test.mp4",
             "tabs.txt",
+            "C",  # Default harmonica key
             DEFAULT_HARMONICA_MODEL,
             True,
             False,
@@ -577,6 +582,7 @@ class TestMain:
         mock_create.assert_called_once_with(
             "test.mp4",
             "tabs.txt",
+            "C",  # Default harmonica key
             DEFAULT_HARMONICA_MODEL,
             False,
             False,

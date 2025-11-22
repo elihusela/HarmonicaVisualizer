@@ -7,6 +7,8 @@ Organizes VideoCreator parameters to reduce constructor complexity.
 from dataclasses import dataclass
 from typing import Optional
 
+from harmonica_pipeline.harmonica_key_registry import get_harmonica_config
+
 
 @dataclass
 class VideoCreatorConfig:
@@ -29,9 +31,33 @@ class VideoCreatorConfig:
         False  # Only output full video, clean up individual pages
     )
     enable_tab_matching: bool = False  # Tab matching with text files (experimental)
+    harmonica_key: str = "C"  # Default to C harmonica
 
     def __post_init__(self) -> None:
         """Validate configuration after initialization."""
+        from pathlib import Path
+
+        # Get key configuration and potentially override harmonica_path
+        try:
+            key_config = get_harmonica_config(self.harmonica_key)
+        except ValueError as e:
+            raise ValueError(f"Invalid harmonica key: {e}")
+
+        # If harmonica_path is the default "G.png" (old default),
+        # use the key-specific model from the registry instead
+        harmonica_path_obj = Path(self.harmonica_path)
+        if harmonica_path_obj.name == "G.png":
+            # User is using old default, override with key-specific model
+            self.harmonica_path = f"harmonica-models/{key_config.model_image}"
+        elif not harmonica_path_obj.is_absolute() and not str(
+            harmonica_path_obj
+        ).startswith("harmonica-models/"):
+            # User provided a relative filename without directory, prepend harmonica-models/
+            self.harmonica_path = f"harmonica-models/{harmonica_path_obj.name}"
+
+        # Store key config for VideoCreator to access
+        self._key_config = key_config
+
         # Ensure all required paths are provided
         required_paths = [
             self.video_path,
@@ -46,8 +72,6 @@ class VideoCreatorConfig:
                 raise ValueError(f"Invalid path provided: {path}")
 
         # Validate output directory exists for output files
-        from pathlib import Path
-
         for output_path in [self.output_video_path, self.tabs_output_path]:
             if output_path:
                 output_dir = Path(output_path).parent
@@ -71,6 +95,7 @@ class VideoCreatorConfig:
         produce_tabs: bool = True,
         produce_full_tab_video: bool = True,
         only_full_tab_video: bool = False,
+        harmonica_key: str = "C",
     ) -> "VideoCreatorConfig":
         """
         Create configuration from CLI arguments.
@@ -85,6 +110,7 @@ class VideoCreatorConfig:
             produce_tabs: Whether to generate tab phrase animations
             produce_full_tab_video: Whether to generate single continuous tab video
             only_full_tab_video: Only output full video, clean up individual pages
+            harmonica_key: Harmonica key (C, G, BB, etc.)
 
         Returns:
             VideoCreatorConfig instance
@@ -99,4 +125,5 @@ class VideoCreatorConfig:
             produce_tabs=produce_tabs,
             produce_full_tab_video=produce_full_tab_video,
             only_full_tab_video=only_full_tab_video,
+            harmonica_key=harmonica_key,
         )
