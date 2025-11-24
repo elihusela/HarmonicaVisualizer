@@ -352,7 +352,10 @@ class TabPhraseAnimator:
                         chord_str = "".join(str(abs(n)) for n in tabs)
 
                     # Add bend notation if the first note (anchor) is bent
-                    if chord[0].is_bend:
+                    if chord[0].is_bend and chord[0].bend_notation:
+                        chord_str += chord[0].bend_notation
+                    elif chord[0].is_bend:
+                        # Fallback to single quote if no notation stored (backwards compatibility)
                         chord_str += "'"
 
                     line_texts.append(chord_str)

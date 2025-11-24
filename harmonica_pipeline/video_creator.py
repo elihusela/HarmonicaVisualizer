@@ -371,6 +371,7 @@ class VideoCreator:
                                 duration=midi_entry.duration,
                                 confidence=midi_entry.confidence,
                                 is_bend=parsed_note.is_bend,  # Preserve bend from text
+                                bend_notation=parsed_note.bend_notation,  # Preserve bend notation
                             )
                             chord_entries.append(matched_entry)
                             midi_index += 1
@@ -388,6 +389,7 @@ class VideoCreator:
                                 duration=0.5,
                                 confidence=0.5,
                                 is_bend=parsed_note.is_bend,
+                                bend_notation=parsed_note.bend_notation,
                             )
                             chord_entries.append(fallback_entry)
                             midi_index += 1
@@ -453,6 +455,7 @@ class VideoCreator:
                             duration=0.5,
                             confidence=1.0,
                             is_bend=parsed_note.is_bend,
+                            bend_notation=parsed_note.bend_notation,
                         )
                         for parsed_note in chord_tabs
                     ]

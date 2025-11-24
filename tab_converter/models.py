@@ -9,6 +9,7 @@ class TabEntry:
     duration: float
     confidence: float
     is_bend: bool = False
+    bend_notation: str = ""  # Original bend notation: "'", "''", "*", or "\u2019"
 
 
 @dataclass

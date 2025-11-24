@@ -15,6 +15,7 @@ class ParsedNote(NamedTuple):
 
     hole_number: int  # Positive for blow, negative for draw
     is_bend: bool = False
+    bend_notation: str = ""  # Original bend notation: "'", "''", "*", or "\u2019"
 
 
 @dataclass
@@ -289,10 +290,20 @@ class TabTextParser:
                 digits_str = line[start_pos:i]
 
                 # Check if there's a bend marker after all digits
-                # Supports: ' (straight), ' (curly U+2019), * (asterisk)
-                has_bend_marker = i < len(line) and line[i] in ("'", "*", "\u2019")
-                if has_bend_marker:
-                    i += 1  # consume the bend marker
+                # Supports: ' (straight), '' (double quote), ' (curly U+2019), * (asterisk)
+                has_bend_marker = False
+                bend_notation = ""
+                if i < len(line):
+                    # Check for '' (two single quotes)
+                    if i + 1 < len(line) and line[i : i + 2] == "''":
+                        has_bend_marker = True
+                        bend_notation = "''"
+                        i += 2  # consume both quotes
+                    # Check for single character bend markers
+                    elif line[i] in ("'", "*", "\u2019"):
+                        has_bend_marker = True
+                        bend_notation = line[i]
+                        i += 1  # consume the bend marker
 
                 # Parse each digit as a separate hole number in the chord
                 for idx, digit_char in enumerate(digits_str):
@@ -301,8 +312,11 @@ class TabTextParser:
 
                     # Only the last digit in the sequence can have a bend
                     is_bend = has_bend_marker and (idx == len(digits_str) - 1)
+                    note_bend_notation = bend_notation if is_bend else ""
 
-                    current_chord.append(ParsedNote(hole_number, is_bend))
+                    current_chord.append(
+                        ParsedNote(hole_number, is_bend, note_bend_notation)
+                    )
                     self._statistics.total_notes += 1
 
             elif char.isdigit():
@@ -314,10 +328,20 @@ class TabTextParser:
                 digits_str = line[start_pos:i]
 
                 # Check if there's a bend marker after all digits
-                # Supports: ' (straight), ' (curly U+2019), * (asterisk)
-                has_bend_marker = i < len(line) and line[i] in ("'", "*", "\u2019")
-                if has_bend_marker:
-                    i += 1  # consume the bend marker
+                # Supports: ' (straight), '' (double quote), ' (curly U+2019), * (asterisk)
+                has_bend_marker = False
+                bend_notation = ""
+                if i < len(line):
+                    # Check for '' (two single quotes)
+                    if i + 1 < len(line) and line[i : i + 2] == "''":
+                        has_bend_marker = True
+                        bend_notation = "''"
+                        i += 2  # consume both quotes
+                    # Check for single character bend markers
+                    elif line[i] in ("'", "*", "\u2019"):
+                        has_bend_marker = True
+                        bend_notation = line[i]
+                        i += 1  # consume the bend marker
 
                 # Parse each digit as a separate hole number in the chord
                 for idx, digit_char in enumerate(digits_str):
@@ -326,8 +350,11 @@ class TabTextParser:
 
                     # Only the last digit in the sequence can have a bend
                     is_bend = has_bend_marker and (idx == len(digits_str) - 1)
+                    note_bend_notation = bend_notation if is_bend else ""
 
-                    current_chord.append(ParsedNote(hole_number, is_bend))
+                    current_chord.append(
+                        ParsedNote(hole_number, is_bend, note_bend_notation)
+                    )
                     self._statistics.total_notes += 1
 
             elif char.isspace():
@@ -340,10 +367,17 @@ class TabTextParser:
                 i += 1
 
             elif char in ("'", "*", "\u2019"):
-                # Bend marker without adjacent digit - invalid
-                raise TabTextParserError(
-                    f"Bend notation ({char}) must be directly adjacent to a note at position {i}"
-                )
+                # Check if it's a '' (double single quote) pattern
+                if char == "'" and i + 1 < len(line) and line[i + 1] == "'":
+                    # Bend marker '' without adjacent digit - invalid
+                    raise TabTextParserError(
+                        f"Bend notation ('') must be directly adjacent to a note at position {i}"
+                    )
+                else:
+                    # Single bend marker without adjacent digit - invalid
+                    raise TabTextParserError(
+                        f"Bend notation ({char}) must be directly adjacent to a note at position {i}"
+                    )
 
             else:
                 # Skip other characters (comments, etc.)

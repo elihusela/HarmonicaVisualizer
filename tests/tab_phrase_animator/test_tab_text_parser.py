@@ -809,17 +809,24 @@ class TestTabTextParserBendNotation:
             TabTextParser(str(test_file), config)
 
     def test_reject_multiple_apostrophes(self, temp_test_dir):
-        """Test that multiple apostrophes are rejected (second apostrophe not adjacent)."""
-        test_file = temp_test_dir / "multiple_apostrophes.txt"
-        test_file.write_text("Page 1:\n6''")  # Multiple apostrophes
+        """Test that double apostrophe ('') is treated as a valid bend marker."""
+        test_file = temp_test_dir / "double_apostrophe.txt"
+        test_file.write_text("Page 1:\n6''")  # Double apostrophe bend notation
 
         config = ParseConfig(validate_hole_numbers=True, allow_empty_chords=False)
 
-        with pytest.raises(
-            TabTextParserError,
-            match="Bend notation \\('\\) must be directly adjacent to a note",
-        ):
-            TabTextParser(str(test_file), config)
+        # Should parse successfully as a bent note
+        parser = TabTextParser(str(test_file), config)
+        pages = parser.get_pages()
+
+        # Verify the note is marked as bent
+        assert "Page 1" in pages
+        assert len(pages["Page 1"]) == 1  # One line
+        assert len(pages["Page 1"][0]) == 1  # One chord
+        assert len(pages["Page 1"][0][0]) == 1  # One note
+        note = pages["Page 1"][0][0][0]
+        assert note.hole_number == 6
+        assert note.is_bend is True
 
     def test_apostrophe_must_be_adjacent(self, temp_test_dir):
         """Test that apostrophe not adjacent to a number raises an error."""
@@ -879,3 +886,30 @@ class TestTabTextParserBendNotation:
         assert line[1][0].hole_number == 9
         assert line[2][0].hole_number == -1
         assert line[3][0].hole_number == -9
+
+    def test_double_apostrophe_bend_notation(self, temp_test_dir):
+        """Test that double apostrophe ('') is treated as bend notation for both blow and draw."""
+        test_file = temp_test_dir / "double_apostrophe_bends.txt"
+        test_file.write_text("Page 1:\n3'' 6'' -3'' -6'' 4 -2")
+
+        parser = TabTextParser(str(test_file))
+        pages = parser.get_pages()
+
+        line = pages["Page 1"][0]
+        assert len(line) == 6
+
+        # First four should be bent
+        assert line[0][0].hole_number == 3
+        assert line[0][0].is_bend is True
+        assert line[1][0].hole_number == 6
+        assert line[1][0].is_bend is True
+        assert line[2][0].hole_number == -3
+        assert line[2][0].is_bend is True
+        assert line[3][0].hole_number == -6
+        assert line[3][0].is_bend is True
+
+        # Last two should NOT be bent
+        assert line[4][0].hole_number == 4
+        assert line[4][0].is_bend is False
+        assert line[5][0].hole_number == -2
+        assert line[5][0].is_bend is False
