@@ -8,59 +8,7 @@ OUT_COLOR = "#41dd65"  # GREEN
 IN_COLOR = "#fd4444"  # RED
 BEND_COLOR = "#ff8c00"  # ORANGE (DarkOrange)
 
-C_BASIC_MODEL_HOLE_MAPPING = {
-    1: {"top_left": {"x": 330, "y": 347}, "bottom_right": {"x": 390, "y": 413}},
-    2: {"top_left": {"x": 417, "y": 347}, "bottom_right": {"x": 476, "y": 410}},
-    3: {"top_left": {"x": 504, "y": 346}, "bottom_right": {"x": 561, "y": 409}},
-    4: {"top_left": {"x": 591, "y": 342}, "bottom_right": {"x": 650, "y": 411}},
-    5: {"top_left": {"x": 679, "y": 340}, "bottom_right": {"x": 739, "y": 410}},
-    6: {"top_left": {"x": 768, "y": 340}, "bottom_right": {"x": 823, "y": 408}},
-    7: {"top_left": {"x": 856, "y": 340}, "bottom_right": {"x": 913, "y": 411}},
-    8: {"top_left": {"x": 943, "y": 346}, "bottom_right": {"x": 999, "y": 408}},
-    9: {"top_left": {"x": 1031, "y": 345}, "bottom_right": {"x": 1085, "y": 411}},
-    10: {"top_left": {"x": 1117, "y": 346}, "bottom_right": {"x": 1170, "y": 412}},
-}
-
-C_NEW_MODEL_HOLE_MAPPING = {
-    1: {"top_left": {"x": 290, "y": 333}, "bottom_right": {"x": 341, "y": 400}},
-    2: {"top_left": {"x": 380, "y": 333}, "bottom_right": {"x": 433, "y": 401}},
-    3: {"top_left": {"x": 470, "y": 333}, "bottom_right": {"x": 527, "y": 402}},
-    4: {"top_left": {"x": 564, "y": 333}, "bottom_right": {"x": 625, "y": 404}},
-    5: {"top_left": {"x": 657, "y": 333}, "bottom_right": {"x": 719, "y": 404}},
-    6: {"top_left": {"x": 754, "y": 333}, "bottom_right": {"x": 814, "y": 401}},
-    7: {"top_left": {"x": 848, "y": 333}, "bottom_right": {"x": 908, "y": 401}},
-    8: {"top_left": {"x": 944, "y": 336}, "bottom_right": {"x": 1001, "y": 399}},
-    9: {"top_left": {"x": 1041, "y": 333}, "bottom_right": {"x": 1097, "y": 403}},
-    10: {"top_left": {"x": 1135, "y": 333}, "bottom_right": {"x": 1187, "y": 399}},
-}
-
-G_MODEL_HOLE_MAPPING = {
-    1: {"top_left": {"x": 243, "y": 355}, "bottom_right": {"x": 308, "y": 430}},
-    2: {"top_left": {"x": 350, "y": 355}, "bottom_right": {"x": 412, "y": 430}},
-    3: {"top_left": {"x": 454, "y": 355}, "bottom_right": {"x": 516, "y": 430}},
-    4: {"top_left": {"x": 558, "y": 355}, "bottom_right": {"x": 623, "y": 430}},
-    5: {"top_left": {"x": 661, "y": 355}, "bottom_right": {"x": 728, "y": 430}},
-    6: {"top_left": {"x": 768, "y": 355}, "bottom_right": {"x": 833, "y": 430}},
-    7: {"top_left": {"x": 873, "y": 355}, "bottom_right": {"x": 938, "y": 430}},
-    8: {"top_left": {"x": 977, "y": 355}, "bottom_right": {"x": 1042, "y": 430}},
-    9: {"top_left": {"x": 1085, "y": 355}, "bottom_right": {"x": 1147, "y": 430}},
-    10: {"top_left": {"x": 1191, "y": 355}, "bottom_right": {"x": 1251, "y": 430}},
-}
-
-BB_MODEL_HOLE_MAPPING = {
-    1: {"top_left": {"x": 243, "y": 355}, "bottom_right": {"x": 308, "y": 430}},
-    2: {"top_left": {"x": 350, "y": 355}, "bottom_right": {"x": 412, "y": 430}},
-    3: {"top_left": {"x": 454, "y": 355}, "bottom_right": {"x": 516, "y": 430}},
-    4: {"top_left": {"x": 558, "y": 355}, "bottom_right": {"x": 623, "y": 430}},
-    5: {"top_left": {"x": 661, "y": 355}, "bottom_right": {"x": 728, "y": 430}},
-    6: {"top_left": {"x": 768, "y": 355}, "bottom_right": {"x": 833, "y": 430}},
-    7: {"top_left": {"x": 873, "y": 355}, "bottom_right": {"x": 938, "y": 430}},
-    8: {"top_left": {"x": 979, "y": 355}, "bottom_right": {"x": 1042, "y": 430}},
-    9: {"top_left": {"x": 1085, "y": 355}, "bottom_right": {"x": 1147, "y": 430}},
-    10: {"top_left": {"x": 1191, "y": 355}, "bottom_right": {"x": 1251, "y": 430}},
-}
-
-# Standard hole mapping used for most harmonica models
+# Standard hole mapping used for ALL harmonica models
 STANDARD_MODEL_HOLE_MAPPING = {
     1: {"top_left": {"x": 243, "y": 355}, "bottom_right": {"x": 308, "y": 430}},
     2: {"top_left": {"x": 350, "y": 355}, "bottom_right": {"x": 412, "y": 430}},
@@ -74,13 +22,16 @@ STANDARD_MODEL_HOLE_MAPPING = {
     10: {"top_left": {"x": 1191, "y": 355}, "bottom_right": {"x": 1251, "y": 430}},
 }
 
-# Aliases for all standard-layout harmonicas
+# All harmonica keys use the same standard mapping
 A_MODEL_HOLE_MAPPING = STANDARD_MODEL_HOLE_MAPPING
 AB_MODEL_HOLE_MAPPING = STANDARD_MODEL_HOLE_MAPPING
 B_MODEL_HOLE_MAPPING = STANDARD_MODEL_HOLE_MAPPING
+BB_MODEL_HOLE_MAPPING = STANDARD_MODEL_HOLE_MAPPING
+C_MODEL_HOLE_MAPPING = STANDARD_MODEL_HOLE_MAPPING
 CS_MODEL_HOLE_MAPPING = STANDARD_MODEL_HOLE_MAPPING
 D_MODEL_HOLE_MAPPING = STANDARD_MODEL_HOLE_MAPPING
 E_MODEL_HOLE_MAPPING = STANDARD_MODEL_HOLE_MAPPING
 EB_MODEL_HOLE_MAPPING = STANDARD_MODEL_HOLE_MAPPING
 F_MODEL_HOLE_MAPPING = STANDARD_MODEL_HOLE_MAPPING
 FS_MODEL_HOLE_MAPPING = STANDARD_MODEL_HOLE_MAPPING
+G_MODEL_HOLE_MAPPING = STANDARD_MODEL_HOLE_MAPPING

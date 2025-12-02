@@ -13,7 +13,6 @@ from image_converter.consts import (
     AB_MODEL_HOLE_MAPPING,
     B_MODEL_HOLE_MAPPING,
     BB_MODEL_HOLE_MAPPING,
-    C_NEW_MODEL_HOLE_MAPPING,
     CS_MODEL_HOLE_MAPPING,
     D_MODEL_HOLE_MAPPING,
     E_MODEL_HOLE_MAPPING,
@@ -21,6 +20,7 @@ from image_converter.consts import (
     F_MODEL_HOLE_MAPPING,
     FS_MODEL_HOLE_MAPPING,
     G_MODEL_HOLE_MAPPING,
+    C_MODEL_HOLE_MAPPING,
 )
 from tab_converter.consts import (
     A_HARMONICA_MAPPING,
@@ -78,7 +78,7 @@ HARMONICA_KEY_REGISTRY: Dict[str, HarmonicaKeyConfig] = {
         key="C",
         model_image="c.png",
         midi_mapping=C_HARMONICA_MAPPING,
-        hole_mapping=C_NEW_MODEL_HOLE_MAPPING,
+        hole_mapping=C_MODEL_HOLE_MAPPING,
     ),
     "CS": HarmonicaKeyConfig(
         key="CS",
