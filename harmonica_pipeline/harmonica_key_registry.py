@@ -76,7 +76,7 @@ HARMONICA_KEY_REGISTRY: Dict[str, HarmonicaKeyConfig] = {
     ),
     "C": HarmonicaKeyConfig(
         key="C",
-        model_image="CNewModel.png",
+        model_image="c.png",
         midi_mapping=C_HARMONICA_MAPPING,
         hole_mapping=C_NEW_MODEL_HOLE_MAPPING,
     ),
@@ -142,7 +142,7 @@ def get_harmonica_config(key: str) -> HarmonicaKeyConfig:
     Example:
         >>> config = get_harmonica_config("C")
         >>> config.model_image
-        'CNewModel.png'
+        'c.png'
         >>> config = get_harmonica_config("F#")  # Alias for FS
         >>> config.key
         'FS'

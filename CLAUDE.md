@@ -406,7 +406,7 @@ All 12 harmonica keys are fully supported via the `--key` CLI flag. The system a
 | Ab  | Ab.png      | 19 MIDI notes |
 | B   | b.png       | 19 MIDI notes |
 | Bb  | Bb.png      | 19 MIDI notes |
-| C   | CNewModel.png | 19 MIDI notes (default) |
+| C   | c.png | 19 MIDI notes (default) |
 | C#  | c#.png      | 19 MIDI notes |
 | D   | D.png       | 19 MIDI notes |
 | E   | E.png       | 19 MIDI notes |
