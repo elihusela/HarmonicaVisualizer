@@ -171,7 +171,7 @@ python cli.py generate-midi JGNBLLS_C.m4v
 # Fix MIDI in DAW → save as fixed_midis/MySong_fixed.mid
 
 # Phase 2: WAV → Video (reuses extracted audio)
-python cli.py create-video JGNBLLS_C.m4v JNGLBLLS.txt --key C
+python cli.py create-video JGNBLLS_C.m4v JNGLBLLS.txt --key C --only-full-tab-video
 
 # With different harmonica keys:
 python cli.py create-video AMEDI_Bb.m4v AMEDI.txt --key Bb
@@ -684,16 +684,17 @@ could detect pitch bends from MIDI pitch bend events and automatically set
 
 ## 🎯 NEXT FEATURES - Performance & Auto-Tab Generation
 
-### **Implementation Order (USER REQUESTED):**
-1. 🔲 **FPS Optimization** - Reduce tab/harmonica FPS to 15 (50% speed/size improvement)
-2. 🔲 **Cleanup Individual Pages** - Add flag to delete page videos after compositor
-3. 🔲 **Auto-Tab Generation** - Generate .txt from MIDI automatically (with quick-fix capability)
-4. 🔲 **Stem Splitting** - Separate harmonica from guitar/background (Demucs, separate command)
-5. 🔲 **Better MIDI Libraries** - Benchmark alternatives to basic_pitch (experimental)
+### **Implementation Order (USER REQUESTED - Updated Priority):**
+1. 🔲 **Stem Splitting** - Separate harmonica from guitar/background (Demucs) - HIGH PRIORITY
+2. 🔲 **Visual Gap Bug Fix** - Force gap between consecutive identical notes (~5 min fix)
+3. 🔲 **FPS Optimization** - Reduce tab/harmonica FPS to 15 (50% speed/size improvement)
+4. 🔲 **Cleanup Individual Pages** - Add flag to delete page videos after compositor
+5. 🔲 **Auto-Tab Generation** - Generate .txt from MIDI automatically (with quick-fix capability)
+6. 🔲 **Better MIDI Libraries** - Benchmark alternatives to basic_pitch (experimental - LOW PRIORITY)
 
 ---
 
-### **Feature 1: FPS Optimization (DO FIRST)**
+### **Feature 1: Stem Splitting - Separate Harmonica from Background (DO FIRST)**
 
 #### **Goal:**
 Reduce rendering time and file sizes by ~50% using lower FPS for tab/harmonica animations.
@@ -732,7 +733,7 @@ Reduce rendering time and file sizes by ~50% using lower FPS for tab/harmonica a
 
 ---
 
-### **Feature 2: Cleanup Individual Pages (DO SECOND)**
+### **Feature 3: FPS Optimization (DO THIRD)**
 
 #### **Goal:**
 Save disk space by optionally deleting individual page videos after full compositor runs.
@@ -771,7 +772,7 @@ Save disk space by optionally deleting individual page videos after full composi
 
 ---
 
-### **Feature 3: Auto-Tab Generation (DO THIRD)**
+### **Feature 4: Cleanup Individual Pages (DO FOURTH)**
 
 #### **Goal:**
 Auto-generate tab `.txt` files from MIDI, with easy manual correction workflow.
@@ -873,7 +874,7 @@ Page 2
 
 ---
 
-### **Feature 4: Stem Splitting - Separate Harmonica from Background (DO FOURTH)**
+### **Feature 5: Auto-Tab Generation (DO FIFTH)**
 
 #### **Goal:**
 Isolate harmonica audio from guitar/background instruments using AI source separation for cleaner MIDI generation.
@@ -974,7 +975,7 @@ class StemSplitter:
 
 ---
 
-### **Feature 5: Better MIDI Libraries - Benchmark Alternatives (DO FIFTH)**
+### **Feature 6: Better MIDI Libraries - Benchmark Alternatives (DO SIXTH)**
 
 #### **Goal:**
 Research and benchmark alternative audio-to-MIDI libraries to potentially improve note accuracy vs basic_pitch.
