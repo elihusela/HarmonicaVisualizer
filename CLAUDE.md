@@ -685,9 +685,11 @@ could detect pitch bends from MIDI pitch bend events and automatically set
 ## 🎯 NEXT FEATURES - Performance & Auto-Tab Generation
 
 ### **Implementation Order (USER REQUESTED):**
-1. ✅ **FPS Optimization** - Reduce tab/harmonica FPS to 15 (50% speed/size improvement)
-2. ✅ **Cleanup Individual Pages** - Add flag to delete page videos after compositor
+1. 🔲 **FPS Optimization** - Reduce tab/harmonica FPS to 15 (50% speed/size improvement)
+2. 🔲 **Cleanup Individual Pages** - Add flag to delete page videos after compositor
 3. 🔲 **Auto-Tab Generation** - Generate .txt from MIDI automatically (with quick-fix capability)
+4. 🔲 **Stem Splitting** - Separate harmonica from guitar/background (Demucs, separate command)
+5. 🔲 **Better MIDI Libraries** - Benchmark alternatives to basic_pitch (experimental)
 
 ---
 
@@ -868,3 +870,188 @@ Page 2
 - This is the **auto-tabs feature (#3)**
 - Solution: Generate .txt file, user edits it, re-run video creation
 - Easy workflow: `generate-tabs → edit .txt → create-video`
+
+---
+
+### **Feature 4: Stem Splitting - Separate Harmonica from Background (DO FOURTH)**
+
+#### **Goal:**
+Isolate harmonica audio from guitar/background instruments using AI source separation for cleaner MIDI generation.
+
+#### **Library: Demucs (Meta AI)**
+- State-of-the-art audio source separation
+- Splits into: vocals, drums, bass, other
+- Harmonica typically in "vocals" or "other" stem
+- Quality over speed (OK for <1min recordings)
+
+#### **Workflow:**
+```bash
+# Step 1: Split stems (separate command)
+python cli.py split-stems MySong.mp4 --output stems/
+# Creates: stems/vocals.wav, stems/drums.wav, stems/bass.wav, stems/other.wav
+# User sees: "✅ Created 4 stems in stems/ - listen and pick best one"
+
+# Step 2: User manually listens to each stem, picks best (e.g., vocals.wav)
+
+# Step 3: Generate MIDI from chosen stem
+python cli.py generate-midi stems/vocals.wav
+# Rest of workflow unchanged
+```
+
+#### **What to Do:**
+
+**Step 1: Install and test Demucs**
+1. Add dependency: `demucs` to `pyproject.toml`
+2. Test on sample harmonica+guitar recording
+3. Verify output quality manually
+
+**Step 2: Create StemSplitter class**
+1. **New file:** `utils/stem_splitter.py`
+2. **Class:** `StemSplitter`
+3. **Input:** Audio/video file path
+4. **Output:** 4 WAV files (vocals, drums, bass, other)
+
+**Core logic:**
+```python
+import demucs.api
+
+class StemSplitter:
+    def split(self, input_path: str, output_dir: str) -> dict:
+        # Extract audio if video
+        # Run Demucs separation
+        # Save 4 stems to output_dir
+        # Return dict: {"vocals": "path", "drums": "path", ...}
+```
+
+**Step 3: Add CLI command**
+1. New command: `split-stems` in `cli.py`
+   ```bash
+   python cli.py split-stems MySong.mp4 --output stems/
+   ```
+2. Arguments:
+   - `input`: Video/audio file
+   - `--output`: Output directory (default: `stems/`)
+   - Optional: `--model htdemucs` (Demucs model variant)
+
+**Step 4: Integration**
+- Works as standalone command (NOT integrated into generate-midi)
+- User workflow: `split-stems → listen → pick best → generate-midi`
+- Clear user guidance printed after splitting
+
+**Step 5: Testing**
+1. Manual test: harmonica+guitar recording
+2. Verify all 4 stems created correctly
+3. Check processing time (<1min for 30s audio)
+4. Quality check: is harmonica isolated?
+
+#### **Files to Create/Modify:**
+- **NEW:** `utils/stem_splitter.py` - StemSplitter class
+- **NEW:** `tests/utils/test_stem_splitter.py` - Tests
+- **MODIFY:** `cli.py` - Add `split-stems` command
+- **MODIFY:** `pyproject.toml` - Add demucs dependency
+
+#### **Success Criteria:**
+✅ `split-stems` command works
+✅ Creates 4 clean WAV files
+✅ Processing time reasonable (<2min for 1min audio)
+✅ Harmonica isolated from guitar in output stems
+✅ Clear user instructions printed
+✅ Tests passing
+
+#### **Example Output:**
+```
+🎵 Splitting stems from MySong.mp4...
+⏱️  Processing with Demucs (this may take 30-60 seconds)...
+✅ Created 4 stems in stems/:
+   - vocals.wav (likely has harmonica)
+   - drums.wav
+   - bass.wav
+   - other.wav
+
+👂 Listen to each stem and pick the best one
+💡 Then run: python cli.py generate-midi stems/vocals.wav
+```
+
+---
+
+### **Feature 5: Better MIDI Libraries - Benchmark Alternatives (DO FIFTH)**
+
+#### **Goal:**
+Research and benchmark alternative audio-to-MIDI libraries to potentially improve note accuracy vs basic_pitch.
+
+#### **Status:** Experimental - may not yield improvement
+
+#### **Libraries to Test:**
+1. **Magenta mt3** (Google) - Multi-track transcription, state-of-the-art
+2. **crepe** - Monophonic pitch tracking (good for single instruments)
+3. **pyin** - Probabilistic YIN algorithm (lightweight)
+
+#### **What to Do:**
+
+**Step 1: Create benchmark framework**
+1. **New file:** `tests/experiments/benchmark_midi_libraries.py`
+2. Prepare 3-5 test audio files with known ground truth tabs
+3. Run all libraries on same samples
+4. Compare outputs to ground truth
+
+**Metrics:**
+- Note accuracy (precision/recall vs ground truth)
+- Timing precision (how close to actual note timing)
+- False positive rate
+- Processing time
+
+**Step 2: Test each library**
+```python
+# Benchmark script structure
+def test_library(library_name, audio_path, ground_truth_tabs):
+    # Run library
+    midi_output = library.transcribe(audio_path)
+
+    # Compare to ground truth
+    precision = calculate_precision(midi_output, ground_truth_tabs)
+    recall = calculate_recall(midi_output, ground_truth_tabs)
+
+    # Return metrics
+    return {
+        "precision": precision,
+        "recall": recall,
+        "f1_score": f1,
+        "processing_time": time
+    }
+```
+
+**Step 3: Analyze results**
+- Create comparison table
+- If any library shows >10% improvement: implement it
+- If no clear winner: stick with basic_pitch
+
+**Step 4: Implementation (only if better library found)**
+- Add new library to MidiGenerator as option
+- CLI flag: `--midi-engine [basic_pitch|mt3|crepe]`
+- Default stays basic_pitch
+
+#### **Files to Create:**
+- **NEW:** `tests/experiments/benchmark_midi_libraries.py`
+- **NEW:** `tests/experiments/test_samples/` - Ground truth audio + tabs
+- **MODIFY:** `harmonica_pipeline/midi_generator.py` (only if better library found)
+
+#### **Success Criteria:**
+✅ Benchmark framework runs on all libraries
+✅ Clear metrics comparison table generated
+✅ Decision made: switch library or keep basic_pitch
+✅ If switch: new library integrated with tests passing
+
+#### **Decision Point:**
+- **If no library >10% better:** Document findings, keep basic_pitch
+- **If library significantly better:** Implement as new default or optional flag
+
+---
+
+### **Quick Reference for Claude:**
+
+**When user says "implement the next planned feature":**
+1. Check which features are marked 🔲 (not done)
+2. Implement in order: FPS → Cleanup → Auto-tabs → Stem-split → MIDI-benchmark
+3. Follow the "What to Do" steps precisely
+4. Mark feature ✅ when complete
+5. Run tests, commit
