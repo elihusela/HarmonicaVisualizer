@@ -209,15 +209,12 @@ class VideoCreator:
         note_events = self._load_midi_note_events()
         tabs = self._note_events_to_tabs(note_events)
 
-        # Tab matching - use .txt file structure when available for tab phrase animations
-        if create_tabs and self.tabs_output_path and self.tabs_text_parser:
-            print("🎯 Using .txt file structure for tab phrase animations...")
+        # Tab matching - use .txt file structure when available (preserves bend info)
+        # This applies to both tab phrase animations AND harmonica animations
+        if self.tabs_text_parser:
+            print("🎯 Using .txt file structure (preserves bend notation)...")
             matched_tabs = self._create_text_based_structure(tabs)
-        elif (
-            self.config.enable_tab_matching
-            and self.tabs_text_parser
-            and self.tab_matcher
-        ):
+        elif self.config.enable_tab_matching and self.tab_matcher:
             print("🎯 Matching tabs with text notation...")
             matched_tabs = self._match_tabs(tabs)
         else:

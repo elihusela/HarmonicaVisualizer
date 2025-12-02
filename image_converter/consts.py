@@ -6,7 +6,7 @@ C_BASIC_MODEL_HEIGHT = 84
 
 OUT_COLOR = "#41dd65"  # GREEN
 IN_COLOR = "#fd4444"  # RED
-BEND_COLOR = "#ff8c00"  # ORANGE (DarkOrange)
+BEND_COLOR = "#6fd0f7"  # CYAN (Light blue)
 
 # Standard hole mapping used for ALL harmonica models
 STANDARD_MODEL_HOLE_MAPPING = {
