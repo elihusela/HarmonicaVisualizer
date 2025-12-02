@@ -1055,3 +1055,105 @@ def test_library(library_name, audio_path, ground_truth_tabs):
 3. Follow the "What to Do" steps precisely
 4. Mark feature ✅ when complete
 5. Run tests, commit
+
+---
+
+## 🐛 BUG FIXES / IMPROVEMENTS
+
+### **Bugfix: Force Visual Gap Between Consecutive Identical Notes**
+
+#### **Problem:**
+Currently, harmonica squares stay lit continuously for consecutive identical notes (e.g., two "4" holes played back-to-back), making it hard to see individual note attacks. User must manually edit MIDI to add gaps.
+
+#### **Current Behavior** (`image_converter/animator.py:19-30`)
+```python
+def adjust_consecutive_identical_notes(
+    flat_entries: List[TabEntry], gap: float = 0.1
+) -> List[TabEntry]:
+    for i in range(len(flat_entries) - 1):
+        current = flat_entries[i]
+        next_entry = flat_entries[i + 1]
+
+        if current.tab == next_entry.tab:
+            end_time = current.time + current.duration
+            if end_time >= next_entry.time:  # ❌ ONLY creates gap if overlapping
+                current.duration = max(0, next_entry.time - current.time - gap)
+    return flat_entries
+```
+
+**Issue:** Gap only created if notes **overlap**. If notes are back-to-back (touching but not overlapping), no gap is created → square stays lit continuously.
+
+**Example:**
+```
+Note 1: time=4.5, duration=0.5 (ends at 5.0)
+Note 2: time=5.0, duration=0.5 (starts at 5.0)
+Result: No gap → square stays lit from 4.5 to 5.5
+Desired: Gap → square blinks off briefly between notes
+```
+
+#### **Solution:**
+Always create a visual gap for consecutive identical notes, regardless of overlap.
+
+#### **What to Do:**
+
+**Step 1: Remove overlap check**
+```python
+def adjust_consecutive_identical_notes(
+    flat_entries: List[TabEntry], gap: float = 0.15  # Increased from 0.1
+) -> List[TabEntry]:
+    for i in range(len(flat_entries) - 1):
+        current = flat_entries[i]
+        next_entry = flat_entries[i + 1]
+
+        if current.tab == next_entry.tab:
+            # ✅ ALWAYS create gap (removed overlap check)
+            current.duration = max(0, next_entry.time - current.time - gap)
+    return flat_entries
+```
+
+**Changes:**
+1. Line 28: Remove `if end_time >= next_entry.time:` check
+2. Line 29: Unindent to always execute
+3. Line 20: Increase default gap from `0.1` → `0.15` (more visible)
+
+**Step 2: Test**
+1. Use MIDI with consecutive identical notes (no gaps)
+2. Generate harmonica video
+3. Verify squares now blink/disappear between same notes
+
+**Step 3: Optional - Make gap configurable**
+If user wants control over gap size:
+```python
+# In VideoCreatorConfig
+visual_note_gap: float = 0.15  # Configurable
+
+# CLI
+python cli.py create-video song.wav song.txt --visual-gap 0.2
+```
+
+#### **Files to Modify:**
+- `image_converter/animator.py` - Lines 19-30 (adjust_consecutive_identical_notes function)
+
+#### **Success Criteria:**
+✅ Consecutive identical notes show visual gap
+✅ User no longer needs to manually edit MIDI for clarity
+✅ Default gap (0.15s) is visible but not too jarring
+✅ All tests pass
+
+#### **Edge Cases:**
+- ⚠️ If notes are very close (< gap), duration becomes 0 → OK (max(0, ...))
+- ⚠️ Different notes (e.g., 4 → 5) → no gap needed (correct)
+- ⚠️ Same note with existing gap → gap stays same (correct)
+
+---
+
+### **Quick Reference for Claude:**
+
+**When user says "fix the consecutive notes bug":**
+1. Open `image_converter/animator.py`
+2. Go to line 28
+3. Remove the `if end_time >= next_entry.time:` check
+4. Unindent line 29
+5. Change `gap: float = 0.1` to `gap: float = 0.15`
+6. Test with MIDI file that has consecutive identical notes
+7. Commit: "fix: Force visual gap between consecutive identical notes"
