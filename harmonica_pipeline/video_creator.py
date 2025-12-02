@@ -472,8 +472,13 @@ class VideoCreator:
     ) -> None:
         """Create the main harmonica animation video."""
         start = time.perf_counter()
+        # Get audio duration to show harmonica for full video length
+        audio_duration = self._get_audio_duration(self.extracted_audio_path)
         self.animator.create_animation(
-            matched_tabs, self.extracted_audio_path, self.output_video_path
+            matched_tabs,
+            self.extracted_audio_path,
+            self.output_video_path,
+            audio_duration=audio_duration,
         )
         duration = time.perf_counter() - start
         print(f"⏱ Harmonica animation completed in {duration:.2f}s")
@@ -487,10 +492,16 @@ class VideoCreator:
 
         start = time.perf_counter()
 
+        # Get audio duration to show first/last pages for full timing
+        audio_duration = self._get_audio_duration(self.extracted_audio_path)
+
         # Create individual page animations
         page_statistics: List[PageStatistics] = (
             self.tab_phrase_animator.create_animations(
-                matched_tabs, self.extracted_audio_path, self.tabs_output_path
+                matched_tabs,
+                self.extracted_audio_path,
+                self.tabs_output_path,
+                audio_duration=audio_duration,
             )
         )
 

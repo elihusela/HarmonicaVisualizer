@@ -43,6 +43,7 @@ class Animator:
         self._ax: Optional[Axes] = None
         self._squares: List[Rectangle] = []
         self._flat_entries: List[TabEntry] = []
+        self._audio_duration: Optional[float] = None
         self._video_processor = VideoProcessor(TEMP_DIR)
 
     def create_animation(
@@ -51,6 +52,7 @@ class Animator:
         extracted_audio_path: str,
         output_path: str,
         fps: int = 15,
+        audio_duration: Optional[float] = None,
     ) -> None:
         self._flat_entries = [
             entry
@@ -62,6 +64,7 @@ class Animator:
         ]
 
         self._flat_entries = adjust_consecutive_identical_notes(self._flat_entries)
+        self._audio_duration = audio_duration
 
         total_duration = self._get_total_duration()
         total_frames = self._get_total_frames(fps, total_duration)
@@ -214,6 +217,11 @@ class Animator:
         return "↑" if tab_entry.tab > 0 else "↓"
 
     def _get_total_duration(self) -> float:
+        # Use provided audio duration if available (shows harmonica for full video)
+        if self._audio_duration is not None:
+            return self._audio_duration
+
+        # Fallback: Calculate from notes (backwards compatibility)
         max_end_time = max(
             tab.time + (tab.duration or 0.5) for tab in self._flat_entries
         )

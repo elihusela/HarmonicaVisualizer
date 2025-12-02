@@ -100,6 +100,7 @@ class TabPhraseAnimator:
         extracted_audio_path: str,
         output_path_base: str,
         fps: Optional[int] = None,
+        audio_duration: Optional[float] = None,
     ) -> List[PageStatistics]:
         """
         Create animated tab phrase videos for all pages.
@@ -109,6 +110,7 @@ class TabPhraseAnimator:
             extracted_audio_path: Path to the source audio file
             output_path_base: Base path for output files (without extension)
             fps: Optional FPS override (uses config default if None)
+            audio_duration: Optional total audio duration in seconds (for timing first/last pages)
 
         Returns:
             List of PageStatistics for each created page
@@ -131,8 +133,11 @@ class TabPhraseAnimator:
         print(f"🎵 Audio source: {extracted_audio_path}")
         print(f"📹 Output base: {output_path_base}")
 
+        total_pages = len(all_pages)
         for page_idx, (page_name, page) in enumerate(all_pages.items(), start=1):
             try:
+                is_first_page = page_idx == 1
+                is_last_page = page_idx == total_pages
                 stats = self._create_single_page_animation(
                     page_idx,
                     page_name,
@@ -140,6 +145,9 @@ class TabPhraseAnimator:
                     extracted_audio_path,
                     output_path_base,
                     actual_fps,
+                    is_first_page=is_first_page,
+                    is_last_page=is_last_page,
+                    audio_duration=audio_duration,
                 )
                 self._page_statistics.append(stats)
                 print(f"✅ Page {page_idx}/{len(all_pages)}: {stats.output_file}")
@@ -229,6 +237,9 @@ class TabPhraseAnimator:
         extracted_audio_path: str,
         output_path_base: str,
         fps: int,
+        is_first_page: bool = False,
+        is_last_page: bool = False,
+        audio_duration: Optional[float] = None,
     ) -> PageStatistics:
         """
         Create animation for a single page.
@@ -258,8 +269,19 @@ class TabPhraseAnimator:
         # Calculate timing
         raw_start = min(entry.time for entry in all_entries)
         raw_end = max(entry.time + (entry.duration or 0.5) for entry in all_entries)
-        start_time = max(0.0, raw_start - self._config.time_buffer)
-        end_time = raw_end + self._config.time_buffer
+
+        # First page: start at 0.0 (show from beginning even if notes start later)
+        if is_first_page:
+            start_time = 0.0
+        else:
+            start_time = max(0.0, raw_start - self._config.time_buffer)
+
+        # Last page: end at audio duration (show until end even if notes finish earlier)
+        if is_last_page and audio_duration is not None:
+            end_time = audio_duration
+        else:
+            end_time = raw_end + self._config.time_buffer
+
         duration = end_time - start_time
         total_frames = int(duration * fps)
 
@@ -270,8 +292,13 @@ class TabPhraseAnimator:
             f"   Entry times: {sorted([e.time for e in all_entries])[:5]}{'...' if len(all_entries) > 5 else ''}"
         )
         print(f"   Raw start: {raw_start:.3f}s, Raw end: {raw_end:.3f}s")
+        timing_note = ""
+        if is_first_page:
+            timing_note = " (first page - starts at 0.0)"
+        elif is_last_page and audio_duration:
+            timing_note = f" (last page - ends at {audio_duration:.3f}s)"
         print(
-            f"   Final: {start_time:.3f}s -> {end_time:.3f}s (duration: {duration:.3f}s)"
+            f"   Final: {start_time:.3f}s -> {end_time:.3f}s (duration: {duration:.3f}s){timing_note}"
         )
         print(f"   Frames: {total_frames} ({fps} fps)")
 
