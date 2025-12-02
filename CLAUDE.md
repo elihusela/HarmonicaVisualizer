@@ -166,12 +166,12 @@ TabMatcher → Animator → Final Video
 ### 🎵 **Simplified 2-Phase Workflow:**
 ```bash
 # Phase 1: Video/Audio → MIDI (auto-naming, WAV extraction)
-python cli.py generate-midi BLick_C.MOV
+python cli.py generate-midi JGNBLLS_C.m4v
 
 # Fix MIDI in DAW → save as fixed_midis/MySong_fixed.mid
 
 # Phase 2: WAV → Video (reuses extracted audio)
-python cli.py create-video BLick_C.MOV BLick_C.txt --key C
+python cli.py create-video JGNBLLS_C.m4v JNGLBLLS.txt --key C
 
 # With different harmonica keys:
 python cli.py create-video AMEDI_Bb.m4v AMEDI.txt --key Bb
@@ -679,3 +679,192 @@ could detect pitch bends from MIDI pitch bend events and automatically set
 - Memory usage profiling and optimization
 
 **When to implement:** If users report performance issues with long videos
+
+---
+
+## 🎯 NEXT FEATURES - Performance & Auto-Tab Generation
+
+### **Implementation Order (USER REQUESTED):**
+1. ✅ **FPS Optimization** - Reduce tab/harmonica FPS to 15 (50% speed/size improvement)
+2. ✅ **Cleanup Individual Pages** - Add flag to delete page videos after compositor
+3. 🔲 **Auto-Tab Generation** - Generate .txt from MIDI automatically (with quick-fix capability)
+
+---
+
+### **Feature 1: FPS Optimization (DO FIRST)**
+
+#### **Goal:**
+Reduce rendering time and file sizes by ~50% using lower FPS for tab/harmonica animations.
+
+#### **What to Do:**
+1. **Add CLI flags** to `cli.py`:
+   ```bash
+   python cli.py create-video song.wav song.txt --tabs-fps 15 --harmonica-fps 15
+   ```
+   - `--tabs-fps`: FPS for tab phrase animations (default: 15, previously hardcoded 30)
+   - `--harmonica-fps`: FPS for harmonica animation (default: 15, previously hardcoded 15)
+
+2. **Modify `VideoCreatorConfig`** (`harmonica_pipeline/video_creator_config.py`):
+   - Add fields: `tabs_fps: int = 15` and `harmonica_fps: int = 15`
+   - Pass to animators
+
+3. **Update `VideoCreator`** (`harmonica_pipeline/video_creator.py`):
+   - Pass `config.harmonica_fps` to `animator.create_animation(fps=...)`
+   - Pass `config.tabs_fps` to `tab_phrase_animator.create_animations(fps=...)`
+
+4. **Test:**
+   - Generate video with default FPS (15)
+   - Generate video with `--tabs-fps 30` (backwards compat)
+   - Verify 15fps looks good, renders faster
+
+#### **Files to Modify:**
+- `cli.py` - Add `--tabs-fps` and `--harmonica-fps` arguments
+- `harmonica_pipeline/video_creator_config.py` - Add fps fields
+- `harmonica_pipeline/video_creator.py` - Pass fps to animators
+
+#### **Success Criteria:**
+✅ CLI accepts fps flags
+✅ Videos render with specified FPS
+✅ 15fps default saves ~50% time/size
+✅ All tests pass
+
+---
+
+### **Feature 2: Cleanup Individual Pages (DO SECOND)**
+
+#### **Goal:**
+Save disk space by optionally deleting individual page videos after full compositor runs.
+
+#### **What to Do:**
+1. **Add CLI flag** to `cli.py`:
+   ```bash
+   python cli.py create-video song.wav song.txt --no-keep-individual-pages
+   ```
+   - Generates full video, then deletes `page1.mov`, `page2.mov`, etc.
+   - Only keeps `MySong_full_tabs.mov`
+
+2. **Modify `VideoCreatorConfig`**:
+   - Add field: `keep_individual_pages: bool = True` (default keeps them)
+
+3. **Update `VideoCreator._create_tab_animations()`**:
+   - Already has cleanup logic for `--only-full-tab-video` (lines 527-534)
+   - Rename/extend to handle `--no-keep-individual-pages`
+
+4. **Test:**
+   - Run with flag, verify individual pages deleted
+   - Run without flag, verify pages kept
+   - Verify full video still correct
+
+#### **Files to Modify:**
+- `cli.py` - Add `--no-keep-individual-pages` argument
+- `harmonica_pipeline/video_creator_config.py` - Add `keep_individual_pages` field
+- `harmonica_pipeline/video_creator.py` - Use existing cleanup logic
+
+#### **Success Criteria:**
+✅ CLI accepts flag
+✅ Individual pages deleted when flag set
+✅ Individual pages kept when flag not set
+✅ Full video unaffected
+✅ All tests pass
+
+---
+
+### **Feature 3: Auto-Tab Generation (DO THIRD)**
+
+#### **Goal:**
+Auto-generate tab `.txt` files from MIDI, with easy manual correction workflow.
+
+#### **Workflow:**
+```bash
+# Option A: Two-step (user can edit .txt between steps)
+python cli.py generate-tabs MySong.mid --output MySong.txt
+# User edits MySong.txt if needed (QUICK FIXES!)
+python cli.py create-video MySong.wav MySong.txt
+
+# Option B: One-shot (auto-generates, saves .txt, uses it)
+python cli.py create-video MySong.wav MySong.mid --auto-tabs
+# Creates MySong_auto.txt automatically
+```
+
+#### **What to Do:**
+
+**Step 1: Create TabTextGenerator class**
+1. **New file:** `tab_converter/tab_text_generator.py`
+2. **Class:** `TabTextGenerator`
+3. **Input:** `List[TabEntry]` (from MIDI)
+4. **Output:** Formatted `.txt` string (same format as current .txt files)
+
+**Logic:**
+- **Page breaks:** Timing gap >2s = new page
+- **Line breaks:** ~8-12 notes per line, max 4-6 lines per page
+- **Chord detection:** Notes within 50ms = single chord
+- **Format:** Match existing .txt format exactly (backwards compatible)
+
+**Example Output:**
+```
+Page 1
+-45 -4 5 6 -6
+6 -5 5 -4 -45'
+6 7 -7 7 -8
+
+Page 2
+8 -8 8 7 -7
+7 6 -6 6 5
+```
+
+**Step 2: Add CLI commands**
+1. **New command:** `generate-tabs` in `cli.py`
+   ```bash
+   python cli.py generate-tabs MySong.mid --output MySong.txt
+   ```
+2. **New flag:** `--auto-tabs` to `create-video` command
+   ```bash
+   python cli.py create-video MySong.wav MySong.mid --auto-tabs
+   ```
+
+**Step 3: Integration**
+- `generate-tabs` command:
+  1. Load MIDI → `MidiProcessor.load_note_events()`
+  2. Convert to tabs → `TabMapper.note_events_to_tabs()`
+  3. Generate text → `TabTextGenerator.generate(tabs)`
+  4. Save to file
+
+- `create-video --auto-tabs`:
+  1. Generate .txt file (as above)
+  2. Use existing flow with generated .txt
+
+**Step 4: Testing**
+- Generate .txt from various MIDIs
+- Verify format matches existing .txt parser
+- Test quick fixes (edit .txt, regenerate video)
+- Ensure backwards compatibility
+
+#### **Files to Create/Modify:**
+- **NEW:** `tab_converter/tab_text_generator.py` - TabTextGenerator class
+- **NEW:** `tests/tab_converter/test_tab_text_generator.py` - Tests
+- **MODIFY:** `cli.py` - Add `generate-tabs` command and `--auto-tabs` flag
+- **MODIFY:** `harmonica_pipeline/video_creator.py` - Handle MIDI input with auto-tabs
+
+#### **Success Criteria:**
+✅ `generate-tabs` command works
+✅ Generated .txt matches existing format
+✅ `--auto-tabs` flag creates video from MIDI
+✅ User can edit .txt for quick fixes
+✅ Existing .txt workflow unchanged
+✅ All tests pass
+
+---
+
+### **Quick Reference for Claude:**
+
+**When user says "implement the next planned feature":**
+1. Check which features are marked 🔲 (not done)
+2. Implement in order: FPS → Cleanup → Auto-tabs
+3. Follow the "What to Do" steps precisely
+4. Mark feature ✅ when complete
+5. Run tests, commit
+
+**When user says "I want to fix tab mistakes quickly":**
+- This is the **auto-tabs feature (#3)**
+- Solution: Generate .txt file, user edits it, re-run video creation
+- Easy workflow: `generate-tabs → edit .txt → create-video`
