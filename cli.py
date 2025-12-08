@@ -91,6 +91,13 @@ Examples:
         action="store_true",
         help="Only create full tab video (skip individual page videos)",
     )
+    video_parser.add_argument(
+        "--tab-page-buffer",
+        type=float,
+        default=0.5,
+        help="Buffer time (seconds) before/after notes on each tab page. "
+        "Increase if pages overlap or vanish early. Default: 0.5",
+    )
 
     # Full pipeline (for testing)
     full_parser = subparsers.add_parser(
@@ -131,6 +138,13 @@ Examples:
         "--only-full-tab-video",
         action="store_true",
         help="Only create full tab video (skip individual page videos)",
+    )
+    full_parser.add_argument(
+        "--tab-page-buffer",
+        type=float,
+        default=0.5,
+        help="Buffer time (seconds) before/after notes on each tab page. "
+        "Increase if pages overlap or vanish early. Default: 0.5",
     )
 
     return parser
@@ -201,6 +215,7 @@ def create_video_phase(
     only_harmonica: bool = False,
     no_full_tab_video: bool = False,
     only_full_tab_video: bool = False,
+    tab_page_buffer: float = 0.5,
 ) -> None:
     """Phase 2: Create video from fixed MIDI."""
     from harmonica_pipeline.video_creator import VideoCreator
@@ -282,6 +297,7 @@ def create_video_phase(
         produce_full_tab_video=produce_full_tab_video,
         only_full_tab_video=only_full_tab_video,
         harmonica_key=harmonica_key,
+        tab_page_buffer=tab_page_buffer,
     )
 
     creator = VideoCreator(config)
@@ -304,6 +320,7 @@ def full_pipeline(
     only_harmonica: bool = False,
     no_full_tab_video: bool = False,
     only_full_tab_video: bool = False,
+    tab_page_buffer: float = 0.5,
 ) -> None:
     """Run complete pipeline for testing (no manual MIDI editing)."""
     print("🎬 Starting Full Pipeline (Testing Mode)")
@@ -326,6 +343,7 @@ def full_pipeline(
         only_harmonica,
         no_full_tab_video,
         only_full_tab_video,
+        tab_page_buffer,
     )
 
 
@@ -352,6 +370,7 @@ def main():
                 args.only_harmonica,
                 args.no_full_tab_video,
                 args.only_full_tab_video,
+                args.tab_page_buffer,
             )
 
         elif args.command == "full":
@@ -365,6 +384,7 @@ def main():
                 args.only_harmonica,
                 args.no_full_tab_video,
                 args.only_full_tab_video,
+                args.tab_page_buffer,
             )
 
     except KeyboardInterrupt:

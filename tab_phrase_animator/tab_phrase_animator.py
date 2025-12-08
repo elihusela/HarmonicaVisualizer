@@ -609,7 +609,7 @@ class TabPhraseAnimator:
             line_len = len(line_texts)
 
             for j, (char, entry) in enumerate(zip(line_texts, line_tab_entries)):
-                xpos = 0.5 + (j - (line_len - 1) / 2) * self._config.char_spacing
+                xpos = 0.45 + (j - (line_len - 1) / 2) * self._config.char_spacing
 
                 # Determine color based on timing, bend status, and tab direction
                 color = "white"

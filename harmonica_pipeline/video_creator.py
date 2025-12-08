@@ -133,8 +133,14 @@ class VideoCreator:
             figure_factory = FigureFactory(config.harmonica_path)
 
             self.animator = Animator(harmonica_layout, figure_factory)
+
+            # Create AnimationConfig with custom buffer if specified
+            from tab_phrase_animator.tab_phrase_animator import AnimationConfig
+
+            animation_config = AnimationConfig(time_buffer=config.tab_page_buffer)
+
             self.tab_phrase_animator = TabPhraseAnimator(
-                harmonica_layout, figure_factory
+                harmonica_layout, figure_factory, config=animation_config
             )
             self.full_tab_compositor = FullTabVideoCompositor()
 

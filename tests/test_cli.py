@@ -427,6 +427,7 @@ class TestFullPipeline:
             False,
             False,
             False,
+            0.5,  # Default tab_page_buffer
         )
 
         captured = capsys.readouterr()
@@ -451,7 +452,16 @@ class TestFullPipeline:
 
         # Verify create_video_phase called with options
         mock_create.assert_called_once_with(
-            "test.mp4", "tabs.txt", "G", "custom.png", False, True, False, False, False
+            "test.mp4",
+            "tabs.txt",
+            "G",
+            "custom.png",
+            False,
+            True,
+            False,
+            False,
+            False,
+            0.5,
         )
 
 
@@ -480,6 +490,7 @@ class TestMain:
             False,
             False,
             False,
+            0.5,  # Default tab_page_buffer
         )
 
     @patch("cli.full_pipeline")
@@ -549,6 +560,7 @@ class TestMain:
             False,
             False,
             False,
+            0.5,  # Default tab_page_buffer
         )
 
     @patch("cli.create_video_phase")
@@ -569,6 +581,7 @@ class TestMain:
             True,
             False,
             False,
+            0.5,  # Default tab_page_buffer
         )
 
     @patch("cli.create_video_phase")
@@ -589,6 +602,7 @@ class TestMain:
             False,
             False,
             False,
+            0.5,  # Default tab_page_buffer
         )
 
 

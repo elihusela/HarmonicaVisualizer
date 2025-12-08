@@ -32,6 +32,9 @@ class VideoCreatorConfig:
     )
     enable_tab_matching: bool = False  # Tab matching with text files (experimental)
     harmonica_key: str = "C"  # Default to C harmonica
+    tab_page_buffer: float = (
+        0.5  # Buffer time (seconds) before/after notes on each tab page
+    )
 
     def __post_init__(self) -> None:
         """Validate configuration after initialization."""
@@ -96,6 +99,7 @@ class VideoCreatorConfig:
         produce_full_tab_video: bool = True,
         only_full_tab_video: bool = False,
         harmonica_key: str = "C",
+        tab_page_buffer: float = 0.5,
     ) -> "VideoCreatorConfig":
         """
         Create configuration from CLI arguments.
@@ -111,6 +115,7 @@ class VideoCreatorConfig:
             produce_full_tab_video: Whether to generate single continuous tab video
             only_full_tab_video: Only output full video, clean up individual pages
             harmonica_key: Harmonica key (C, G, BB, etc.)
+            tab_page_buffer: Buffer time (seconds) before/after notes on each tab page
 
         Returns:
             VideoCreatorConfig instance
@@ -126,4 +131,5 @@ class VideoCreatorConfig:
             produce_full_tab_video=produce_full_tab_video,
             only_full_tab_video=only_full_tab_video,
             harmonica_key=harmonica_key,
+            tab_page_buffer=tab_page_buffer,
         )

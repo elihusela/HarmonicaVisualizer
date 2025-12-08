@@ -166,12 +166,12 @@ TabMatcher → Animator → Final Video
 ### 🎵 **Simplified 2-Phase Workflow:**
 ```bash
 # Phase 1: Video/Audio → MIDI (auto-naming, WAV extraction)
-python cli.py generate-midi JGNBLLS_C.m4v
+python cli.py generate-midi LOD_C.wav
 
 # Fix MIDI in DAW → save as fixed_midis/MySong_fixed.mid
 
 # Phase 2: WAV → Video (reuses extracted audio)
-python cli.py create-video JGNBLLS_C.m4v JNGLBLLS.txt --key C --only-full-tab-video
+python cli.py create-video LOD_C.m4v LMD.txt --key C --only-full-tab-vide
 
 # With different harmonica keys:
 python cli.py create-video AMEDI_Bb.m4v AMEDI.txt --key Bb
@@ -308,7 +308,7 @@ python cli.py create-video BDAY.mov BDAY.txt
 python cli.py create-video song.wav song.txt --no-full-tab-video
 
 # Only full video (skip individual pages)
-python cli.py create-video RIVER_G.m4v RIVER.txt --key G --only-full-tab-video
+python cli.py create-video HOG_G.m4v HOG_G.txt --key G --only-full-tab-video
 
 # Existing flags still work
 python cli.py create-video song.wav song.txt --only-tabs  # No harmonica, yes tabs
