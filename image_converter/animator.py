@@ -17,16 +17,16 @@ from utils.utils import TEMP_DIR
 
 
 def adjust_consecutive_identical_notes(
-    flat_entries: List[TabEntry], gap: float = 0.1
+    flat_entries: List[TabEntry], gap: float = 0.15
 ) -> List[TabEntry]:
+    """Force visual gap between consecutive identical notes for clarity."""
     for i in range(len(flat_entries) - 1):
         current = flat_entries[i]
         next_entry = flat_entries[i + 1]
 
         if current.tab == next_entry.tab:
-            end_time = current.time + current.duration
-            if end_time >= next_entry.time:
-                current.duration = max(0, next_entry.time - current.time - gap)
+            # ALWAYS create gap for consecutive identical notes (not just overlaps)
+            current.duration = max(0, next_entry.time - current.time - gap)
     return flat_entries
 
 
