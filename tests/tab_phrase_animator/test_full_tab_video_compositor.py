@@ -249,14 +249,14 @@ def test_stitch_videos_with_gaps(
     create_dummy_video_files,
     temp_test_dir,
 ):
-    """Test video stitching creates blank gaps between pages."""
-    # Modify statistics to have larger gaps
+    """Test video stitching transitions directly without blank gaps."""
+    # Modify statistics to have gaps in timing
     stats = create_dummy_video_files
     stats[0].start_time = 0.0
     stats[0].end_time = 5.0
-    stats[1].start_time = 7.0  # 2-second gap
+    stats[1].start_time = 7.0  # Original gap - now ignored
     stats[1].end_time = 12.0
-    stats[2].start_time = 15.0  # 3-second gap
+    stats[2].start_time = 15.0  # Original gap - now ignored
     stats[2].end_time = 18.0
 
     default_compositor._page_windows = default_compositor._calculate_page_windows(stats)
@@ -264,7 +264,7 @@ def test_stitch_videos_with_gaps(
     # Mock video dimensions
     mock_get_dimensions.return_value = (1920, 1080)
 
-    # Mock blank video creation
+    # Mock blank video creation (should not be called)
     blank_counter = [0]
 
     def create_blank_side_effect(dur, size):
@@ -281,9 +281,8 @@ def test_stitch_videos_with_gaps(
 
     default_compositor._stitch_videos(audio_duration, output_path)
 
-    # Verify blank videos were created for gaps
-    # Should have at least 2 blank videos for the gaps between pages
-    assert mock_create_blank.call_count >= 2
+    # Verify NO blank videos were created - pages transition directly
+    assert mock_create_blank.call_count == 0
 
 
 @patch("tab_phrase_animator.full_tab_video_compositor.subprocess.run")

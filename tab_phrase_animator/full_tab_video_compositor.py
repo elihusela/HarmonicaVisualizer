@@ -184,24 +184,12 @@ class FullTabVideoCompositor:
             current_time = 0.0
 
             # Build list of video segments placing each at absolute timestamp
-            video_segments = []
-            video_durations = []  # Track duration for each segment
+            video_segments: List[str] = []
+            video_durations: List[float] = []  # Track duration for each segment
 
             for window in self._page_windows:
-                # Calculate where this page should appear in the final timeline
-                if current_time < window.start_time:
-                    # Add blank gap before this page
-                    gap_before = window.start_time - current_time
-                    print(
-                        f"   🔲 Adding {gap_before:.3f}s blank before page {window.page_idx}"
-                    )
-                    blank_video = self._create_blank_video(gap_before, video_size)
-                    video_segments.append(blank_video)
-                    video_durations.append(gap_before)
-                    temp_files.append(blank_video)
-                    current_time = window.start_time
-
-                elif current_time > window.start_time:
+                # Pages transition directly - no blank gaps
+                if current_time > window.start_time:
                     # Page overlaps with previous - need to truncate the previous segment
                     overlap = current_time - window.start_time
                     print(
@@ -234,13 +222,10 @@ class FullTabVideoCompositor:
                 )
                 current_time = window.end_time
 
-            # Add final blank gap if needed to match audio duration
-            final_gap = audio_duration - current_time
-            if final_gap > 0.01:
-                blank_video = self._create_blank_video(final_gap, video_size)
-                video_segments.append(blank_video)
-                temp_files.append(blank_video)
-                print(f"   🔲 Added {final_gap:.3f}s blank at end")
+            # No blank gap at end - video ends when last page ends
+            print(
+                f"   ✂️  Video ends at {current_time:.3f}s (audio: {audio_duration:.3f}s)"
+            )
 
             # Create concat file
             with open(concat_file_path, "w") as f:
