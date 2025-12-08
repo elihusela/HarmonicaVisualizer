@@ -177,7 +177,7 @@ class Animator:
             center_y - 10,
             f"{hole}",
             color="black",
-            fontsize=20,
+            fontsize=26,
             ha="center",
             va="center",
             weight="bold",
@@ -189,7 +189,7 @@ class Animator:
             center_y + 20,
             direction,
             color="black",
-            fontsize=20,
+            fontsize=26,
             ha="center",
             va="center",
         )
