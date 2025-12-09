@@ -175,9 +175,6 @@ class FullTabVideoCompositor:
         # Create temporary video-only output path
         output_path = final_output_path.replace(".mov", "_noaudio.mov")
         try:
-            # Get video dimensions from first page
-            video_size = self._get_video_dimensions(self._page_windows[0].video_path)
-
             # Create concat file for ffmpeg
             concat_file_path = os.path.join(TEMP_DIR, "full_tab_concat.txt")
             temp_files = []
@@ -189,36 +186,39 @@ class FullTabVideoCompositor:
 
             for window in self._page_windows:
                 # Pages transition directly - no blank gaps
-                if current_time > window.start_time:
-                    # Page overlaps with previous - need to truncate the previous segment
-                    overlap = current_time - window.start_time
-                    print(
-                        f"   ⚠️  Page {window.page_idx} overlaps previous by {overlap:.3f}s"
-                    )
-                    # Trim overlap from the last segment that was added
-                    if video_segments and video_durations:
-                        prev_duration = video_durations[-1]
-                        new_duration = prev_duration - overlap
-                        if new_duration > 0.01:
-                            # Re-add the previous segment with trimmed duration
-                            prev_segment = video_segments.pop()
-                            prev_duration_val = video_durations.pop()
-                            trimmed_video = self._trim_video(
-                                prev_segment, 0, new_duration, video_size
-                            )
-                            video_segments.append(trimmed_video)
-                            video_durations.append(new_duration)
-                            temp_files.append(trimmed_video)
-                            print(
-                                f"   ✂️  Trimmed previous segment from {prev_duration_val:.3f}s to {new_duration:.3f}s"
-                            )
-                        current_time = window.start_time
+                # DISABLED: Overlap trimming was causing pages to disappear too early
+                # when buffer was increased. Now pages can overlap naturally.
+                # if current_time > window.start_time:
+                #     # Page overlaps with previous - need to truncate the previous segment
+                #     overlap = current_time - window.start_time
+                #     print(
+                #         f"   ⚠️  Page {window.page_idx} overlaps previous by {overlap:.3f}s"
+                #     )
+                #     # Trim overlap from the last segment that was added
+                #     if video_segments and video_durations:
+                #         prev_duration = video_durations[-1]
+                #         new_duration = prev_duration - overlap
+                #         if new_duration > 0.01:
+                #             # Re-add the previous segment with trimmed duration
+                #             prev_segment = video_segments.pop()
+                #             prev_duration_val = video_durations.pop()
+                #             trimmed_video = self._trim_video(
+                #                 prev_segment, 0, new_duration, video_size
+                #             )
+                #             video_segments.append(trimmed_video)
+                #             video_durations.append(new_duration)
+                #             temp_files.append(trimmed_video)
+                #             print(
+                #                 f"   ✂️  Trimmed previous segment from "
+                #                 f"{prev_duration_val:.3f}s to {new_duration:.3f}s"
+                #             )
+                #         current_time = window.start_time
 
                 # Add page video at correct position
                 video_segments.append(window.video_path)
                 video_durations.append(window.duration)
                 print(
-                    f"   🎬 Added page {window.page_idx} at {current_time:.3f}s (duration: {window.duration:.3f}s)"
+                    f"   🎬 Added page {window.page_idx} at {window.start_time:.3f}s (duration: {window.duration:.3f}s)"
                 )
                 current_time = window.end_time
 

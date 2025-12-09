@@ -233,7 +233,6 @@ def test_stitch_videos_basic(
     # _stitch_videos now returns temp video-only path (for audio addition)
     expected_temp_path = str(temp_test_dir / "full_tabs_noaudio.mov")
     assert result == expected_temp_path
-    mock_get_dimensions.assert_called_once()
     # Should call ffmpeg subprocess for concatenation
     assert any("ffmpeg" in str(call) for call in mock_subprocess.call_args_list)
 
