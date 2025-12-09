@@ -33,7 +33,7 @@ class VideoCreatorConfig:
     enable_tab_matching: bool = False  # Tab matching with text files (experimental)
     harmonica_key: str = "C"  # Default to C harmonica
     tab_page_buffer: float = (
-        0.5  # Buffer time (seconds) before/after notes on each tab page
+        0.1  # Buffer time (seconds) before/after notes on each tab page
     )
 
     def __post_init__(self) -> None:
@@ -99,7 +99,7 @@ class VideoCreatorConfig:
         produce_full_tab_video: bool = True,
         only_full_tab_video: bool = False,
         harmonica_key: str = "C",
-        tab_page_buffer: float = 0.5,
+        tab_page_buffer: float = 0.1,
     ) -> "VideoCreatorConfig":
         """
         Create configuration from CLI arguments.

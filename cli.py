@@ -94,9 +94,9 @@ Examples:
     video_parser.add_argument(
         "--tab-page-buffer",
         type=float,
-        default=0.5,
+        default=0.1,
         help="Buffer time (seconds) before/after notes on each tab page. "
-        "Increase if pages overlap or vanish early. Default: 0.5",
+        "Increase if pages overlap or vanish early. Default: 0.1",
     )
 
     # Full pipeline (for testing)
@@ -142,9 +142,9 @@ Examples:
     full_parser.add_argument(
         "--tab-page-buffer",
         type=float,
-        default=0.5,
+        default=0.1,
         help="Buffer time (seconds) before/after notes on each tab page. "
-        "Increase if pages overlap or vanish early. Default: 0.5",
+        "Increase if pages overlap or vanish early. Default: 0.1",
     )
 
     return parser
@@ -215,7 +215,7 @@ def create_video_phase(
     only_harmonica: bool = False,
     no_full_tab_video: bool = False,
     only_full_tab_video: bool = False,
-    tab_page_buffer: float = 0.5,
+    tab_page_buffer: float = 0.1,
 ) -> None:
     """Phase 2: Create video from fixed MIDI."""
     from harmonica_pipeline.video_creator import VideoCreator
@@ -320,7 +320,7 @@ def full_pipeline(
     only_harmonica: bool = False,
     no_full_tab_video: bool = False,
     only_full_tab_video: bool = False,
-    tab_page_buffer: float = 0.5,
+    tab_page_buffer: float = 0.1,
 ) -> None:
     """Run complete pipeline for testing (no manual MIDI editing)."""
     print("🎬 Starting Full Pipeline (Testing Mode)")

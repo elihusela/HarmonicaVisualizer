@@ -31,7 +31,7 @@ class TestAnimationConfig:
         assert config.box_rounding == 0.2
         assert config.box_color == "#888888"
         assert config.box_alpha == 0.5
-        assert config.time_buffer == 0.5
+        assert config.time_buffer == 0.1
         assert config.cleanup_temp_files is True
 
     def test_custom_config(self):

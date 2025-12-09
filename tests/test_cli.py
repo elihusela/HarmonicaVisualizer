@@ -427,7 +427,7 @@ class TestFullPipeline:
             False,
             False,
             False,
-            0.5,  # Default tab_page_buffer
+            0.1,  # Default tab_page_buffer
         )
 
         captured = capsys.readouterr()
@@ -461,7 +461,7 @@ class TestFullPipeline:
             False,
             False,
             False,
-            0.5,
+            0.1,
         )
 
 
@@ -490,7 +490,7 @@ class TestMain:
             False,
             False,
             False,
-            0.5,  # Default tab_page_buffer
+            0.1,  # Default tab_page_buffer
         )
 
     @patch("cli.full_pipeline")
@@ -560,7 +560,7 @@ class TestMain:
             False,
             False,
             False,
-            0.5,  # Default tab_page_buffer
+            0.1,  # Default tab_page_buffer
         )
 
     @patch("cli.create_video_phase")
@@ -581,7 +581,7 @@ class TestMain:
             True,
             False,
             False,
-            0.5,  # Default tab_page_buffer
+            0.1,  # Default tab_page_buffer
         )
 
     @patch("cli.create_video_phase")
@@ -602,7 +602,7 @@ class TestMain:
             False,
             False,
             False,
-            0.5,  # Default tab_page_buffer
+            0.1,  # Default tab_page_buffer
         )
 
 

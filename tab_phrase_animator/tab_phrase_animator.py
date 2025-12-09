@@ -39,7 +39,7 @@ class AnimationConfig:
     box_rounding: float = 0.2
     box_color: str = "#888888"
     box_alpha: float = 0.5
-    time_buffer: float = 0.5  # Buffer time before/after notes
+    time_buffer: float = 0.1  # Buffer time before/after notes
     cleanup_temp_files: bool = True
 
 
@@ -609,7 +609,7 @@ class TabPhraseAnimator:
             line_len = len(line_texts)
 
             for j, (char, entry) in enumerate(zip(line_texts, line_tab_entries)):
-                xpos = 0.45 + (j - (line_len - 1) / 2) * self._config.char_spacing
+                xpos = 0.48 + (j - (line_len - 1) / 2) * self._config.char_spacing
 
                 # Determine color based on timing, bend status, and tab direction
                 color = "white"
