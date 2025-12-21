@@ -25,6 +25,9 @@ def setup_parser() -> argparse.ArgumentParser:
         formatter_class=argparse.RawDescriptionHelpFormatter,
         epilog="""
 Examples:
+  # Interactive workflow (recommended)
+  python cli.py interactive MySong_KeyG_Stem.mp4 MySong.txt
+
   # Phase 1: Generate MIDI from video or audio
   python cli.py generate-midi song.mp4
   python cli.py generate-midi song.wav
@@ -145,6 +148,24 @@ Examples:
         default=0.1,
         help="Buffer time (seconds) before/after notes on each tab page. "
         "Increase if pages overlap or vanish early. Default: 0.1",
+    )
+
+    # Interactive workflow
+    interactive_parser = subparsers.add_parser(
+        "interactive",
+        help="Run interactive workflow with approval gates and state persistence",
+    )
+    interactive_parser.add_argument("video", help="Input video/audio file")
+    interactive_parser.add_argument("tabs", help="Tab file (.txt)")
+    interactive_parser.add_argument(
+        "--session-dir",
+        default="sessions",
+        help="Directory for session persistence files. Default: sessions/",
+    )
+    interactive_parser.add_argument(
+        "--auto-approve",
+        action="store_true",
+        help="Skip all approval prompts (for testing/automation)",
     )
 
     return parser
@@ -347,6 +368,57 @@ def full_pipeline(
     )
 
 
+def interactive_workflow(
+    video: str, tabs: str, session_dir: str = "sessions", auto_approve: bool = False
+) -> None:
+    """Run interactive workflow with approval gates and session persistence.
+
+    This workflow:
+    - Parses configuration from filename
+    - Saves/resumes session state
+    - Pauses at each step for user approval
+    - Handles MIDI fixing iteration
+    - Supports crash recovery
+
+    Args:
+        video: Input video/audio file (filename encodes configuration)
+        tabs: Tab file (.txt)
+        session_dir: Directory for session files
+        auto_approve: Skip all approval prompts (for testing)
+    """
+    from interactive_workflow.orchestrator import WorkflowOrchestrator
+
+    # Resolve file paths
+    # For WAV files, check current directory first
+    if video.endswith(".wav") and os.path.exists(video):
+        video_path = video
+    else:
+        video_path = os.path.join(VIDEO_FILES_DIR, video)
+
+    tabs_path = os.path.join(TAB_FILES_DIR, tabs)
+
+    # Validate inputs exist
+    file_type = "Audio file" if video.endswith(".wav") else "Video"
+    validate_file_exists(video_path, file_type)
+    validate_file_exists(tabs_path, "Tabs")
+
+    print("🎭 Starting Interactive Workflow")
+    print(f"📹 Input: {video_path}")
+    print(f"📄 Tabs: {tabs_path}")
+    print(f"💾 Sessions: {session_dir}/")
+    print()
+
+    # Create and run orchestrator
+    orchestrator = WorkflowOrchestrator(
+        input_video=video_path,
+        input_tabs=tabs_path,
+        session_dir=session_dir,
+        auto_approve=auto_approve,
+    )
+
+    orchestrator.run()
+
+
 def main():
     parser = setup_parser()
     args = parser.parse_args()
@@ -385,6 +457,11 @@ def main():
                 args.no_full_tab_video,
                 args.only_full_tab_video,
                 args.tab_page_buffer,
+            )
+
+        elif args.command == "interactive":
+            interactive_workflow(
+                args.video, args.tabs, args.session_dir, args.auto_approve
             )
 
     except KeyboardInterrupt:
