@@ -184,40 +184,85 @@ class WorkflowOrchestrator:
             self.session.transition_to(WorkflowState.MIDI_GENERATION)
 
     def _step_stem_selection(self) -> None:
-        """Execute stem separation and let user select best stem.
+        """Wait for user to provide manually separated stem file.
 
-        TODO: Implement stem separation logic
-        - Run Demucs on input audio
-        - Present user with 4 stems
-        - Let user pick best one
-        - Save selected stem path to session
+        User separates stems offline (Demucs, RX, etc.) and provides
+        the stem file they want to use for MIDI generation.
+
+        Future: Auto-run Demucs here and let user pick from results.
         """
         self.console.print(
             Panel(
-                "[yellow]Stem separation not yet implemented[/yellow]\n"
-                "This step will use Demucs to separate audio sources.",
+                "[cyan]Manual Stem Separation Required[/cyan]\n\n"
+                "1. Separate stems using your preferred tool (Demucs, RX, etc.)\n"
+                "2. Save the stem you want to use in the video-files/ folder\n"
+                "3. Provide the filename below\n\n"
+                "[dim]Example: MySong_vocals.wav[/dim]",
                 title="Stem Selection",
             )
         )
-        # For now, skip to next step
+
+        if self.auto_approve:
+            # For testing: just use original video
+            self.console.print(
+                "[dim]Auto-approve mode: using original input file[/dim]"
+            )
+            selected_stem = self.session.input_video
+        else:
+            # Prompt user for stem filename
+            from utils.utils import VIDEO_FILES_DIR
+
+            stem_file = questionary.text(
+                "Enter stem filename:",
+                default=f"{self.session.song_name}_vocals.wav",
+            ).ask()
+
+            if not stem_file:
+                # User cancelled
+                self.console.print(
+                    "[yellow]No stem provided, using original file[/yellow]"
+                )
+                selected_stem = self.session.input_video
+            else:
+                selected_stem = os.path.join(VIDEO_FILES_DIR, stem_file)
+
+        self.session.set_data("selected_audio", selected_stem)
+        self.console.print(f"[green]✓ Using audio: {selected_stem}[/green]")
         self.session.transition_to(WorkflowState.MIDI_GENERATION)
 
     def _step_midi_generation(self) -> None:
         """Generate MIDI from audio using basic_pitch.
 
-        TODO: Implement MIDI generation
-        - Use MidiGenerator from harmonica_pipeline
-        - Process audio to MIDI
-        - Save generated MIDI path to session
+        Uses MidiGenerator which automatically handles:
+        - Video files (.mp4, .mov) - extracts audio first
+        - Audio files (.wav) - uses directly
         """
+        from harmonica_pipeline.midi_generator import MidiGenerator
+        from utils.utils import MIDI_DIR
+
+        # Use selected stem if available (from stem selection step)
+        # Otherwise use original input (video or audio)
+        input_file = self.session.get_data("selected_audio", self.session.input_video)
+        output_midi = os.path.join(MIDI_DIR, f"{self.session.song_name}_fixed.mid")
+
         self.console.print(
             Panel(
-                "[yellow]MIDI generation not yet fully integrated[/yellow]\n"
-                "This step will generate MIDI using basic_pitch.",
+                f"[cyan]Generating MIDI from audio[/cyan]\n\n"
+                f"Input: {input_file}\n"
+                f"Output: {output_midi}\n\n"
+                "[dim]This may take 30-60 seconds...[/dim]",
                 title="MIDI Generation",
             )
         )
-        # For now, skip to next step
+
+        # Generate MIDI
+        generator = MidiGenerator(input_file, output_midi)
+        generator.generate()
+
+        # Save to session
+        self.session.set_data("generated_midi", output_midi)
+
+        self.console.print(f"[green]✓ MIDI generated: {output_midi}[/green]")
         self.session.transition_to(WorkflowState.MIDI_FIXING)
 
     def _step_midi_fixing(self) -> None:

@@ -183,8 +183,11 @@ class TestWorkflowSteps:
         )
         orchestrator.session.transition_to(WorkflowState.MIDI_GENERATION)
 
-        orchestrator._step_midi_generation()
-        assert orchestrator.session.state == WorkflowState.MIDI_FIXING
+        # Mock MidiGenerator to avoid actual MIDI generation
+        with patch("harmonica_pipeline.midi_generator.MidiGenerator") as mock_gen:
+            orchestrator._step_midi_generation()
+            mock_gen.assert_called_once()
+            assert orchestrator.session.state == WorkflowState.MIDI_FIXING
 
     def test_midi_fixing_step_approved(self, tmp_path):
         """Test MIDI fixing step transitions when approved."""
@@ -282,12 +285,14 @@ class TestWorkflowExecution:
             auto_approve=True,
         )
 
-        # Run workflow - should go through all states automatically
-        orchestrator.run()
+        # Mock MidiGenerator to avoid actual MIDI generation
+        with patch("harmonica_pipeline.midi_generator.MidiGenerator"):
+            # Run workflow - should go through all states automatically
+            orchestrator.run()
 
-        # Should complete successfully
-        assert orchestrator.session.is_complete()
-        assert orchestrator.session.get_progress_percentage() == 100
+            # Should complete successfully
+            assert orchestrator.session.is_complete()
+            assert orchestrator.session.get_progress_percentage() == 100
 
     def test_run_workflow_with_stem(self, tmp_path):
         """Test workflow with stem separation enabled."""
@@ -298,8 +303,10 @@ class TestWorkflowExecution:
             auto_approve=True,
         )
 
-        orchestrator.run()
-        assert orchestrator.session.is_complete()
+        # Mock MidiGenerator to avoid actual MIDI generation
+        with patch("harmonica_pipeline.midi_generator.MidiGenerator"):
+            orchestrator.run()
+            assert orchestrator.session.is_complete()
 
     def test_workflow_saves_session_after_each_step(self, tmp_path):
         """Test session is saved after each step."""
@@ -406,11 +413,13 @@ class TestSessionPersistence:
         orchestrator._save_session()
         assert session_file.exists()
 
-        # Complete workflow
-        orchestrator.run()
+        # Mock MidiGenerator to avoid actual MIDI generation
+        with patch("harmonica_pipeline.midi_generator.MidiGenerator"):
+            # Complete workflow
+            orchestrator.run()
 
-        # Session file should be deleted
-        assert not session_file.exists()
+            # Session file should be deleted
+            assert not session_file.exists()
 
 
 class TestAutoApproveMode:
@@ -426,9 +435,10 @@ class TestAutoApproveMode:
         )
 
         # Should not call questionary at all
-        with patch("questionary.confirm") as mock_confirm:
-            orchestrator.run()
-            mock_confirm.assert_not_called()
+        with patch("harmonica_pipeline.midi_generator.MidiGenerator"):
+            with patch("questionary.confirm") as mock_confirm:
+                orchestrator.run()
+                mock_confirm.assert_not_called()
 
     def test_manual_mode_uses_prompts(self, tmp_path):
         """Test manual mode uses questionary prompts."""
