@@ -10,37 +10,84 @@ Create a fully automated, interactive workflow where users drop files in a folde
 ## 📊 IMPLEMENTATION PROGRESS
 
 **Started:** 2025-12-21
-**Current Phase:** Phase 0 - Preparation
+**Current Phase:** Phase 2 - Build Filename Parser
 **Status:** 🟢 In Progress
 
 ### Completed Phases
-_None yet_
 
-### Current Phase: Phase 0 - Preparation 🛡️
-**Goal:** Set up safety nets before any changes
+#### ✅ Phase 1: Add Dependencies (COMPLETE)
+**Completed:** 2025-12-21 16:00
+**Duration:** ~15 minutes
+
+**Tasks Completed:**
+- ✅ Added questionary ^2.1.1 to dependencies
+- ✅ Added rich ^14.2.0 to dependencies
+- ✅ Ran poetry install (5 new packages installed, 6 updated)
+- ✅ Verified tests still passing (587 tests ✅)
+- ✅ Committed changes
+
+**Commits:**
+- `3938208` - "feat(deps): Add questionary and rich for interactive CLI"
+
+**Dependencies Added:**
+- questionary: Interactive prompts and user input
+- rich: Beautiful terminal output, progress bars, panels
+- Also updated: scipy, pillow, prompt-toolkit, pygments
+
+**Notes:**
+- Zero breaking changes
+- All pre-commit hooks passing
+- Ready for interactive CLI development
+
+---
+
+#### ✅ Phase 0: Preparation (COMPLETE)
+**Completed:** 2025-12-21 15:45
+**Duration:** ~15 minutes
+
+**Tasks Completed:**
+- ✅ Checked git status and current changes
+- ✅ Committed improvements to main branch
+- ✅ Created feature branch: `feature/interactive-workflow`
+- ✅ Tagged stable version: `stable-before-interactive`
+- ✅ Ran baseline tests: 587 tests passing ✅
+- ✅ Documented baseline state
+
+**Commits:**
+- `5cbeddb` - "feat: Improve tab parsing and tune consecutive note gap"
+
+**Baseline State:**
+- Branch: `feature/interactive-workflow` (created from main)
+- Tests: 587 passing, 1 warning
+- Git tag: `stable-before-interactive` (rollback point)
+- All pre-commit hooks passing (black, mypy, flake8, pytest)
+
+**Notes:**
+- Added debug_*.py pattern to .gitignore
+- Committed tab parsing improvements and gap tuning before branching
+- Clean starting point for interactive workflow development
+
+---
+
+### Current Phase: Phase 2 - Build Filename Parser 🏷️
+**Goal:** Build filename config parser - isolated, no side effects
 
 **Tasks:**
-- [ ] Check git status and current changes
-- [ ] Decide: commit current work or stash it
-- [ ] Create feature branch: `feature/interactive-workflow`
-- [ ] Tag stable version: `stable-before-interactive`
-- [ ] Run baseline tests: `pytest`
-- [ ] Document baseline state
+- [ ] Create `utils/filename_parser.py`
+- [ ] Implement FilenameConfig dataclass
+- [ ] Implement parse_filename() function
+- [ ] Create `tests/utils/test_filename_parser.py`
+- [ ] Write comprehensive tests
+- [ ] Run tests and verify
+- [ ] Commit changes
 
 **Progress Notes:**
-- 2025-12-21 15:30 - Started Phase 0
-- Found uncommitted changes in main:
-  - Modified: CLAUDE.md (updated examples)
-  - Modified: video_creator.py (tab text parsing improvements)
-  - Modified: animator.py (unknown changes)
-  - Modified: test_video_creator.py (test updates)
-  - Untracked: brainstorm.md (our planning doc)
-  - Untracked: debug_midi.py (debugging file)
-- **NEXT:** User decision - commit these changes or stash before branching?
+- 2025-12-21 16:00 - Starting Phase 2
+- This is completely isolated - no integration with existing code yet
+- Zero risk - new file only
 
 ### Upcoming Phases
-- **Phase 1:** Add dependencies (questionary, rich) - 🔲 Not Started
-- **Phase 2:** Build filename parser (isolated) - 🔲 Not Started
+- **Phase 2:** Build filename parser (isolated) - 🟢 IN PROGRESS
 - **Phase 3:** Build state machine (isolated) - 🔲 Not Started
 - **Phase 4:** Build workflow orchestrator - 🔲 Not Started
 - **Phase 5:** Add CLI interactive command - 🔲 Not Started
