@@ -25,8 +25,11 @@ def setup_parser() -> argparse.ArgumentParser:
         formatter_class=argparse.RawDescriptionHelpFormatter,
         epilog="""
 Examples:
-  # Interactive workflow (recommended)
-  python cli.py interactive MySong_KeyG_Stem.mp4 MySong.txt
+  # Interactive workflow (recommended) - tab file auto-inferred
+  python cli.py interactive MySong_KeyG_Stem.mp4
+
+  # Interactive workflow - explicit tab file
+  python cli.py interactive MySong_KeyG_Stem.mp4 CustomTabs.txt
 
   # Phase 1: Generate MIDI from video or audio
   python cli.py generate-midi song.mp4
@@ -156,7 +159,11 @@ Examples:
         help="Run interactive workflow with approval gates and state persistence",
     )
     interactive_parser.add_argument("video", help="Input video/audio file")
-    interactive_parser.add_argument("tabs", help="Tab file (.txt)")
+    interactive_parser.add_argument(
+        "tabs",
+        nargs="?",
+        help="Tab file (.txt) - optional, defaults to same name as video",
+    )
     interactive_parser.add_argument(
         "--session-dir",
         default="sessions",
@@ -369,7 +376,10 @@ def full_pipeline(
 
 
 def interactive_workflow(
-    video: str, tabs: str, session_dir: str = "sessions", auto_approve: bool = False
+    video: str,
+    tabs: Optional[str] = None,
+    session_dir: str = "sessions",
+    auto_approve: bool = False,
 ) -> None:
     """Run interactive workflow with approval gates and session persistence.
 
@@ -382,7 +392,7 @@ def interactive_workflow(
 
     Args:
         video: Input video/audio file (filename encodes configuration)
-        tabs: Tab file (.txt)
+        tabs: Tab file (.txt) - optional, defaults to same name as video
         session_dir: Directory for session files
         auto_approve: Skip all approval prompts (for testing)
     """
@@ -394,6 +404,14 @@ def interactive_workflow(
         video_path = video
     else:
         video_path = os.path.join(VIDEO_FILES_DIR, video)
+
+    # Auto-infer tab file from video name if not provided
+    if tabs is None:
+        # Extract song name from filename (removes extension and parameters like _KeyG_Stem)
+        from utils.filename_parser import parse_filename
+
+        filename_config = parse_filename(video)
+        tabs = f"{filename_config.song_name}.txt"
 
     tabs_path = os.path.join(TAB_FILES_DIR, tabs)
 
@@ -460,6 +478,7 @@ def main():
             )
 
         elif args.command == "interactive":
+            # tabs is optional, will be None if not provided
             interactive_workflow(
                 args.video, args.tabs, args.session_dir, args.auto_approve
             )
