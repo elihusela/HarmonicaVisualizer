@@ -768,12 +768,12 @@ class TestVideoCreatorCoverageGaps:
     def test_tab_matching_print_statements(
         self, config_with_tab_matching, create_video_creator_with_mocks
     ):
-        """Test tab matching print statements - Lines 217-219."""
+        """Test that text-based structure is always used (preserves bend notation)."""
         from unittest.mock import patch
 
         creator = create_video_creator_with_mocks(config_with_tab_matching)
 
-        # Test case 1: With tabs_text_parser (text-based structure path)
+        # tabs_text_parser is now always loaded to preserve bend notation
         creator.tabs_text_parser = MagicMock()
         creator.tab_matcher = MagicMock()
 
@@ -787,14 +787,6 @@ class TestVideoCreatorCoverageGaps:
                 mock_print.assert_any_call(
                     "🎯 Using .txt file structure (preserves bend notation)..."
                 )
-
-        # Test case 2: Without tabs_text_parser (match_tabs path)
-        creator.tabs_text_parser = None
-
-        with patch("builtins.print") as mock_print:
-            with patch.object(creator, "_match_tabs", return_value=mock_tabs):
-                creator.create(create_harmonica=False, create_tabs=False)
-                mock_print.assert_any_call("🎯 Matching tabs with text notation...")
 
     def test_audio_extraction_call(self, basic_config, create_video_creator_with_mocks):
         """Test audio extraction method call - Line 241."""

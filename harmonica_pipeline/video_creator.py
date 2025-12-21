@@ -107,13 +107,11 @@ class VideoCreator:
             # Use key-specific MIDI mapping from config
             self.tab_mapper = TabMapper(config._key_config.midi_mapping, TEMP_DIR)
 
-            # Tab text parsing setup (always load if producing tabs)
+            # Tab text parsing setup (always load to preserve bend notation)
+            # The harmonica animation also needs bend info from the .txt file
             self.tabs_text_parser: Optional[TabTextParser]
-            if config.produce_tabs or config.enable_tab_matching:
-                self.tabs_text_parser = TabTextParser(config.tabs_path)
-                print(f"📖 Loaded tab text file: {config.tabs_path}")
-            else:
-                self.tabs_text_parser = None
+            self.tabs_text_parser = TabTextParser(config.tabs_path)
+            print(f"📖 Loaded tab text file: {config.tabs_path}")
 
             # Tab matching setup (optional)
             self.tab_matcher: Optional[TabMatcher]
@@ -215,17 +213,10 @@ class VideoCreator:
         note_events = self._load_midi_note_events()
         tabs = self._note_events_to_tabs(note_events)
 
-        # Tab matching - use .txt file structure when available (preserves bend info)
+        # Always use .txt file structure to preserve bend notation
         # This applies to both tab phrase animations AND harmonica animations
-        if self.tabs_text_parser:
-            print("🎯 Using .txt file structure (preserves bend notation)...")
-            matched_tabs = self._create_text_based_structure(tabs)
-        elif self.config.enable_tab_matching and self.tab_matcher:
-            print("🎯 Matching tabs with text notation...")
-            matched_tabs = self._match_tabs(tabs)
-        else:
-            print("⏭️  Using direct MIDI-to-animation structure")
-            matched_tabs = self._create_direct_tabs_structure(tabs)
+        print("🎯 Using .txt file structure (preserves bend notation)...")
+        matched_tabs = self._create_text_based_structure(tabs)
 
         if create_harmonica:
             print("🎬 Creating harmonica animation...")

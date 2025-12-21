@@ -23,3 +23,6 @@ outputs/
 video-files/
 /tab-files/
 /fixed_midis/
+
+# Debug files
+debug_*.py
