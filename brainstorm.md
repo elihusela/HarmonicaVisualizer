@@ -10,8 +10,118 @@ Create a fully automated, interactive workflow where users drop files in a folde
 ## 📊 IMPLEMENTATION PROGRESS
 
 **Started:** 2025-12-21
-**Current Phase:** Phase 3 - Build State Machine
-**Status:** 🟢 In Progress (3 Phases Complete)
+**Current Phase:** Phase 6B - Video Creation Integration
+**Status:** 🟢 In Progress (Phases 0-6A Complete, 678 tests passing)
+
+---
+
+## 🚀 USAGE EXAMPLES (Current Implementation)
+
+### Basic Usage - No Stem Separation
+
+```bash
+# Simple workflow: video → MIDI → manual fix → (next steps TBD)
+python cli.py interactive MySong_KeyC.mp4 MySong.txt --auto-approve
+
+# What happens:
+# 1. Parses filename: MySong, Key C, no stem flag
+# 2. Generates MIDI: fixed_midis/MySong_fixed.mid
+# 3. Pauses at "MIDI Fixing" step
+# 4. Saves session: sessions/MySong_session.json
+```
+
+### With Manual Stem Separation
+
+```bash
+# Workflow with pre-separated stems
+python cli.py interactive MySong_KeyG_Stem.mp4 MySong.txt
+
+# Interactive prompts:
+# 1. "Enter stem filename: MySong_vocals.wav"
+# 2. User provides manually separated stem file
+# 3. Generates MIDI from that stem
+# 4. Pauses at "MIDI Fixing"
+```
+
+### Using Audio Input Directly
+
+```bash
+# Skip video extraction - use WAV directly
+python cli.py interactive MySong_vocals.wav MySong.txt --auto-approve
+
+# No stem flag needed - audio is already extracted
+# Goes straight to MIDI generation
+```
+
+### Filename Configuration Examples
+
+```bash
+# All parameters encoded in filename:
+
+# G harmonica, stem separation, 30 FPS, 0.5s tab buffer
+MySong_KeyG_Stem_FPS30_TabBuffer0.5.mp4
+
+# Bb harmonica, no stem, default settings
+MySong_KeyBb.wav
+
+# F# harmonica, stem separation, default FPS
+MySong_KeyFS_Stem.mp4  # FS = F#
+
+# C harmonica, custom tab page buffer
+MySong_KeyC_TabBuffer0.2.mp4
+```
+
+### Session Management
+
+```bash
+# Start workflow
+python cli.py interactive MySong_KeyG.mp4 MySong.txt
+
+# Workflow interrupted (Ctrl+C, crash, etc.)
+# → Session saved to sessions/MySong_session.json
+
+# Resume from saved session
+python cli.py interactive MySong_KeyG.mp4 MySong.txt
+# → Detects existing session, prompts to resume
+# → Continues from last completed step
+```
+
+### Current Workflow States
+
+```
+INIT → (STEM_SELECTION)* → MIDI_GENERATION → MIDI_FIXING → ...
+       *only if _Stem flag present
+
+Currently Implemented (Phase 6A):
+✅ Filename parsing (all 12 harmonica keys)
+✅ Stem selection (manual - user provides stem file)
+✅ MIDI generation (supports video/audio input)
+✅ Session persistence and resumption
+⏸️  Pauses at MIDI_FIXING step
+
+Next Steps (Phase 6B+):
+🔲 Harmonica video generation
+🔲 Tab video generation
+🔲 Finalization (ZIP, cleanup, archive)
+```
+
+### File Locations
+
+```
+Input Files:
+  video-files/MySong_KeyG.mp4    # Video or audio input
+  tab-files/MySong.txt           # Tab file
+
+Generated Files:
+  fixed_midis/MySong_fixed.mid   # Generated MIDI (edit in DAW)
+  sessions/MySong_session.json   # Workflow state
+
+Future Outputs (Phase 6B+):
+  outputs/MySong_harmonica.mov   # Harmonica animation
+  outputs/MySong_full_tabs.mov   # Tab page video
+```
+
+---
 
 ### Completed Phases
 
