@@ -17,7 +17,7 @@ from utils.utils import TEMP_DIR
 
 
 def adjust_consecutive_identical_notes(
-    flat_entries: List[TabEntry], gap: float = 0.05
+    flat_entries: List[TabEntry], gap: float = 0.15
 ) -> List[TabEntry]:
     """Force visual gap between consecutive identical notes for clarity."""
     for i in range(len(flat_entries) - 1):
