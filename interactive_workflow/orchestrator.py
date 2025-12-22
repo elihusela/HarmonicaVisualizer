@@ -394,7 +394,13 @@ class WorkflowOrchestrator:
             ).ask()
         ):
             self.session.transition_to(WorkflowState.TAB_VIDEO_REVIEW)
-        # else: stay in same state for re-generation
+        else:
+            # User declined - go back to MIDI fixing to adjust timing
+            self.console.print(
+                "[yellow]⮌ Returning to MIDI fixing step. "
+                "Fix your MIDI and we'll regenerate the harmonica video.[/yellow]"
+            )
+            self.session.transition_to(WorkflowState.MIDI_FIXING)
 
     def _step_tab_video_review(self) -> None:
         """Generate full tab video and wait for user approval.

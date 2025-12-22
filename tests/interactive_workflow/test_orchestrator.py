@@ -284,6 +284,24 @@ class TestWorkflowSteps:
             orchestrator._step_harmonica_review()
             assert orchestrator.session.state == WorkflowState.TAB_VIDEO_REVIEW
 
+    def test_harmonica_review_step_not_approved(self, tmp_path):
+        """Test harmonica review step returns to MIDI fixing when not approved."""
+        orchestrator = WorkflowOrchestrator(
+            input_video="MySong_KeyC.mp4",
+            input_tabs="MySong.txt",
+            session_dir=str(tmp_path / "sessions"),
+            auto_approve=False,
+        )
+        orchestrator.session.transition_to(WorkflowState.HARMONICA_REVIEW)
+
+        # Mock VideoCreator to avoid actual video generation
+        with patch("harmonica_pipeline.video_creator.VideoCreator"):
+            with patch("questionary.confirm") as mock_confirm:
+                mock_confirm.return_value.ask.return_value = False
+                orchestrator._step_harmonica_review()
+                # Should return to MIDI_FIXING for re-editing
+                assert orchestrator.session.state == WorkflowState.MIDI_FIXING
+
     def test_tab_video_review_step_approved(self, tmp_path):
         """Test tab video review step transitions when approved."""
         orchestrator = WorkflowOrchestrator(
