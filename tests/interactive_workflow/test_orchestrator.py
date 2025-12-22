@@ -184,10 +184,60 @@ class TestWorkflowSteps:
         orchestrator.session.transition_to(WorkflowState.MIDI_GENERATION)
 
         # Mock MidiGenerator to avoid actual MIDI generation
+        # Mock os.path.exists to return False (no existing MIDI file)
         with patch("harmonica_pipeline.midi_generator.MidiGenerator") as mock_gen:
-            orchestrator._step_midi_generation()
-            mock_gen.assert_called_once()
-            assert orchestrator.session.state == WorkflowState.MIDI_FIXING
+            with patch("os.path.exists", return_value=False):
+                orchestrator._step_midi_generation()
+                mock_gen.assert_called_once()
+                assert orchestrator.session.state == WorkflowState.MIDI_FIXING
+
+    def test_midi_generation_uses_existing_midi(self, tmp_path):
+        """Test MIDI generation skips when existing MIDI found and user declines overwrite."""
+        orchestrator = WorkflowOrchestrator(
+            input_video="MySong_KeyC.mp4",
+            input_tabs="MySong.txt",
+            session_dir=str(tmp_path / "sessions"),
+            auto_approve=False,
+        )
+        orchestrator.session.transition_to(WorkflowState.MIDI_GENERATION)
+
+        # Mock os.path.exists to return True (existing MIDI file)
+        # Mock questionary to decline overwrite
+        with patch("os.path.exists", return_value=True):
+            with patch("questionary.confirm") as mock_confirm:
+                mock_confirm.return_value.ask.return_value = False
+                with patch(
+                    "harmonica_pipeline.midi_generator.MidiGenerator"
+                ) as mock_gen:
+                    orchestrator._step_midi_generation()
+                    # Should NOT generate MIDI
+                    mock_gen.assert_not_called()
+                    # Should transition to MIDI_FIXING
+                    assert orchestrator.session.state == WorkflowState.MIDI_FIXING
+
+    def test_midi_generation_overwrites_existing_midi(self, tmp_path):
+        """Test MIDI generation overwrites when existing MIDI found and user confirms."""
+        orchestrator = WorkflowOrchestrator(
+            input_video="MySong_KeyC.mp4",
+            input_tabs="MySong.txt",
+            session_dir=str(tmp_path / "sessions"),
+            auto_approve=False,
+        )
+        orchestrator.session.transition_to(WorkflowState.MIDI_GENERATION)
+
+        # Mock os.path.exists to return True (existing MIDI file)
+        # Mock questionary to accept overwrite
+        with patch("os.path.exists", return_value=True):
+            with patch("questionary.confirm") as mock_confirm:
+                mock_confirm.return_value.ask.return_value = True
+                with patch(
+                    "harmonica_pipeline.midi_generator.MidiGenerator"
+                ) as mock_gen:
+                    orchestrator._step_midi_generation()
+                    # Should generate MIDI (overwrite)
+                    mock_gen.assert_called_once()
+                    # Should transition to MIDI_FIXING
+                    assert orchestrator.session.state == WorkflowState.MIDI_FIXING
 
     def test_midi_fixing_step_approved(self, tmp_path):
         """Test MIDI fixing step transitions when approved."""

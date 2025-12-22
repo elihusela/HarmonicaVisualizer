@@ -245,6 +245,35 @@ class WorkflowOrchestrator:
         input_file = self.session.get_data("selected_audio", self.session.input_video)
         output_midi = os.path.join(MIDI_DIR, f"{self.session.song_name}_fixed.mid")
 
+        # Check if MIDI file already exists
+        if os.path.exists(output_midi):
+            self.console.print(
+                Panel(
+                    f"[yellow]MIDI file already exists[/yellow]\n\n"
+                    f"Found: {output_midi}\n\n"
+                    "This may be a previously fixed MIDI file.\n"
+                    "Regenerating will overwrite your edits!",
+                    title="⚠️  Existing MIDI Detected",
+                )
+            )
+
+            if (
+                self.auto_approve
+                or questionary.confirm(
+                    "Overwrite existing MIDI file?", default=False
+                ).ask()
+            ):
+                # User wants to overwrite - proceed with generation
+                self.console.print("[yellow]Regenerating MIDI...[/yellow]")
+            else:
+                # User wants to keep existing - skip generation
+                self.console.print(
+                    f"[green]✓ Using existing MIDI: {output_midi}[/green]"
+                )
+                self.session.set_data("generated_midi", output_midi)
+                self.session.transition_to(WorkflowState.MIDI_FIXING)
+                return
+
         self.console.print(
             Panel(
                 f"[cyan]Generating MIDI from audio[/cyan]\n\n"
