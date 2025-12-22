@@ -17,36 +17,16 @@ from utils.utils import TEMP_DIR
 
 
 def adjust_consecutive_identical_notes(
-    flat_entries: List[TabEntry],
-    gap: float = 0.05,
-    min_duration: float = 0.08,
+    flat_entries: List[TabEntry], gap: float = 0.05
 ) -> List[TabEntry]:
-    """Force visual gap between consecutive identical notes for clarity.
-
-    Ensures each consecutive identical note is visible for at least min_duration,
-    followed by a gap. This guarantees visual separation even for very fast
-    repeated notes (e.g., -6 -6 -6 always appears as three distinct blinks).
-
-    Args:
-        flat_entries: List of tab entries to adjust
-        gap: Target gap duration between notes (seconds)
-        min_duration: Minimum visible duration per note (seconds)
-
-    Returns:
-        Adjusted list with guaranteed visibility and gaps
-    """
+    """Force visual gap between consecutive identical notes for clarity."""
     for i in range(len(flat_entries) - 1):
         current = flat_entries[i]
         next_entry = flat_entries[i + 1]
 
         if current.tab == next_entry.tab:
-            time_until_next = next_entry.time - current.time
-
-            # Always try to leave a gap, but ensure minimum visibility
-            # If notes are far apart: normal gap behavior
-            # If notes are close: guarantee visibility (gap may be smaller)
-            current.duration = max(min_duration, time_until_next - gap)
-
+            # ALWAYS create gap for consecutive identical notes (not just overlaps)
+            current.duration = max(0, next_entry.time - current.time - gap)
     return flat_entries
 
 
