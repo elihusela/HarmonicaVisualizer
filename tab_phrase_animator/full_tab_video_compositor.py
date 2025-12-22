@@ -191,30 +191,35 @@ class FullTabVideoCompositor:
                 # Check if there's a GAP before this page (e.g., a pause in the music)
                 if current_time < window.start_time:
                     gap_duration = window.start_time - current_time
-                    # Only add gap video for significant gaps (> 0.01s)
+                    # Only handle significant gaps (> 0.01s)
                     if gap_duration > 0.01:
                         print(
                             f"   ⏸️  Gap before page {window.page_idx}: {gap_duration:.3f}s "
                             f"({current_time:.3f}s -> {window.start_time:.3f}s)"
                         )
-                        # If there's a previous page, hold its last frame during the gap
+                        # If there's a previous page, extend it to fill the gap
                         # Otherwise (first page with delay), use blank transparent video
-                        if video_segments:
+                        if video_segments and video_durations:
+                            print("      📌 Extending previous page to fill gap")
+                            # Extend the previous page video using tpad filter
                             prev_video = video_segments[-1]
-                            print("      📌 Holding last frame of previous page")
-                            gap_video = self._create_static_frame_video(
+                            extended_video = self._extend_video_with_last_frame(
                                 prev_video, gap_duration, video_size
                             )
+                            # Replace the previous video with extended version
+                            video_segments[-1] = extended_video
+                            video_durations[-1] += gap_duration
+                            temp_files.append(extended_video)
+                            current_time = window.start_time
                         else:
                             print("      🔳 Using blank video (no previous page)")
                             gap_video = self._create_blank_video(
                                 gap_duration, video_size
                             )
-
-                        video_segments.append(gap_video)
-                        video_durations.append(gap_duration)
-                        temp_files.append(gap_video)
-                        current_time = window.start_time
+                            video_segments.append(gap_video)
+                            video_durations.append(gap_duration)
+                            temp_files.append(gap_video)
+                            current_time = window.start_time
 
                 # Check if there's an OVERLAP with previous page
                 elif current_time > window.start_time:
@@ -370,83 +375,55 @@ class FullTabVideoCompositor:
                 f"Failed to trim video: {e.stderr}"
             ) from e
 
-    def _create_static_frame_video(
-        self, source_video: str, duration: float, size: tuple[int, int]
+    def _extend_video_with_last_frame(
+        self, source_video: str, extension_duration: float, size: tuple[int, int]
     ) -> str:
         """
-        Create a static video by extracting the last frame from source video.
+        Extend a video by padding it with its last frame for the specified duration.
 
-        This is used to extend a page visually during gaps by holding its last frame.
+        This keeps the page visible during gaps by repeating the last frame
+        (which has all notes turned off).
 
         Args:
-            source_video: Path to source video to extract last frame from
-            duration: Duration of the static video in seconds
-            size: Tuple of (width, height)
+            source_video: Path to source video to extend
+            extension_duration: How long to extend the video (in seconds)
+            size: Tuple of (width, height) - not used but kept for compatibility
 
         Returns:
-            Path to the created static video file
+            Path to the extended video file
 
         Raises:
-            FullTabVideoCompositorError: If static video creation fails
+            FullTabVideoCompositorError: If video extension fails
         """
         import time
 
         timestamp = str(int(time.time() * 1000000))
-        frame_path = os.path.join(TEMP_DIR, f"last_frame_{timestamp}.png")
-        static_path = os.path.join(TEMP_DIR, f"static_{timestamp}.mov")
+        extended_path = os.path.join(TEMP_DIR, f"extended_{timestamp}.mov")
 
         try:
-            # Extract last frame from source video (after all notes have turned off)
-            # Use -sseof -0.01 to get a frame from the very end (10ms before end)
-            # This ensures all note highlights are off (returned to white)
-            cmd_extract = [
+            # Use tpad filter to extend video by repeating last frame
+            cmd = [
                 "ffmpeg",
                 "-y",
-                "-sseof",
-                "-0.01",  # Seek to 10ms before end (after notes turn off)
                 "-i",
                 source_video,
-                "-update",
-                "1",  # Only output one frame
-                "-frames:v",
-                "1",
-                frame_path,
-            ]
-            subprocess.run(cmd_extract, capture_output=True, text=True, check=True)
-
-            # Create static video from the extracted frame
-            cmd_static = [
-                "ffmpeg",
-                "-y",
-                "-loop",
-                "1",  # Loop the image
-                "-i",
-                frame_path,
-                "-t",
-                f"{duration:.3f}",  # Duration
+                "-vf",
+                f"tpad=stop_mode=clone:stop_duration={extension_duration:.3f}",
                 "-c:v",
                 "prores_ks",
                 "-profile:v",
-                "4",
+                "4",  # ProRes 4444 (preserves alpha)
                 "-pix_fmt",
                 "yuva444p10le",
-                "-r",
-                "30",  # Frame rate
-                static_path,
+                extended_path,
             ]
-            subprocess.run(cmd_static, capture_output=True, text=True, check=True)
 
-            # Clean up temporary frame
-            try:
-                os.remove(frame_path)
-            except OSError:
-                pass
-
-            return static_path
+            subprocess.run(cmd, capture_output=True, text=True, check=True)
+            return extended_path
 
         except subprocess.CalledProcessError as e:
             raise FullTabVideoCompositorError(
-                f"Failed to create static frame video: {e.stderr}"
+                f"Failed to extend video: {e.stderr}"
             ) from e
 
     def _create_blank_video(self, duration: float, size: tuple[int, int]) -> str:

@@ -239,7 +239,7 @@ def test_stitch_videos_basic(
 
 @patch("tab_phrase_animator.full_tab_video_compositor.subprocess.run")
 @patch.object(FullTabVideoCompositor, "_get_video_dimensions")
-@patch.object(FullTabVideoCompositor, "_create_static_frame_video")
+@patch.object(FullTabVideoCompositor, "_extend_video_with_last_frame")
 def test_stitch_videos_with_gaps(
     mock_create_static,
     mock_get_dimensions,
@@ -385,59 +385,50 @@ def test_create_blank_video_failure(mock_subprocess, default_compositor):
 
 
 @patch("tab_phrase_animator.full_tab_video_compositor.subprocess.run")
-def test_create_static_frame_video_success(
+def test_extend_video_with_last_frame_success(
     mock_subprocess, default_compositor, temp_test_dir
 ):
-    """Test successful static frame video creation."""
+    """Test successful video extension using tpad filter."""
     # Create dummy source video
     source_video = temp_test_dir / "source.mov"
     source_video.touch()
 
-    # Mock successful ffmpeg calls (extract frame + create static video)
+    # Mock successful ffmpeg call
     mock_subprocess.return_value = MagicMock(returncode=0)
 
-    result = default_compositor._create_static_frame_video(
+    result = default_compositor._extend_video_with_last_frame(
         str(source_video), 2.5, (1920, 1080)
     )
 
-    # Should return path to static video
+    # Should return path to extended video
     assert result.endswith(".mov")
-    assert "static_" in result
+    assert "extended_" in result
 
-    # Should call ffmpeg twice (extract frame + create video)
-    assert mock_subprocess.call_count == 2
-
-    # First call: extract last frame
-    extract_call = mock_subprocess.call_args_list[0][0][0]
-    assert "ffmpeg" in extract_call
-    assert "-sseof" in extract_call
-    assert str(source_video) in extract_call
-
-    # Second call: create static video from frame
-    static_call = mock_subprocess.call_args_list[1][0][0]
-    assert "ffmpeg" in static_call
-    assert "-loop" in static_call
-    assert "2.5" in " ".join(static_call)  # Duration
+    # Should call ffmpeg once with tpad filter
+    assert mock_subprocess.call_count == 1
+    cmd = mock_subprocess.call_args[0][0]
+    assert "ffmpeg" in cmd
+    assert str(source_video) in cmd
+    assert "tpad" in " ".join(cmd)
+    assert "2.5" in " ".join(cmd)  # Duration
 
 
 @patch("tab_phrase_animator.full_tab_video_compositor.subprocess.run")
-def test_create_static_frame_video_failure(
+def test_extend_video_with_last_frame_failure(
     mock_subprocess, default_compositor, temp_test_dir
 ):
-    """Test error handling when static frame video creation fails."""
+    """Test error handling when video extension fails."""
     # Create dummy source video
     source_video = temp_test_dir / "source.mov"
     source_video.touch()
 
     # Mock ffmpeg failure
     mock_error = subprocess.CalledProcessError(1, "ffmpeg")
-    mock_error.stderr = "Frame extraction failed"
+    mock_error.stderr = "Extension failed"
     mock_subprocess.side_effect = mock_error
 
-    with pytest.raises(
-        FullTabVideoCompositorError, match="Failed to create static frame video"
-    ):
-        default_compositor._create_static_frame_video(
+    with pytest.raises(FullTabVideoCompositorError, match="Failed to extend video"):
+        default_compositor._extend_video_with_last_frame(
             str(source_video), 2.5, (1920, 1080)
         )
 
