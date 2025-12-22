@@ -302,11 +302,12 @@ class WorkflowOrchestrator:
         """
         self.console.print(
             Panel(
-                "[cyan]Please fix the MIDI file in your DAW[/cyan]\n\n"
-                f"Generated MIDI: {self.session.get_data('generated_midi', 'temp/*_generated.mid')}\n"
-                f"Save fixed MIDI to: {self.session.get_data('fixed_midi', 'fixed_midis/*_fixed.mid')}\n\n"
+                "[cyan]Fix the MIDI file in your DAW[/cyan]\n\n"
+                f"MIDI: {self.session.get_data('generated_midi', 'temp/*_generated.mid')}\n"
+                f"Tabs: {self.session.input_tabs}\n\n"
+                "💡 [dim]You can edit both files now - they'll both reload on regeneration[/dim]\n\n"
                 "When done, return here and confirm.",
-                title="MIDI Fixing",
+                title="MIDI & Tabs Fixing",
             )
         )
 
