@@ -396,12 +396,14 @@ class FullTabVideoCompositor:
         static_path = os.path.join(TEMP_DIR, f"static_{timestamp}.mov")
 
         try:
-            # Extract last frame from source video
+            # Extract last frame from source video (after all notes have turned off)
+            # Use -sseof -0.01 to get a frame from the very end (10ms before end)
+            # This ensures all note highlights are off (returned to white)
             cmd_extract = [
                 "ffmpeg",
                 "-y",
                 "-sseof",
-                "-1",  # Seek to 1 second before end
+                "-0.01",  # Seek to 10ms before end (after notes turn off)
                 "-i",
                 source_video,
                 "-update",
