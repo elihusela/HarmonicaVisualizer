@@ -184,35 +184,63 @@ class FullTabVideoCompositor:
             video_segments: List[str] = []
             video_durations: List[float] = []  # Track duration for each segment
 
+            # Get video dimensions from first page
+            video_size = self._get_video_dimensions(self._page_windows[0].video_path)
+
             for window in self._page_windows:
-                # Pages transition directly - no blank gaps
-                # DISABLED: Overlap trimming was causing pages to disappear too early
-                # when buffer was increased. Now pages can overlap naturally.
-                # if current_time > window.start_time:
-                #     # Page overlaps with previous - need to truncate the previous segment
-                #     overlap = current_time - window.start_time
-                #     print(
-                #         f"   ⚠️  Page {window.page_idx} overlaps previous by {overlap:.3f}s"
-                #     )
-                #     # Trim overlap from the last segment that was added
-                #     if video_segments and video_durations:
-                #         prev_duration = video_durations[-1]
-                #         new_duration = prev_duration - overlap
-                #         if new_duration > 0.01:
-                #             # Re-add the previous segment with trimmed duration
-                #             prev_segment = video_segments.pop()
-                #             prev_duration_val = video_durations.pop()
-                #             trimmed_video = self._trim_video(
-                #                 prev_segment, 0, new_duration, video_size
-                #             )
-                #             video_segments.append(trimmed_video)
-                #             video_durations.append(new_duration)
-                #             temp_files.append(trimmed_video)
-                #             print(
-                #                 f"   ✂️  Trimmed previous segment from "
-                #                 f"{prev_duration_val:.3f}s to {new_duration:.3f}s"
-                #             )
-                #         current_time = window.start_time
+                # Check if there's a GAP before this page (e.g., a pause in the music)
+                if current_time < window.start_time:
+                    gap_duration = window.start_time - current_time
+                    # Only add gap video for significant gaps (> 0.01s)
+                    if gap_duration > 0.01:
+                        print(
+                            f"   ⏸️  Gap before page {window.page_idx}: {gap_duration:.3f}s "
+                            f"({current_time:.3f}s -> {window.start_time:.3f}s)"
+                        )
+                        # If there's a previous page, hold its last frame during the gap
+                        # Otherwise (first page with delay), use blank transparent video
+                        if video_segments:
+                            prev_video = video_segments[-1]
+                            print("      📌 Holding last frame of previous page")
+                            gap_video = self._create_static_frame_video(
+                                prev_video, gap_duration, video_size
+                            )
+                        else:
+                            print("      🔳 Using blank video (no previous page)")
+                            gap_video = self._create_blank_video(
+                                gap_duration, video_size
+                            )
+
+                        video_segments.append(gap_video)
+                        video_durations.append(gap_duration)
+                        temp_files.append(gap_video)
+                        current_time = window.start_time
+
+                # Check if there's an OVERLAP with previous page
+                elif current_time > window.start_time:
+                    overlap = current_time - window.start_time
+                    print(
+                        f"   ⚠️  Page {window.page_idx} overlaps previous by {overlap:.3f}s"
+                    )
+                    # Trim overlap from the last segment that was added
+                    if video_segments and video_durations:
+                        prev_duration = video_durations[-1]
+                        new_duration = prev_duration - overlap
+                        if new_duration > 0.01:
+                            # Re-add the previous segment with trimmed duration
+                            prev_segment = video_segments.pop()
+                            prev_duration_val = video_durations.pop()
+                            trimmed_video = self._trim_video(
+                                prev_segment, 0, new_duration, video_size
+                            )
+                            video_segments.append(trimmed_video)
+                            video_durations.append(new_duration)
+                            temp_files.append(trimmed_video)
+                            print(
+                                f"   ✂️  Trimmed previous segment from "
+                                f"{prev_duration_val:.3f}s to {new_duration:.3f}s"
+                            )
+                        current_time = window.start_time
 
                 # Add page video at correct position
                 video_segments.append(window.video_path)
@@ -340,6 +368,83 @@ class FullTabVideoCompositor:
         except subprocess.CalledProcessError as e:
             raise FullTabVideoCompositorError(
                 f"Failed to trim video: {e.stderr}"
+            ) from e
+
+    def _create_static_frame_video(
+        self, source_video: str, duration: float, size: tuple[int, int]
+    ) -> str:
+        """
+        Create a static video by extracting the last frame from source video.
+
+        This is used to extend a page visually during gaps by holding its last frame.
+
+        Args:
+            source_video: Path to source video to extract last frame from
+            duration: Duration of the static video in seconds
+            size: Tuple of (width, height)
+
+        Returns:
+            Path to the created static video file
+
+        Raises:
+            FullTabVideoCompositorError: If static video creation fails
+        """
+        import time
+
+        timestamp = str(int(time.time() * 1000000))
+        frame_path = os.path.join(TEMP_DIR, f"last_frame_{timestamp}.png")
+        static_path = os.path.join(TEMP_DIR, f"static_{timestamp}.mov")
+
+        try:
+            # Extract last frame from source video
+            cmd_extract = [
+                "ffmpeg",
+                "-y",
+                "-sseof",
+                "-1",  # Seek to 1 second before end
+                "-i",
+                source_video,
+                "-update",
+                "1",  # Only output one frame
+                "-frames:v",
+                "1",
+                frame_path,
+            ]
+            subprocess.run(cmd_extract, capture_output=True, text=True, check=True)
+
+            # Create static video from the extracted frame
+            cmd_static = [
+                "ffmpeg",
+                "-y",
+                "-loop",
+                "1",  # Loop the image
+                "-i",
+                frame_path,
+                "-t",
+                f"{duration:.3f}",  # Duration
+                "-c:v",
+                "prores_ks",
+                "-profile:v",
+                "4",
+                "-pix_fmt",
+                "yuva444p10le",
+                "-r",
+                "30",  # Frame rate
+                static_path,
+            ]
+            subprocess.run(cmd_static, capture_output=True, text=True, check=True)
+
+            # Clean up temporary frame
+            try:
+                os.remove(frame_path)
+            except OSError:
+                pass
+
+            return static_path
+
+        except subprocess.CalledProcessError as e:
+            raise FullTabVideoCompositorError(
+                f"Failed to create static frame video: {e.stderr}"
             ) from e
 
     def _create_blank_video(self, duration: float, size: tuple[int, int]) -> str:
