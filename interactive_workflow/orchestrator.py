@@ -214,7 +214,7 @@ class WorkflowOrchestrator:
 
             stem_file = questionary.text(
                 "Enter stem filename:",
-                default=f"{self.session.song_name}_vocals.wav",
+                default=f"{self.session.song_name}.wav",
             ).ask()
 
             if not stem_file:
@@ -292,23 +292,77 @@ class WorkflowOrchestrator:
     def _step_harmonica_review(self) -> None:
         """Generate harmonica animation and wait for user approval.
 
-        TODO: Implement harmonica video generation
-        - Use VideoCreator from harmonica_pipeline
-        - Generate harmonica hole animation
-        - Show preview to user
-        - Loop until approved
+        Generates the harmonica hole animation video and allows user to
+        review it. If not approved, user can regenerate (future: with
+        different parameters).
         """
+        from harmonica_pipeline.video_creator import VideoCreator
+        from harmonica_pipeline.video_creator_config import VideoCreatorConfig
+        from harmonica_pipeline.harmonica_key_registry import get_harmonica_config
+        from utils.utils import OUTPUTS_DIR
+
+        # Get configuration
+        harmonica_key = self.session.config.get("key", "C")
+        harmonica_config = get_harmonica_config(harmonica_key)
+
+        # Get paths from session
+        video_path = self.session.input_video
+        tabs_path = self.session.input_tabs
+        midi_path = self.session.get_data(
+            "generated_midi", f"fixed_midis/{self.session.song_name}_fixed.mid"
+        )
+        harmonica_path = os.path.join("harmonica-models", harmonica_config.model_image)
+
+        # Output paths
+        output_video = f"{self.session.song_name}_harmonica.mov"
+        output_video_path = os.path.join(OUTPUTS_DIR, output_video)
+
         self.console.print(
             Panel(
-                "[yellow]Harmonica video generation not yet fully integrated[/yellow]\n"
-                "This step will generate the harmonica hole animation.",
-                title="Harmonica Video",
+                f"[cyan]Generating harmonica animation[/cyan]\n\n"
+                f"Video: {video_path}\n"
+                f"MIDI: {midi_path}\n"
+                f"Key: {harmonica_key}\n"
+                f"Model: {harmonica_path}\n"
+                f"Output: {output_video_path}\n\n"
+                "[dim]This may take 1-2 minutes...[/dim]",
+                title="Harmonica Video Generation",
             )
         )
 
+        # Create configuration
+        config = VideoCreatorConfig(
+            video_path=video_path,
+            tabs_path=tabs_path,
+            harmonica_path=harmonica_path,
+            midi_path=midi_path,
+            output_video_path=output_video_path,
+            tabs_output_path=None,  # No tabs yet
+            produce_tabs=False,
+            produce_full_tab_video=False,
+            only_full_tab_video=False,
+            harmonica_key=harmonica_key,
+            tab_page_buffer=self.session.config.get("tab_buffer", 0.1),
+        )
+
+        # Generate harmonica video
+        creator = VideoCreator(config)
+        creator.create(create_harmonica=True, create_tabs=False)
+
+        self.console.print(
+            f"[green]✓ Harmonica video created: {output_video_path}[/green]"
+        )
+
+        # Save output path to session
+        self.session.set_data("harmonica_video", output_video_path)
+
+        # Wait for user approval
         if (
             self.auto_approve
-            or questionary.confirm("Approve harmonica video?", default=True).ask()
+            or questionary.confirm(
+                "Approve harmonica video? (Open the file to review first)",
+                default=True,
+            ).ask()
         ):
             self.session.transition_to(WorkflowState.TAB_VIDEO_REVIEW)
         # else: stay in same state for re-generation
