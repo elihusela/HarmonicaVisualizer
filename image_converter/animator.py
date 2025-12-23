@@ -17,14 +17,22 @@ from utils.utils import TEMP_DIR
 
 
 def adjust_consecutive_identical_notes(
-    flat_entries: List[TabEntry], gap: float = 0.15, min_duration: float = 0.1
+    flat_entries: List[TabEntry],
+    gap: float = 0.15,
+    min_duration: float = 0.1,
+    max_gap: float = 2.0,
 ) -> List[TabEntry]:
     """
     Force visual gap between consecutive identical notes for clarity.
 
+    Only applies to notes that are reasonably close together (within max_gap).
     Ensures every note has minimum visible duration even when notes are very close.
-    If notes are too close for both min_duration + gap, prioritizes visibility
-    with a smaller gap.
+
+    Args:
+        flat_entries: List of tab entries to adjust
+        gap: Desired gap between consecutive identical notes (default 0.15s)
+        min_duration: Minimum visible duration for any note (default 0.1s)
+        max_gap: Only adjust notes within this time distance (default 2.0s)
     """
     for i in range(len(flat_entries) - 1):
         current = flat_entries[i]
@@ -32,6 +40,10 @@ def adjust_consecutive_identical_notes(
 
         if current.tab == next_entry.tab:
             time_available = next_entry.time - current.time
+
+            # Only adjust if notes are reasonably close (avoid page boundaries)
+            if time_available > max_gap:
+                continue  # Skip adjustment for distant notes
 
             # If we have room for min_duration + gap, use it
             if time_available >= (min_duration + gap):
