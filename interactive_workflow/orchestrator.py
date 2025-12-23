@@ -406,47 +406,144 @@ class WorkflowOrchestrator:
     def _step_tab_video_review(self) -> None:
         """Generate full tab video and wait for user approval.
 
-        TODO: Implement full tab video generation
-        - Use FullTabVideoCompositor
-        - Generate page-by-page tab animation
-        - Show preview to user
-        - Loop until approved
+        Generates the full tab page animation video (compositor) and allows
+        user to review it. If not approved, user can go back to MIDI fixing.
         """
+        from harmonica_pipeline.video_creator import VideoCreator
+        from harmonica_pipeline.video_creator_config import VideoCreatorConfig
+        from harmonica_pipeline.harmonica_key_registry import get_harmonica_config
+        from utils.utils import OUTPUTS_DIR
+
+        # Get configuration
+        harmonica_key = self.session.config.get("key", "C")
+        harmonica_config = get_harmonica_config(harmonica_key)
+
+        # Get paths from session
+        video_path = self.session.input_video
+        tabs_path = self.session.input_tabs
+        midi_path = self.session.get_data(
+            "generated_midi", f"fixed_midis/{self.session.song_name}_fixed.mid"
+        )
+        harmonica_path = os.path.join("harmonica-models", harmonica_config.model_image)
+
+        # Output paths
+        output_video = f"{self.session.song_name}_full_tabs.mov"
+        output_video_path = os.path.join(OUTPUTS_DIR, output_video)
+
         self.console.print(
             Panel(
-                "[yellow]Tab video generation not yet fully integrated[/yellow]\n"
-                "This step will generate the full tab page animation.",
-                title="Tab Video",
+                f"[cyan]Generating full tab video[/cyan]\n\n"
+                f"Tabs: {tabs_path}\n"
+                f"MIDI: {midi_path}\n"
+                f"Output: {output_video_path}\n\n"
+                "[dim]This may take 2-3 minutes...[/dim]",
+                title="Tab Video Generation",
             )
         )
 
+        # Create configuration
+        # Note: output_video_path is required by config validation even for tab-only
+        dummy_harmonica_path = os.path.join(
+            OUTPUTS_DIR, f"{self.session.song_name}_dummy.mov"
+        )
+        config = VideoCreatorConfig(
+            video_path=video_path,
+            tabs_path=tabs_path,
+            harmonica_path=harmonica_path,
+            midi_path=midi_path,
+            output_video_path=dummy_harmonica_path,  # Required but won't be created
+            tabs_output_path=output_video_path,
+            produce_tabs=False,  # Not creating individual page videos
+            produce_full_tab_video=True,  # Create full compositor video
+            only_full_tab_video=True,  # Skip individual pages
+            harmonica_key=harmonica_key,
+            tab_page_buffer=self.session.config.get("tab_buffer", 0.1),
+        )
+
+        # Generate tab video
+        creator = VideoCreator(config)
+        creator.create(create_harmonica=False, create_tabs=True)
+
+        self.console.print(f"[green]✓ Tab video created: {output_video_path}[/green]")
+
+        # Save output path to session
+        self.session.set_data("tab_video", output_video_path)
+
+        # Wait for user approval
         if (
             self.auto_approve
-            or questionary.confirm("Approve tab video?", default=True).ask()
+            or questionary.confirm(
+                "Approve tab video? (Open the file to review first)",
+                default=True,
+            ).ask()
         ):
             self.session.transition_to(WorkflowState.FINALIZATION)
-        # else: stay in same state for re-generation
+        else:
+            # User declined - go back to MIDI fixing
+            self.console.print(
+                "[yellow]⮌ Returning to MIDI fixing step. "
+                "Fix your MIDI/tabs and we'll regenerate the tab video.[/yellow]"
+            )
+            self.session.transition_to(WorkflowState.MIDI_FIXING)
 
     def _step_finalization(self) -> None:
         """Finalize workflow - cleanup, ZIP, archive.
 
-        TODO: Implement finalization
-        - ZIP final videos
-        - Move MIDI/tabs to legacy folder
-        - Clean up temp files
-        - Mark session complete
+        Creates final output package and archives source files.
         """
+        import shutil
+        from datetime import datetime
+        from pathlib import Path
+
         self.console.print(
             Panel(
-                "[green]Finalizing workflow...[/green]\n"
+                "[cyan]Finalizing workflow...[/cyan]\n"
                 "- Creating output ZIP\n"
                 "- Archiving MIDI and tabs\n"
-                "- Cleaning up temp files",
+                "- Session cleanup",
                 title="Finalization",
             )
         )
 
+        # Create output ZIP with both videos
+        timestamp = datetime.now().strftime("%Y%m%d")
+        zip_name = f"{self.session.song_name}_{self.session.config.get('key', 'C')}_{timestamp}"
+        zip_path = os.path.join("outputs", zip_name)
+
+        # Get video paths from session
+        harmonica_video = self.session.get_data("harmonica_video")
+        tab_video = self.session.get_data("tab_video")
+
+        if harmonica_video or tab_video:
+            self.console.print(f"[dim]Creating ZIP: {zip_path}.zip[/dim]")
+
+            # Create ZIP with videos
+            shutil.make_archive(
+                zip_path, "zip", "outputs", base_dir=None
+            )  # Will include all outputs
+
+            self.console.print(f"[green]✓ Created ZIP: {zip_path}.zip[/green]")
+
+        # Archive MIDI and tabs to legacy folder
+        legacy_dir = os.path.join("legacy", f"{self.session.song_name}_{timestamp}")
+        Path(legacy_dir).mkdir(parents=True, exist_ok=True)
+
+        midi_path = self.session.get_data("generated_midi")
+        if midi_path and os.path.exists(midi_path):
+            shutil.copy2(
+                midi_path, os.path.join(legacy_dir, os.path.basename(midi_path))
+            )
+            self.console.print(f"[green]✓ Archived MIDI to: {legacy_dir}/[/green]")
+
+        if os.path.exists(self.session.input_tabs):
+            shutil.copy2(
+                self.session.input_tabs,
+                os.path.join(legacy_dir, os.path.basename(self.session.input_tabs)),
+            )
+            self.console.print(f"[green]✓ Archived tabs to: {legacy_dir}/[/green]")
+
         # Mark complete
+        self.console.print("[green bold]✓ Workflow finalized![/green bold]")
         self.session.transition_to(WorkflowState.COMPLETE)
 
     def _save_session(self) -> None:

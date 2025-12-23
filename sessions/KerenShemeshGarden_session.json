@@ -1,0 +1,19 @@
+{
+  "state": "midi_fixing",
+  "song_name": "KerenShemeshGarden",
+  "input_video": "/Users/elihu.sela/Dev/HarmonicaTabs/video-files/KerenShemeshGarden_KeyC_Stem.m4v",
+  "input_tabs": "/Users/elihu.sela/Dev/HarmonicaTabs/tab-files/KerenShemeshGarden.txt",
+  "config": {
+    "key": "C",
+    "enable_stem": true,
+    "fps": 15,
+    "tab_buffer": 0.1
+  },
+  "data": {
+    "selected_audio": "/Users/elihu.sela/Dev/HarmonicaTabs/video-files/KerenShemeshGarden.wav",
+    "generated_midi": "/Users/elihu.sela/Dev/HarmonicaTabs/fixed_midis/KerenShemeshGarden_fixed.mid",
+    "harmonica_video": "/Users/elihu.sela/Dev/HarmonicaTabs/outputs/KerenShemeshGarden_harmonica.mov"
+  },
+  "created_at": "2025-12-22T15:49:44.718629",
+  "updated_at": "2025-12-22T16:18:42.142292"
+}

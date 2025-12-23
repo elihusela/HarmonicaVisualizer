@@ -57,12 +57,12 @@ Phase 2 (create-video): Fixed MIDI → Harmonica Animation
 ### Simplified 2-Phase Workflow
 ```bash
 # Phase 1: Video/Audio → MIDI (auto-naming, WAV extraction)
-python cli.py generate-midi PianoManFullVert.wav
+python cli.py generate-midi BrokenWindowGarden.wav
 
 # Fix MIDI in DAW → save as fixed_midis/MySong_fixed.mid
 
 # Phase 2: WAV → Video (reuses extracted audio)
-python cli.py create-video BrokenWindowGarden.m4v BROKEN_WINDOW_C.txt
+python cli.py create-video BrokenWindowGarden.m4v BROKEN_WINDOW_C.txt --key C --only-harmonica
 python cli.py create-video MySong.m4v MySong.txt --key G --only-harmonica
 python cli.py create-video MySong.m4v MySong.txt --key Bb --only-full-tab-video
 ```

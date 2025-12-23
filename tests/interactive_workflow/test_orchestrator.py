@@ -312,8 +312,10 @@ class TestWorkflowSteps:
         )
         orchestrator.session.transition_to(WorkflowState.TAB_VIDEO_REVIEW)
 
-        orchestrator._step_tab_video_review()
-        assert orchestrator.session.state == WorkflowState.FINALIZATION
+        # Mock VideoCreator to avoid actual video generation
+        with patch("harmonica_pipeline.video_creator.VideoCreator"):
+            orchestrator._step_tab_video_review()
+            assert orchestrator.session.state == WorkflowState.FINALIZATION
 
     def test_finalization_step(self, tmp_path):
         """Test finalization step marks session complete."""
