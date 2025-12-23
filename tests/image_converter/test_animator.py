@@ -110,6 +110,19 @@ class TestAdjustConsecutiveIdenticalNotes:
         assert abs(result[1].duration - 0.3) < 1e-10  # 0.8 - 0.4 - 0.1
         assert result[2].duration == 0.5  # Last one unchanged
 
+    def test_adjust_page_boundary_gap(self):
+        """Test that distant notes (page boundaries) are not adjusted."""
+        entries = [
+            TabEntry(tab=4, time=7.5, duration=1.5, confidence=0.8),  # End of page 1
+            TabEntry(tab=4, time=13.4, duration=0.2, confidence=0.8),  # Start of page 2 (5.9s gap)
+        ]
+
+        result = adjust_consecutive_identical_notes(entries, gap=0.15, max_gap=2.0)
+
+        # Notes are >2s apart, so no adjustment should happen
+        assert result[0].duration == 1.5  # Original duration preserved
+        assert result[1].duration == 0.2  # Unchanged
+
 
 class TestAnimatorInitialization:
     """Test Animator initialization."""
