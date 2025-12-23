@@ -56,17 +56,18 @@ class TestAdjustConsecutiveIdenticalNotes:
         assert result[1].duration == 0.4
 
     def test_adjust_minimum_duration(self):
-        """Test that duration doesn't go below zero."""
+        """Test that notes get minimum visible duration even when very close."""
         entries = [
             TabEntry(tab=2, time=0.0, duration=0.2, confidence=0.8),
             TabEntry(tab=2, time=0.1, duration=0.3, confidence=0.8),  # Heavy overlap
         ]
 
-        result = adjust_consecutive_identical_notes(entries, gap=0.1)
+        result = adjust_consecutive_identical_notes(entries, gap=0.1, min_duration=0.1)
 
-        # Duration should be max(0, 0.1 - 0.0 - 0.1) = 0
-        assert result[0].duration == 0.0
-        assert result[1].duration == 0.3
+        # With min_duration=0.1, even close notes stay visible
+        # Available time = 0.1s, which equals min_duration
+        assert result[0].duration == 0.1  # Guaranteed minimum visibility
+        assert result[1].duration == 0.3  # Last entry unchanged
 
     def test_adjust_different_tabs_no_change(self):
         """Test that different tab numbers are not adjusted."""

@@ -17,16 +17,31 @@ from utils.utils import TEMP_DIR
 
 
 def adjust_consecutive_identical_notes(
-    flat_entries: List[TabEntry], gap: float = 0.15
+    flat_entries: List[TabEntry], gap: float = 0.15, min_duration: float = 0.1
 ) -> List[TabEntry]:
-    """Force visual gap between consecutive identical notes for clarity."""
+    """
+    Force visual gap between consecutive identical notes for clarity.
+
+    Ensures every note has minimum visible duration even when notes are very close.
+    If notes are too close for both min_duration + gap, prioritizes visibility
+    with a smaller gap.
+    """
     for i in range(len(flat_entries) - 1):
         current = flat_entries[i]
         next_entry = flat_entries[i + 1]
 
         if current.tab == next_entry.tab:
-            # ALWAYS create gap for consecutive identical notes (not just overlaps)
-            current.duration = max(0, next_entry.time - current.time - gap)
+            time_available = next_entry.time - current.time
+
+            # If we have room for min_duration + gap, use it
+            if time_available >= (min_duration + gap):
+                current.duration = time_available - gap
+            # If notes are very close, prioritize visibility over gap
+            elif time_available >= min_duration:
+                current.duration = min_duration
+            # If impossibly close, use what we have with minimal gap
+            else:
+                current.duration = max(0.05, time_available - 0.05)
     return flat_entries
 
 
@@ -51,7 +66,7 @@ class Animator:
         all_pages: Dict[str, List[List[Optional[List[TabEntry]]]]],
         extracted_audio_path: str,
         output_path: str,
-        fps: int = 15,
+        fps: int = 50,
         audio_duration: Optional[float] = None,
     ) -> None:
         self._flat_entries = [
