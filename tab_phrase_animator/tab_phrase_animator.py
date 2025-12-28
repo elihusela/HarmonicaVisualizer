@@ -99,7 +99,7 @@ class TabPhraseAnimator:
         all_pages: Dict[str, List[List[Optional[List[TabEntry]]]]],
         extracted_audio_path: str,
         output_path_base: str,
-        fps: Optional[int] = 30,
+        fps: Optional[int] = None,
         audio_duration: Optional[float] = None,
     ) -> List[PageStatistics]:
         """

@@ -798,6 +798,67 @@ Ready for next project!
 
 ## Next Steps
 
+### Immediate Priority: MIDI Validation Tool
+
+**Problem Identified:** Users frequently encounter MIDI/tab file mismatches that aren't caught until video generation, wasting time and resources.
+
+**Solution:** Implement a validation tool that detects and reports mismatches before video creation.
+
+**Implementation Plan:**
+1. **Create validation module** (`utils/midi_validator.py`)
+   - Load MIDI file and parse note events (sorted by time)
+   - Load tab file and count expected notes per hole
+   - Compare MIDI notes vs expected tab notes
+   - Detect:
+     - Extra notes (MIDI has more notes than tab expects)
+     - Missing notes (tab expects notes not in MIDI)
+     - Wrong notes (MIDI note doesn't match harmonica key mapping)
+     - Unmappable notes (MIDI notes not playable on specified harmonica)
+
+2. **Add CLI command** (`cli.py validate-midi`)
+   ```bash
+   python cli.py validate-midi MySong_fixed.mid MySong.txt --key G
+   ```
+
+3. **Output format:**
+   ```
+   ✅ MIDI validation passed: 79/79 notes match
+
+   OR
+
+   ❌ MIDI validation failed:
+      • Position 16: Extra note (hole 5, MIDI 76) at time 2739
+      • Position 41: Wrong note (expected hole 4/MIDI 67, got MIDI 68)
+      • Total: 80 MIDI notes, 79 expected from tab file
+
+   Fix suggestions:
+      - Delete MIDI 76 at position 16 (time 2739)
+      - Change MIDI 68 to MIDI 67 at position 41 (time 5741)
+   ```
+
+4. **Integration points:**
+   - Optionally run validation automatically before `create-video`
+   - Add `--validate` flag to `create-video` command
+   - Integrate into interactive workflow (validate after MIDI_FIXING step)
+
+5. **Testing:**
+   - Test with known good MIDI/tab pairs
+   - Test with known mismatches (MaryJane, WonderfulWorldHori examples)
+   - Test all 12 harmonica keys
+   - Edge cases: empty files, corrupted MIDI, missing mappings
+
+**Benefits:**
+- Catch errors early, before expensive video generation
+- Pinpoint exact problem locations for quick DAW fixes
+- Eliminate "-X MIDI entries unused" warnings
+- Save time and frustration
+
+**Estimated Effort:** 2-3 hours
+
+---
+
+### Future Enhancements
+
 1. **Decide:** CLI-only or GUI? (Recommend CLI with `questionary` + `rich`)
 2. **Prototype:** Build filename parser + state machine
 3. **Implement:** Interactive workflow for steps 1-5

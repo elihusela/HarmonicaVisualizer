@@ -78,7 +78,7 @@ class Animator:
         all_pages: Dict[str, List[List[Optional[List[TabEntry]]]]],
         extracted_audio_path: str,
         output_path: str,
-        fps: int = 50,
+        fps: int = 15,
         audio_duration: Optional[float] = None,
     ) -> None:
         self._flat_entries = [
