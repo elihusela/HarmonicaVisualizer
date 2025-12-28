@@ -57,12 +57,16 @@ Phase 2 (create-video): Fixed MIDI → Harmonica Animation
 ### Simplified 2-Phase Workflow
 ```bash
 # Phase 1: Video/Audio → MIDI (auto-naming, WAV extraction)
-python cli.py generate-midi BrokenWindowGarden.wav
+python cli.py generate-midi PianoManFullVert_KeyC_Stem.wav
+python cli.py generate-midi PianoManFullVert_KeyC_Stem.wav --preset harmonica_strict --no-melodia-trick
+python cli.py generate-midi PianoManFullVert_KeyC_Stem.wav --preset harmonica_strict --onset-threshold 0.25 --frame-threshold 0.18 --no-melodia-trick
+python cli.py generate-midi PianoManFullVert_KeyC_Stem.wav --preset harmonica_strict --no-melodia-trick --minimum-note-length 150
 
 # Fix MIDI in DAW → save as fixed_midis/MySong_fixed.mid
 
 # Phase 2: WAV → Video (reuses extracted audio)
-python cli.py create-video BrokenWindowGarden.m4v BROKEN_WINDOW_C.txt --key C --only-harmonica
+python cli.py create-video WonderfulWorldHori.MP4 WonderfulWorldHori.txt --key C --only-full-tab-video
+python cli.py create-video BrokenWindowGarden.m4v BROKEN_WINDOW_C.txt --key C --only-full-tab-video
 python cli.py create-video MySong.m4v MySong.txt --key G --only-harmonica
 python cli.py create-video MySong.m4v MySong.txt --key Bb --only-full-tab-video
 ```
@@ -101,36 +105,68 @@ outputs/
 
 ## Planned Features (Not Implemented)
 
-1. **Stem Splitting** - Separate harmonica from guitar/background using Demucs AI
+### High Priority (Next to Implement)
+
+1. **MIDI Validation Tool** - Detect and report MIDI/tab file mismatches before video generation
+   - Command: `python cli.py validate-midi MySong_fixed.mid MySong.txt --key G`
+   - Features:
+     - Compare MIDI note count vs tab file expected notes
+     - Identify exact positions of mismatches (wrong notes, extra notes, missing notes)
+     - Show detailed report with MIDI note numbers, hole numbers, and timestamps
+     - Detect unmappable notes (notes not playable on specified harmonica key)
+   - Output example:
+     ```
+     ✅ MIDI validation passed: 79/79 notes match
+
+     OR
+
+     ❌ MIDI validation failed:
+        • Position 16: Extra note (hole 5, MIDI 76) at time 2739
+        • Position 41: Wrong note (expected hole 4/MIDI 67, got MIDI 68)
+        • Total: 80 MIDI notes, 79 expected from tab file
+
+     Fix suggestions:
+        - Delete MIDI 76 at position 16 (time 2739)
+        - Change MIDI 68 to MIDI 67 at position 41 (time 5741)
+     ```
+   - Benefits:
+     - Catch MIDI errors before running expensive video generation
+     - Pinpoint exact locations of problems for quick DAW fixes
+     - Prevent "-X MIDI entries unused" warnings during create-video
+     - Save time by validating MIDI quality upfront
+
+### Lower Priority
+
+2. **Stem Splitting** - Separate harmonica from guitar/background using Demucs AI
    - Command: `python cli.py split-stems MySong.mp4 --output stems/`
    - Outputs: vocals.wav, drums.wav, bass.wav, other.wav
    - User picks best stem → `generate-midi stems/vocals.wav`
 
-2. **Visual Gap Bug Fix** - Force gap between consecutive identical notes
+3. **Visual Gap Bug Fix** - Force gap between consecutive identical notes
    - Fix: `image_converter/animator.py:19-30` - remove overlap check, always create gap
    - Increase gap: 0.1s → 0.15s
 
-3. **FPS Optimization** - Configurable FPS for tab/harmonica animations
+4. **FPS Optimization** - Configurable FPS for tab/harmonica animations
    - CLI: `--tabs-fps 15 --harmonica-fps 15`
    - Default 15fps saves ~50% render time/file size
 
-4. **Cleanup Individual Pages** - Optional deletion of page videos after compositor
+5. **Cleanup Individual Pages** - Optional deletion of page videos after compositor
    - CLI: `--no-keep-individual-pages`
    - Keeps only full video, deletes page1.mov, page2.mov, etc.
 
-5. **Auto-Tab Generation** - Generate .txt files from MIDI automatically
+6. **Auto-Tab Generation** - Generate .txt files from MIDI automatically
    - Command: `python cli.py generate-tabs MySong.mid --output MySong.txt`
    - User edits .txt → `create-video MySong.wav MySong.txt`
    - Quick fix workflow for tab mistakes
 
-6. **Better MIDI Libraries** - Benchmark alternatives to basic_pitch (experimental)
+7. **Better MIDI Libraries** - Benchmark alternatives to basic_pitch (experimental)
    - Test: Magenta mt3, crepe, pyin
    - Implement if >10% improvement found
 
 ## Quick Reference
 
 **When implementing next feature:**
-1. Check planned features list (order: Stem Split → Visual Gap → FPS → Cleanup → Auto-tabs → MIDI benchmark)
+1. Check planned features list (order: MIDI Validation → Stem Split → Visual Gap → FPS → Cleanup → Auto-tabs → MIDI benchmark)
 2. Follow implementation steps
 3. Run tests
 4. Commit with descriptive message

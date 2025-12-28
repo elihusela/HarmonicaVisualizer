@@ -525,7 +525,21 @@ class TestMain:
     def test_main_generate_midi(self, mock_generate):
         """Test main with generate-midi command."""
         main()
-        mock_generate.assert_called_once_with("test.mp4", None)
+        mock_generate.assert_called_once_with(
+            "test.mp4",
+            None,
+            preset=None,
+            low_freq=200,
+            high_freq=5000,
+            noise_reduction=-25,
+            target_loudness=-16,
+            onset_threshold=0.4,
+            frame_threshold=0.3,
+            minimum_note_length=127.7,
+            minimum_frequency=None,
+            maximum_frequency=None,
+            no_melodia_trick=False,
+        )
 
     @patch("cli.create_video_phase")
     @patch("sys.argv", ["cli.py", "create-video", "test.mp4", "tabs.txt"])
@@ -567,7 +581,21 @@ class TestMain:
     def test_main_with_options(self, mock_generate):
         """Test main passes options correctly."""
         main()
-        mock_generate.assert_called_once_with("test.mp4", "custom")
+        mock_generate.assert_called_once_with(
+            "test.mp4",
+            "custom",
+            preset=None,
+            low_freq=200,
+            high_freq=5000,
+            noise_reduction=-25,
+            target_loudness=-16,
+            onset_threshold=0.4,
+            frame_threshold=0.3,
+            minimum_note_length=127.7,
+            minimum_frequency=None,
+            maximum_frequency=None,
+            no_melodia_trick=False,
+        )
 
     @patch("cli.generate_midi_phase")
     @patch("sys.argv", ["cli.py", "generate-midi", "test.mp4"])
