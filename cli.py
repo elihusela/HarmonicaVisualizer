@@ -29,6 +29,14 @@ Examples:
   python cli.py generate-midi song.mp4
   python cli.py generate-midi song.wav
 
+  # Phase 1: Generate MIDI with custom parameters (quiet/muddy audio with chords)
+  python cli.py generate-midi song.wav --preset harmonica_strict --no-melodia-trick
+  python cli.py generate-midi song.wav --preset harmonica_strict \\
+      --onset-threshold 0.25 --frame-threshold 0.18 --no-melodia-trick
+  python cli.py generate-midi song.wav --target-loudness -10 \\
+      --noise-reduction -35 --low-freq 250 --high-freq 3000 \\
+      --onset-threshold 0.25 --frame-threshold 0.2 --no-melodia-trick
+
   # Phase 2: Create video from fixed MIDI
   python cli.py create-video song.mp4 song_tabs.txt
 
@@ -49,6 +57,79 @@ Examples:
     )
     midi_parser.add_argument(
         "--output-name", help="Custom name for generated MIDI (default: video name)"
+    )
+
+    # Audio Processing Parameters
+    audio_group = midi_parser.add_argument_group("Audio Processing")
+    audio_group.add_argument(
+        "--preset",
+        choices=[
+            "harmonica_default",
+            "harmonica_strict",
+            "general_melody",
+            "clean_studio",
+        ],
+        help="Audio processing preset (overrides individual audio settings)",
+    )
+    audio_group.add_argument(
+        "--low-freq",
+        type=int,
+        default=200,
+        help="High-pass filter frequency in Hz (default: 200)",
+    )
+    audio_group.add_argument(
+        "--high-freq",
+        type=int,
+        default=5000,
+        help="Low-pass filter frequency in Hz (default: 5000)",
+    )
+    audio_group.add_argument(
+        "--noise-reduction",
+        type=int,
+        default=-25,
+        help="Noise reduction strength in dB (default: -25)",
+    )
+    audio_group.add_argument(
+        "--target-loudness",
+        type=int,
+        default=-16,
+        help="Target loudness in LUFS (default: -16). Lower = louder (e.g., -12)",
+    )
+
+    # basic_pitch MIDI Generation Parameters
+    midi_group = midi_parser.add_argument_group("MIDI Generation (basic_pitch)")
+    midi_group.add_argument(
+        "--onset-threshold",
+        type=float,
+        default=0.4,
+        help="Onset detection sensitivity (default: 0.4). Lower = detect quieter notes (try 0.3 for chords)",
+    )
+    midi_group.add_argument(
+        "--frame-threshold",
+        type=float,
+        default=0.3,
+        help="Frame detection sensitivity (default: 0.3). Lower = detect quieter notes (try 0.2 for chords)",
+    )
+    midi_group.add_argument(
+        "--minimum-note-length",
+        type=float,
+        default=127.7,
+        help="Minimum note duration in ms (default: 127.7)",
+    )
+    midi_group.add_argument(
+        "--minimum-frequency",
+        type=float,
+        help="Minimum frequency in Hz (default: None). Harmonica: ~200Hz",
+    )
+    midi_group.add_argument(
+        "--maximum-frequency",
+        type=float,
+        help="Maximum frequency in Hz (default: None). Harmonica: ~3000Hz",
+    )
+    midi_group.add_argument(
+        "--no-melodia-trick",
+        action="store_true",
+        help="Disable melodia trick (enables better chord detection but may add noise)",
     )
 
     # Phase 2: Create video
@@ -162,9 +243,26 @@ def get_video_base_name(video_file: str) -> str:
     return Path(video_file).stem
 
 
-def generate_midi_phase(video: str, output_name: Optional[str] = None) -> str:
+def generate_midi_phase(
+    video: str,
+    output_name: Optional[str] = None,
+    # Audio processing params
+    preset: Optional[str] = None,
+    low_freq: int = 200,
+    high_freq: int = 5000,
+    noise_reduction: int = -25,
+    target_loudness: int = -16,
+    # basic_pitch params
+    onset_threshold: float = 0.4,
+    frame_threshold: float = 0.3,
+    minimum_note_length: float = 127.7,
+    minimum_frequency: Optional[float] = None,
+    maximum_frequency: Optional[float] = None,
+    no_melodia_trick: bool = False,
+) -> str:
     """Phase 1: Generate MIDI from video audio."""
     from harmonica_pipeline.midi_generator import MidiGenerator
+    from utils.audio_processor import AudioProcessor
 
     # For WAV files, check current directory first, then video-files directory
     if video.endswith(".wav"):
@@ -187,7 +285,52 @@ def generate_midi_phase(video: str, output_name: Optional[str] = None) -> str:
     print(f"{emoji} Input: {video_path}")
     print(f"🎼 Output MIDI: {output_midi_path}")
 
-    generator = MidiGenerator(video_path, output_midi_path)
+    # Apply preset if specified
+    audio_params = {}
+    if preset:
+        presets = AudioProcessor.get_recommended_presets()
+        if preset in presets:
+            audio_params = presets[preset]
+            print(f"🎛️ Using preset: {preset}")
+        else:
+            print(f"⚠️ Unknown preset '{preset}', using custom parameters")
+    else:
+        # Use custom parameters
+        audio_params = {
+            "low_freq": low_freq,
+            "high_freq": high_freq,
+            "noise_reduction_db": noise_reduction,
+            "target_lufs": target_loudness,
+        }
+
+    # Print audio processing settings
+    print(
+        f"🎛️ Audio: {audio_params.get('low_freq', low_freq)}-{audio_params.get('high_freq', high_freq)}Hz, "
+        f"Noise: {audio_params.get('noise_reduction_db', noise_reduction)}dB, "
+        f"Loudness: {audio_params.get('target_lufs', target_loudness)}LUFS"
+    )
+
+    # Print MIDI generation settings
+    melodia_status = "OFF" if no_melodia_trick else "ON"
+    print(
+        f"🎼 MIDI: onset={onset_threshold}, frame={frame_threshold}, "
+        f"melodia_trick={melodia_status}"
+    )
+    if minimum_frequency or maximum_frequency:
+        freq_range = f"{minimum_frequency or 'None'}-{maximum_frequency or 'None'}Hz"
+        print(f"   Freq range: {freq_range}")
+
+    generator = MidiGenerator(
+        video_path,
+        output_midi_path,
+        audio_processor_params=audio_params,
+        onset_threshold=onset_threshold,
+        frame_threshold=frame_threshold,
+        minimum_note_length=minimum_note_length,
+        minimum_frequency=minimum_frequency,
+        maximum_frequency=maximum_frequency,
+        melodia_trick=not no_melodia_trick,
+    )
     generator.generate()
 
     print("✅ Phase 1 Complete!")
@@ -357,7 +500,21 @@ def main():
 
     try:
         if args.command == "generate-midi":
-            generate_midi_phase(args.video, args.output_name)
+            generate_midi_phase(
+                args.video,
+                args.output_name,
+                preset=args.preset,
+                low_freq=args.low_freq,
+                high_freq=args.high_freq,
+                noise_reduction=args.noise_reduction,
+                target_loudness=args.target_loudness,
+                onset_threshold=args.onset_threshold,
+                frame_threshold=args.frame_threshold,
+                minimum_note_length=args.minimum_note_length,
+                minimum_frequency=args.minimum_frequency,
+                maximum_frequency=args.maximum_frequency,
+                no_melodia_trick=args.no_melodia_trick,
+            )
 
         elif args.command == "create-video":
             create_video_phase(

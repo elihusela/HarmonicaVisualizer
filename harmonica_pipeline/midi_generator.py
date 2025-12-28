@@ -4,6 +4,8 @@ MIDI Generator - Phase 1 of the HarmonicaTabs pipeline.
 Extracts audio from video and generates MIDI using basic_pitch.
 """
 
+from typing import Optional
+
 from basic_pitch import ICASSP_2022_MODEL_PATH
 from basic_pitch.inference import predict
 
@@ -20,6 +22,13 @@ class MidiGenerator:
         video_path: str,
         output_midi_path: str,
         enable_audio_processing: bool = True,
+        audio_processor_params: Optional[dict] = None,
+        onset_threshold: float = 0.4,
+        frame_threshold: float = 0.3,
+        minimum_note_length: float = 127.7,
+        minimum_frequency: Optional[float] = None,
+        maximum_frequency: Optional[float] = None,
+        melodia_trick: bool = True,
     ):
         """
         Initialize MIDI generator.
@@ -28,6 +37,13 @@ class MidiGenerator:
             video_path: Path to input video or audio file
             output_midi_path: Path where generated MIDI should be saved
             enable_audio_processing: Whether to apply kaki.sh audio processing
+            audio_processor_params: Dict of AudioProcessor parameters (low_freq, high_freq, etc.)
+            onset_threshold: basic_pitch onset detection threshold (default: 0.4)
+            frame_threshold: basic_pitch frame detection threshold (default: 0.3)
+            minimum_note_length: Minimum note duration in ms (default: 127.7)
+            minimum_frequency: Minimum frequency in Hz (default: None)
+            maximum_frequency: Maximum frequency in Hz (default: None)
+            melodia_trick: Enable melodia trick post-processing (default: True)
         """
         self.video_path = video_path
         self.output_midi_path = output_midi_path
@@ -38,9 +54,22 @@ class MidiGenerator:
         self.enable_audio_processing = enable_audio_processing
         self.is_video_input = not video_path.lower().endswith(".wav")
 
+        # basic_pitch parameters
+        self.onset_threshold = onset_threshold
+        self.frame_threshold = frame_threshold
+        self.minimum_note_length = minimum_note_length
+        self.minimum_frequency = minimum_frequency
+        self.maximum_frequency = maximum_frequency
+        self.melodia_trick = melodia_trick
+
         # Initialize audio processing components
         self.audio_extractor = AudioExtractor(video_path, self.extracted_audio_path)
-        self.audio_processor = AudioProcessor()  # Uses kaki.sh defaults
+
+        # Initialize AudioProcessor with custom parameters if provided
+        if audio_processor_params:
+            self.audio_processor = AudioProcessor(**audio_processor_params)
+        else:
+            self.audio_processor = AudioProcessor()  # Uses kaki.sh defaults
 
     def generate(self) -> None:
         """Run the complete 3-step MIDI generation process."""
@@ -96,8 +125,12 @@ class MidiGenerator:
         _, midi_data, note_events = predict(
             audio_path=self.processed_audio_path,
             model_or_model_path=ICASSP_2022_MODEL_PATH,
-            onset_threshold=0.4,
-            frame_threshold=0.3,
+            onset_threshold=self.onset_threshold,
+            frame_threshold=self.frame_threshold,
+            minimum_note_length=self.minimum_note_length,
+            minimum_frequency=self.minimum_frequency,
+            maximum_frequency=self.maximum_frequency,
+            melodia_trick=self.melodia_trick,
         )
 
         print(f"🎵 Generated {len(note_events)} note events")
