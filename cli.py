@@ -228,6 +228,22 @@ Examples:
         "Increase if pages overlap or vanish early. Default: 0.1",
     )
 
+    # MIDI Validation
+    validate_parser = subparsers.add_parser(
+        "validate-midi",
+        help="Validate MIDI file against tab file before video generation",
+    )
+    validate_parser.add_argument(
+        "midi", help="MIDI file (in fixed_midis/ or absolute path)"
+    )
+    validate_parser.add_argument("tabs", help="Tab file (in tab-files/)")
+    validate_parser.add_argument(
+        "--key",
+        type=str,
+        default="C",
+        help="Harmonica key (C, G, BB, etc.). Default: C",
+    )
+
     return parser
 
 
@@ -490,6 +506,54 @@ def full_pipeline(
     )
 
 
+def validate_midi_phase(midi: str, tabs: str, harmonica_key: str = "C") -> None:
+    """Validate MIDI file against tab file."""
+    from utils.midi_validator import validate_midi
+
+    # Resolve file paths
+    if os.path.isabs(midi):
+        midi_path = midi
+    elif midi.startswith("fixed_midis/"):
+        midi_path = midi
+    else:
+        midi_path = os.path.join(MIDI_DIR, midi)
+
+    tabs_path = os.path.join(TAB_FILES_DIR, tabs)
+
+    # Validate files exist
+    validate_file_exists(midi_path, "MIDI")
+    validate_file_exists(tabs_path, "Tabs")
+
+    print("🔍 Starting MIDI Validation")
+    print(f"🎼 MIDI: {midi_path}")
+    print(f"📄 Tabs: {tabs_path}")
+    print(f"🎹 Key: {harmonica_key}")
+    print()
+
+    # Run validation
+    try:
+        result = validate_midi(midi_path, tabs_path, harmonica_key)
+        print(result.get_summary())
+        print()
+
+        # Exit with appropriate code
+        if result.passed:
+            print("✅ Validation successful! Ready for video generation.")
+            sys.exit(0)
+        else:
+            print(
+                "❌ Validation failed. Fix the issues above before running create-video."
+            )
+            sys.exit(1)
+
+    except Exception as e:
+        print(f"❌ Validation error: {e}")
+        import traceback
+
+        traceback.print_exc()
+        sys.exit(1)
+
+
 def main():
     parser = setup_parser()
     args = parser.parse_args()
@@ -543,6 +607,9 @@ def main():
                 args.only_full_tab_video,
                 args.tab_page_buffer,
             )
+
+        elif args.command == "validate-midi":
+            validate_midi_phase(args.midi, args.tabs, args.key)
 
     except KeyboardInterrupt:
         print("\n❌ Interrupted by user")
