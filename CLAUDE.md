@@ -65,7 +65,7 @@ python cli.py generate-midi PianoManFullVert_KeyC_Stem.wav --preset harmonica_st
 # Fix MIDI in DAW → save as fixed_midis/MySong_fixed.mid
 
 # Phase 2: WAV → Video (reuses extracted audio)
-python cli.py create-video WonderfulWorldHori.MP4 WonderfulWorldHori.txt --key C --only-full-tab-video
+python cli.py create-video PianoManFullVert_KeyC_Stem.m4v PianoManFullVert.txt --key C --only-harmonica
 python cli.py create-video BrokenWindowGarden.m4v BROKEN_WINDOW_C.txt --key C --only-full-tab-video
 python cli.py create-video MySong.m4v MySong.txt --key G --only-harmonica
 python cli.py create-video MySong.m4v MySong.txt --key Bb --only-full-tab-video
