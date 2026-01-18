@@ -509,7 +509,13 @@ class TestWorkflowSteps:
         )
         orchestrator.session.transition_to(WorkflowState.FINALIZATION)
 
-        orchestrator._step_finalization()
+        # Mock file operations to avoid creating real ZIPs/folders
+        with (
+            patch("zipfile.ZipFile"),
+            patch("shutil.copy2"),
+            patch("pathlib.Path.mkdir"),
+        ):
+            orchestrator._step_finalization()
         assert orchestrator.session.state == WorkflowState.COMPLETE
 
 
