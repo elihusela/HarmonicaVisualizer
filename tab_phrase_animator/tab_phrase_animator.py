@@ -40,6 +40,9 @@ class AnimationConfig:
     box_color: str = "#888888"
     box_alpha: float = 0.5
     time_buffer: float = 0.1  # Buffer time before/after notes
+    note_off_buffer: float = (
+        0.5  # Extra buffer after last note to ensure glow turns off
+    )
     cleanup_temp_files: bool = True
 
 
@@ -277,10 +280,12 @@ class TabPhraseAnimator:
             start_time = max(0.0, raw_start - self._config.time_buffer)
 
         # Last page: end at audio duration (show until end even if notes finish earlier)
+        # Other pages: add note_off_buffer to ensure notes have time to turn off
+        # (prevents lit notes from being frozen when compositor extends video for gaps)
         if is_last_page and audio_duration is not None:
             end_time = audio_duration
         else:
-            end_time = raw_end + self._config.time_buffer
+            end_time = raw_end + self._config.note_off_buffer
 
         duration = end_time - start_time
         total_frames = int(duration * fps)
