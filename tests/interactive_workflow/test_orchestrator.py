@@ -269,6 +269,188 @@ class TestWorkflowSteps:
         # Should stay in MIDI_FIXING
         assert orchestrator.session.state == WorkflowState.MIDI_FIXING
 
+    def test_midi_fixing_with_validation_pass(self, tmp_path):
+        """Test MIDI fixing step runs validation and proceeds when it passes."""
+        from utils.midi_validator import ValidationResult
+
+        orchestrator = WorkflowOrchestrator(
+            input_video="MySong_KeyC.mp4",
+            input_tabs="MySong.txt",
+            session_dir=str(tmp_path / "sessions"),
+            auto_approve=True,
+        )
+        orchestrator.session.transition_to(WorkflowState.MIDI_FIXING)
+        orchestrator.session.set_data("generated_midi", str(tmp_path / "test.mid"))
+
+        # Create a dummy MIDI file
+        (tmp_path / "test.mid").touch()
+
+        # Mock validation to pass
+        with patch("utils.midi_validator.validate_midi") as mock_validate:
+            mock_validate.return_value = ValidationResult(
+                passed=True, total_midi_notes=10, total_expected_notes=10, issues=[]
+            )
+            orchestrator._step_midi_fixing()
+
+        assert orchestrator.session.state == WorkflowState.HARMONICA_REVIEW
+        mock_validate.assert_called_once()
+
+    def test_midi_fixing_with_validation_fail_proceed(self, tmp_path):
+        """Test MIDI fixing step when validation fails and user chooses to proceed."""
+        from utils.midi_validator import ValidationResult, ValidationIssue
+
+        orchestrator = WorkflowOrchestrator(
+            input_video="MySong_KeyC.mp4",
+            input_tabs="MySong.txt",
+            session_dir=str(tmp_path / "sessions"),
+            auto_approve=False,
+        )
+        orchestrator.session.transition_to(WorkflowState.MIDI_FIXING)
+        orchestrator.session.set_data("generated_midi", str(tmp_path / "test.mid"))
+
+        # Create a dummy MIDI file
+        (tmp_path / "test.mid").touch()
+
+        # Mock validation to fail
+        with patch("utils.midi_validator.validate_midi") as mock_validate:
+            mock_validate.return_value = ValidationResult(
+                passed=False,
+                total_midi_notes=12,
+                total_expected_notes=10,
+                issues=[
+                    ValidationIssue(
+                        position=-1,
+                        issue_type="extra",
+                        description="Found 2 extra notes",
+                    )
+                ],
+            )
+            with patch("questionary.confirm") as mock_confirm:
+                # First call: "finished fixing?", Second call: "proceed anyway?"
+                mock_confirm.return_value.ask.side_effect = [True, True]
+                with patch("questionary.text") as mock_text:
+                    # FPS selection - "3" = 15 FPS
+                    mock_text.return_value.ask.return_value = "3"
+                    orchestrator._step_midi_fixing()
+
+        # Should proceed despite validation failure
+        assert orchestrator.session.state == WorkflowState.HARMONICA_REVIEW
+
+    def test_midi_fixing_with_validation_fail_stay(self, tmp_path):
+        """Test MIDI fixing step when validation fails and user chooses to fix."""
+        from utils.midi_validator import ValidationResult, ValidationIssue
+
+        orchestrator = WorkflowOrchestrator(
+            input_video="MySong_KeyC.mp4",
+            input_tabs="MySong.txt",
+            session_dir=str(tmp_path / "sessions"),
+            auto_approve=False,
+        )
+        orchestrator.session.transition_to(WorkflowState.MIDI_FIXING)
+        orchestrator.session.set_data("generated_midi", str(tmp_path / "test.mid"))
+
+        # Create a dummy MIDI file
+        (tmp_path / "test.mid").touch()
+
+        # Mock validation to fail
+        with patch("utils.midi_validator.validate_midi") as mock_validate:
+            mock_validate.return_value = ValidationResult(
+                passed=False,
+                total_midi_notes=12,
+                total_expected_notes=10,
+                issues=[
+                    ValidationIssue(
+                        position=-1,
+                        issue_type="extra",
+                        description="Found 2 extra notes",
+                    )
+                ],
+            )
+            with patch("questionary.confirm") as mock_confirm:
+                # First call: "finished fixing?", Second call: "proceed anyway?" -> No
+                mock_confirm.return_value.ask.side_effect = [True, False]
+                orchestrator._step_midi_fixing()
+
+        # Should stay in MIDI_FIXING
+        assert orchestrator.session.state == WorkflowState.MIDI_FIXING
+
+    def test_midi_fixing_validation_error_proceeds(self, tmp_path):
+        """Test MIDI fixing step proceeds when validation throws an error."""
+        orchestrator = WorkflowOrchestrator(
+            input_video="MySong_KeyC.mp4",
+            input_tabs="MySong.txt",
+            session_dir=str(tmp_path / "sessions"),
+            auto_approve=True,
+        )
+        orchestrator.session.transition_to(WorkflowState.MIDI_FIXING)
+        orchestrator.session.set_data("generated_midi", str(tmp_path / "test.mid"))
+
+        # Create a dummy MIDI file
+        (tmp_path / "test.mid").touch()
+
+        # Mock validation to throw error
+        with patch("utils.midi_validator.validate_midi") as mock_validate:
+            mock_validate.side_effect = Exception("Validation failed unexpectedly")
+            orchestrator._step_midi_fixing()
+
+        # Should still proceed (don't block on validation errors)
+        assert orchestrator.session.state == WorkflowState.HARMONICA_REVIEW
+
+    def test_midi_fixing_no_midi_file_skips_validation(self, tmp_path):
+        """Test MIDI fixing step skips validation when MIDI file doesn't exist."""
+        orchestrator = WorkflowOrchestrator(
+            input_video="MySong_KeyC.mp4",
+            input_tabs="MySong.txt",
+            session_dir=str(tmp_path / "sessions"),
+            auto_approve=True,
+        )
+        orchestrator.session.transition_to(WorkflowState.MIDI_FIXING)
+        # Don't set generated_midi - simulating missing file
+
+        with patch("utils.midi_validator.validate_midi") as mock_validate:
+            orchestrator._step_midi_fixing()
+
+        # Should proceed without calling validation
+        assert orchestrator.session.state == WorkflowState.HARMONICA_REVIEW
+        mock_validate.assert_not_called()
+
+    def test_fps_selection_stored_in_session(self, tmp_path):
+        """Test FPS selection is stored in session data."""
+        orchestrator = WorkflowOrchestrator(
+            input_video="MySong_KeyC.mp4",
+            input_tabs="MySong.txt",
+            session_dir=str(tmp_path / "sessions"),
+            auto_approve=False,
+        )
+        orchestrator.session.transition_to(WorkflowState.MIDI_FIXING)
+
+        with patch("questionary.confirm") as mock_confirm:
+            mock_confirm.return_value.ask.return_value = True
+            with patch("questionary.text") as mock_text:
+                # "1" = 5 FPS
+                mock_text.return_value.ask.return_value = "1"
+                orchestrator._step_midi_fixing()
+
+        # FPS should be stored in session
+        assert orchestrator.session.get_data("fps") == 5
+        assert orchestrator.session.state == WorkflowState.HARMONICA_REVIEW
+
+    def test_fps_selection_auto_approve_uses_default(self, tmp_path):
+        """Test FPS selection uses filename config in auto-approve mode."""
+        orchestrator = WorkflowOrchestrator(
+            input_video="MySong_KeyC_FPS20.mp4",  # FPS encoded in filename
+            input_tabs="MySong.txt",
+            session_dir=str(tmp_path / "sessions"),
+            auto_approve=True,
+        )
+        orchestrator.session.transition_to(WorkflowState.MIDI_FIXING)
+
+        orchestrator._step_midi_fixing()
+
+        # Should use FPS from filename (20)
+        assert orchestrator.session.get_data("fps") == 20
+        assert orchestrator.session.state == WorkflowState.HARMONICA_REVIEW
+
     def test_harmonica_review_step_approved(self, tmp_path):
         """Test harmonica review step transitions when approved."""
         orchestrator = WorkflowOrchestrator(
@@ -529,5 +711,8 @@ class TestAutoApproveMode:
 
         with patch("questionary.confirm") as mock_confirm:
             mock_confirm.return_value.ask.return_value = True
-            orchestrator._step_midi_fixing()
+            with patch("questionary.text") as mock_text:
+                # Mock FPS selection - "3" = 15 FPS
+                mock_text.return_value.ask.return_value = "3"
+                orchestrator._step_midi_fixing()
             mock_confirm.assert_called_once()

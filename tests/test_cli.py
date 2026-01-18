@@ -766,7 +766,7 @@ class TestCLIIntegration:
         """Test main dispatches to interactive workflow with explicit tabs."""
         main()
         mock_interactive.assert_called_once_with(
-            "test.mp4", "tabs.txt", "sessions", False
+            "test.mp4", "tabs.txt", "sessions", False, False
         )
 
     @patch("cli.interactive_workflow")
@@ -774,7 +774,9 @@ class TestCLIIntegration:
     def test_main_interactive_auto_infer(self, mock_interactive):
         """Test main dispatches to interactive workflow with auto-inferred tabs."""
         main()
-        mock_interactive.assert_called_once_with("test.mp4", None, "sessions", False)
+        mock_interactive.assert_called_once_with(
+            "test.mp4", None, "sessions", False, False
+        )
 
     @patch("cli.interactive_workflow")
     @patch(
@@ -792,4 +794,18 @@ class TestCLIIntegration:
     def test_main_interactive_with_options(self, mock_interactive):
         """Test main dispatches interactive workflow with options."""
         main()
-        mock_interactive.assert_called_once_with("test.mp4", "tabs.txt", "custom", True)
+        mock_interactive.assert_called_once_with(
+            "test.mp4", "tabs.txt", "custom", True, False
+        )
+
+    @patch("cli.interactive_workflow")
+    @patch(
+        "sys.argv",
+        ["cli.py", "interactive", "test.mp4", "--clean"],
+    )
+    def test_main_interactive_with_clean(self, mock_interactive):
+        """Test main dispatches interactive workflow with --clean flag."""
+        main()
+        mock_interactive.assert_called_once_with(
+            "test.mp4", None, "sessions", False, True
+        )

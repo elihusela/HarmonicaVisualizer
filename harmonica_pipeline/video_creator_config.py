@@ -35,6 +35,7 @@ class VideoCreatorConfig:
     tab_page_buffer: float = (
         0.1  # Buffer time (seconds) before/after notes on each tab page
     )
+    fps: int = 15  # Frames per second for video generation (lower = faster render)
 
     def __post_init__(self) -> None:
         """Validate configuration after initialization."""
@@ -100,6 +101,7 @@ class VideoCreatorConfig:
         only_full_tab_video: bool = False,
         harmonica_key: str = "C",
         tab_page_buffer: float = 0.1,
+        fps: int = 15,
     ) -> "VideoCreatorConfig":
         """
         Create configuration from CLI arguments.
@@ -116,6 +118,7 @@ class VideoCreatorConfig:
             only_full_tab_video: Only output full video, clean up individual pages
             harmonica_key: Harmonica key (C, G, BB, etc.)
             tab_page_buffer: Buffer time (seconds) before/after notes on each tab page
+            fps: Frames per second for video generation
 
         Returns:
             VideoCreatorConfig instance
@@ -132,4 +135,5 @@ class VideoCreatorConfig:
             only_full_tab_video=only_full_tab_video,
             harmonica_key=harmonica_key,
             tab_page_buffer=tab_page_buffer,
+            fps=fps,
         )

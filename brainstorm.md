@@ -93,17 +93,15 @@ python cli.py interactive MySong_KeyG.mp4 MySong.txt
 INIT → (STEM_SELECTION)* → MIDI_GENERATION → MIDI_FIXING → ...
        *only if _Stem flag present
 
-Currently Implemented (Phase 6A):
+All Phases Complete (6B):
 ✅ Filename parsing (all 12 harmonica keys)
 ✅ Stem selection (manual - user provides stem file)
 ✅ MIDI generation (supports video/audio input)
 ✅ Session persistence and resumption
-⏸️  Pauses at MIDI_FIXING step
-
-Next Steps (Phase 6B+):
-🔲 Harmonica video generation
-🔲 Tab video generation
-🔲 Finalization (ZIP, cleanup, archive)
+✅ MIDI fixing pause step
+✅ Harmonica video generation with approval gate
+✅ Tab video generation with approval gate
+✅ Finalization (ZIP with song videos, archive to legacy/)
 ```
 
 ### File Locations
@@ -213,39 +211,23 @@ Future Outputs (Phase 6B+):
 
 ---
 
-### Current Phase: Phase 3 - Build State Machine 🔄
-**Goal:** Build workflow state manager - track progress, save/resume sessions
+### All Phases Complete ✅
 
-**Tasks:**
-- [ ] Create `interactive_workflow/` directory
-- [ ] Create `state_machine.py` with WorkflowState enum
-- [ ] Implement WorkflowSession class
-- [ ] Session save/load to JSON
-- [ ] State transitions
-- [ ] Create comprehensive tests
-- [ ] Commit changes
+**Completed Phases:**
+- **Phase 0:** Preparation - branch created, baseline established
+- **Phase 1:** Dependencies - questionary + rich added
+- **Phase 2:** Filename parser - all 12 keys, config extraction
+- **Phase 3:** State machine - session persistence, transitions
+- **Phase 4:** Workflow orchestrator - step execution, error handling
+- **Phase 5:** CLI command - `python cli.py interactive`
+- **Phase 6A:** MIDI generation integration
+- **Phase 6B:** Video generation + finalization
 
-**Progress Notes:**
-- 2025-12-21 16:35 - Starting Phase 3
-- Completely isolated - no integration yet
-- Will enable resume-after-crash functionality
-
-### Upcoming Phases
-- **Phase 3:** Build state machine (isolated) - 🟢 IN PROGRESS
-- **Phase 4:** Build workflow orchestrator - 🔲 Not Started
-- **Phase 5:** Add CLI interactive command - 🔲 Not Started
-- **Phase 6:** Integrate planned features - 🔲 Not Started
-
-### Abort Plan
-If things get too complicated:
-```bash
-# Nuclear option - back to stable
-git checkout main
-git branch -D feature/interactive-workflow
-
-# Or restore to tagged version
-git checkout stable-before-interactive
-```
+**Implementation Summary:**
+- 58 tests covering state machine and orchestrator
+- Full end-to-end workflow with approval gates
+- Session persistence for crash recovery
+- ZIP packaging with only song-specific videos (fixed 2025-01-18)
 
 ---
 
@@ -798,18 +780,18 @@ Ready for next project!
 
 ## Next Steps
 
-### Immediate Priority: MIDI Validation Tool
+### ✅ MIDI Validation Tool - IMPLEMENTED
 
-**Problem Identified:** Users frequently encounter MIDI/tab file mismatches that aren't caught until video generation, wasting time and resources.
+**Status:** Complete (commit `4749940`)
 
-**Solution:** Implement a validation tool that detects and reports mismatches before video creation.
+**Command:** `python cli.py validate-midi MySong_fixed.mid MySong.txt --key G`
 
-**Implementation Plan:**
-1. **Create validation module** (`utils/midi_validator.py`)
-   - Load MIDI file and parse note events (sorted by time)
-   - Load tab file and count expected notes per hole
-   - Compare MIDI notes vs expected tab notes
-   - Detect:
+**Implementation Details:**
+1. **Validation module** (`utils/midi_validator.py`)
+   - Loads MIDI file and parses note events (sorted by time)
+   - Loads tab file and counts expected notes per hole
+   - Compares MIDI notes vs expected tab notes
+   - Detects:
      - Extra notes (MIDI has more notes than tab expects)
      - Missing notes (tab expects notes not in MIDI)
      - Wrong notes (MIDI note doesn't match harmonica key mapping)
@@ -859,12 +841,18 @@ Ready for next project!
 
 ### Future Enhancements
 
-1. **Decide:** CLI-only or GUI? (Recommend CLI with `questionary` + `rich`)
-2. **Prototype:** Build filename parser + state machine
-3. **Implement:** Interactive workflow for steps 1-5
-4. **Test:** Run through full workflow with real video
-5. **Polish:** Add progress bars, better error messages
-6. **Document:** Update README with new workflow instructions
+**Already Completed:**
+- ✅ CLI with questionary + rich implemented
+- ✅ Filename parser built (all 12 keys)
+- ✅ State machine with session persistence
+- ✅ Interactive workflow (all steps 1-5)
+- ✅ MIDI Validation Tool (`validate-midi` command)
+
+**Remaining Ideas:**
+1. **Auto-stem splitting** - Integrate Demucs for automatic stem separation
+2. **Progress bars** - Add rich progress bars for long operations
+3. ~~**Validation integration**~~ - ✅ Integrated (2025-01-18)
+4. **README update** - Document new workflow instructions
 
 ---
 

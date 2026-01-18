@@ -6,13 +6,34 @@ Phase 1: Generate MIDI from video
 Phase 2: Create harmonica video from fixed MIDI
 """
 
-import argparse
+# Suppress third-party library warnings BEFORE importing them
+# This must come before any library imports to catch import-time warnings
+import warnings
+import logging
 import os
-import sys
-from pathlib import Path
-from typing import Optional
 
-from utils.utils import VIDEO_FILES_DIR, OUTPUTS_DIR, TAB_FILES_DIR, MIDI_DIR
+warnings.filterwarnings("ignore", category=UserWarning)
+warnings.filterwarnings("ignore", category=FutureWarning)
+warnings.filterwarnings("ignore", category=DeprecationWarning)
+
+# Suppress TensorFlow/basic_pitch warnings
+os.environ["TF_CPP_MIN_LOG_LEVEL"] = "3"  # Suppress TF logging
+
+# Suppress specific noisy loggers
+for logger_name in ["tensorflow", "absl", "numba", "moviepy", "imageio"]:
+    logging.getLogger(logger_name).setLevel(logging.ERROR)
+
+import argparse  # noqa: E402
+import sys  # noqa: E402
+from pathlib import Path  # noqa: E402
+from typing import Optional  # noqa: E402
+
+from utils.utils import (  # noqa: E402
+    VIDEO_FILES_DIR,
+    OUTPUTS_DIR,
+    TAB_FILES_DIR,
+    MIDI_DIR,
+)
 
 # Configuration constants
 DEFAULT_HARMONICA_MODEL = "G.png"
@@ -270,6 +291,11 @@ Examples:
         "--auto-approve",
         action="store_true",
         help="Skip all approval prompts (for testing/automation)",
+    )
+    interactive_parser.add_argument(
+        "--clean",
+        action="store_true",
+        help="Delete existing session and start fresh",
     )
 
     return parser
@@ -587,6 +613,7 @@ def interactive_workflow(
     tabs: Optional[str] = None,
     session_dir: str = "sessions",
     auto_approve: bool = False,
+    clean: bool = False,
 ) -> None:
     """Run interactive workflow with approval gates and session persistence.
 
@@ -602,8 +629,24 @@ def interactive_workflow(
         tabs: Tab file (.txt) - optional, defaults to same name as video
         session_dir: Directory for session files
         auto_approve: Skip all approval prompts (for testing)
+        clean: Delete existing session and start fresh
     """
     from interactive_workflow.orchestrator import WorkflowOrchestrator
+    from utils.filename_parser import parse_filename
+
+    # Parse filename to get song name (needed for session file path)
+    filename_config = parse_filename(video)
+
+    # Handle --clean flag: delete existing session
+    if clean:
+        session_file = os.path.join(
+            session_dir, f"{filename_config.song_name}_session.json"
+        )
+        if os.path.exists(session_file):
+            os.remove(session_file)
+            print(f"🧹 Cleaned existing session: {session_file}")
+        else:
+            print(f"🧹 No existing session to clean for {filename_config.song_name}")
 
     # Resolve file paths
     # For WAV files, check current directory first
@@ -614,10 +657,6 @@ def interactive_workflow(
 
     # Auto-infer tab file from video name if not provided
     if tabs is None:
-        # Extract song name from filename (removes extension and parameters like _KeyG_Stem)
-        from utils.filename_parser import parse_filename
-
-        filename_config = parse_filename(video)
         tabs = f"{filename_config.song_name}.txt"
 
     tabs_path = os.path.join(TAB_FILES_DIR, tabs)
@@ -704,7 +743,7 @@ def main():
         elif args.command == "interactive":
             # tabs is optional, will be None if not provided
             interactive_workflow(
-                args.video, args.tabs, args.session_dir, args.auto_approve
+                args.video, args.tabs, args.session_dir, args.auto_approve, args.clean
             )
 
     except KeyboardInterrupt:

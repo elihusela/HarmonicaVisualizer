@@ -132,10 +132,13 @@ class VideoCreator:
 
             self.animator = Animator(harmonica_layout, figure_factory)
 
-            # Create AnimationConfig with custom buffer if specified
+            # Create AnimationConfig with custom buffer and FPS
             from tab_phrase_animator.tab_phrase_animator import AnimationConfig
 
-            animation_config = AnimationConfig(time_buffer=config.tab_page_buffer)
+            self.fps = config.fps
+            animation_config = AnimationConfig(
+                time_buffer=config.tab_page_buffer, fps=config.fps
+            )
 
             self.tab_phrase_animator = TabPhraseAnimator(
                 harmonica_layout, figure_factory, config=animation_config
@@ -472,6 +475,7 @@ class VideoCreator:
             matched_tabs,
             self.extracted_audio_path,
             self.output_video_path,
+            fps=self.fps,
             audio_duration=audio_duration,
         )
         duration = time.perf_counter() - start

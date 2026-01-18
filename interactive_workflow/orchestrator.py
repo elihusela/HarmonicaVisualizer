@@ -7,7 +7,10 @@ This module orchestrates the complete interactive workflow:
 4. Handle cleanup and finalization
 """
 
+import logging
 import os
+import warnings
+from datetime import datetime
 
 import questionary
 from rich.console import Console
@@ -46,6 +49,10 @@ class WorkflowOrchestrator:
         """
         self.console = Console()
         self.auto_approve = auto_approve
+        self.session_dir = session_dir
+
+        # Configure logging to suppress library warnings
+        self._configure_logging(session_dir)
 
         # Parse configuration from filename
         self.filename_config = parse_filename(input_video)
@@ -53,6 +60,64 @@ class WorkflowOrchestrator:
         # Initialize or resume session
         self.session_file = self._get_session_file_path(session_dir)
         self.session = self._initialize_session(input_video, input_tabs)
+
+    def _configure_logging(self, session_dir: str) -> None:
+        """Configure logging to redirect library warnings to a log file.
+
+        Suppresses noisy warnings from third-party libraries (scikit-learn,
+        TensorFlow, MoviePy, etc.) and redirects them to a log file.
+
+        Args:
+            session_dir: Directory to store the log file
+        """
+        os.makedirs(session_dir, exist_ok=True)
+        log_file = os.path.join(session_dir, "workflow.log")
+        self.log_file = log_file
+
+        # Create file handler for all warnings/errors
+        file_handler = logging.FileHandler(log_file, mode="a")
+        file_handler.setLevel(logging.WARNING)
+        file_handler.setFormatter(
+            logging.Formatter("%(asctime)s - %(name)s - %(levelname)s - %(message)s")
+        )
+
+        # Configure root logger to use file handler
+        root_logger = logging.getLogger()
+        root_logger.addHandler(file_handler)
+
+        # Suppress noisy third-party loggers (redirect to file only)
+        noisy_loggers = [
+            "moviepy",
+            "imageio",
+            "imageio_ffmpeg",
+            "PIL",
+            "matplotlib",
+            "numba",
+            "tensorflow",
+            "absl",
+            "basic_pitch",
+            "librosa",
+        ]
+        for logger_name in noisy_loggers:
+            logger = logging.getLogger(logger_name)
+            logger.setLevel(logging.ERROR)
+            # Only use file handler, not console
+            logger.handlers = [file_handler]
+            logger.propagate = False
+
+        # Suppress Python warnings (scikit-learn, etc.)
+        warnings.filterwarnings("ignore", category=UserWarning)
+        warnings.filterwarnings("ignore", category=FutureWarning)
+        warnings.filterwarnings("ignore", category=DeprecationWarning)
+
+        # Redirect warnings to log file
+        logging.captureWarnings(True)
+        warnings_logger = logging.getLogger("py.warnings")
+        warnings_logger.handlers = [file_handler]
+        warnings_logger.propagate = False
+
+        # Log session start
+        logging.info(f"Workflow session started at {datetime.now()}")
 
     def _get_session_file_path(self, session_dir: str) -> str:
         """Generate session file path based on song name.
@@ -104,7 +169,8 @@ class WorkflowOrchestrator:
                 f"Song: {self.filename_config.song_name}\n"
                 f"Key: {self.filename_config.key}\n"
                 f"Stem separation: {self.filename_config.enable_stem}\n"
-                f"FPS: {self.filename_config.fps}",
+                f"FPS: {self.filename_config.fps}\n\n"
+                f"[dim]Logs: {self.log_file}[/dim]",
                 title="New Session",
             )
         )
@@ -191,13 +257,25 @@ class WorkflowOrchestrator:
 
         Future: Auto-run Demucs here and let user pick from results.
         """
+        # Check if already selected (resuming session)
+        if self.session.get_data("selected_audio"):
+            self.console.print(
+                f"[dim]Using previously selected stem: "
+                f"{self.session.get_data('selected_audio')}[/dim]"
+            )
+            self.session.transition_to(WorkflowState.MIDI_GENERATION)
+            return
+
+        from utils.utils import VIDEO_FILES_DIR
+        from pathlib import Path
+
         self.console.print(
             Panel(
                 "[cyan]Manual Stem Separation Required[/cyan]\n\n"
                 "1. Separate stems using your preferred tool (Demucs, RX, etc.)\n"
                 "2. Save the stem you want to use in the video-files/ folder\n"
-                "3. Provide the filename below\n\n"
-                "[dim]Example: MySong_vocals.wav[/dim]",
+                "3. Select the stem file below\n\n"
+                f"[dim]Looking in: {VIDEO_FILES_DIR}/[/dim]",
                 title="Stem Selection",
             )
         )
@@ -209,22 +287,66 @@ class WorkflowOrchestrator:
             )
             selected_stem = self.session.input_video
         else:
-            # Prompt user for stem filename
-            from utils.utils import VIDEO_FILES_DIR
+            # Find available audio files in video-files/
+            video_files_path = Path(VIDEO_FILES_DIR)
+            audio_extensions = {".wav", ".mp3", ".m4a", ".flac", ".aiff"}
+            available_files = []
 
-            stem_file = questionary.text(
-                "Enter stem filename:",
-                default=f"{self.session.song_name}.wav",
-            ).ask()
+            if video_files_path.exists():
+                for f in sorted(video_files_path.iterdir()):
+                    if f.suffix.lower() in audio_extensions:
+                        available_files.append(f.name)
 
-            if not stem_file:
-                # User cancelled
-                self.console.print(
-                    "[yellow]No stem provided, using original file[/yellow]"
-                )
-                selected_stem = self.session.input_video
+            if available_files:
+                # Show numbered list for easier selection (arrow keys often don't work)
+                self.console.print("\n[cyan]Available audio files:[/cyan]")
+                for idx, filename in enumerate(available_files, 1):
+                    self.console.print(f"  {idx}. {filename}")
+                self.console.print("  0. [Skip - use original video]")
+                self.console.print()
+
+                choice = questionary.text(
+                    "Enter number to select (or 0 to skip):",
+                    default="1",
+                ).ask()
+
+                try:
+                    choice_num = int(choice) if choice else 0
+                    if choice_num == 0:
+                        self.console.print(
+                            "[yellow]No stem selected, using original file[/yellow]"
+                        )
+                        selected_stem = self.session.input_video
+                    elif 1 <= choice_num <= len(available_files):
+                        selected_stem = os.path.join(
+                            VIDEO_FILES_DIR, available_files[choice_num - 1]
+                        )
+                    else:
+                        self.console.print(
+                            "[yellow]Invalid choice, using original file[/yellow]"
+                        )
+                        selected_stem = self.session.input_video
+                except ValueError:
+                    self.console.print(
+                        "[yellow]Invalid input, using original file[/yellow]"
+                    )
+                    selected_stem = self.session.input_video
             else:
-                selected_stem = os.path.join(VIDEO_FILES_DIR, stem_file)
+                # No audio files found, ask for manual input
+                self.console.print(
+                    "[yellow]No audio files found in video-files/[/yellow]"
+                )
+                stem_file = questionary.text(
+                    "Enter stem filename (or press Enter to skip):",
+                ).ask()
+
+                if stem_file and stem_file.strip():
+                    selected_stem = os.path.join(VIDEO_FILES_DIR, stem_file.strip())
+                else:
+                    self.console.print(
+                        "[yellow]No stem provided, using original file[/yellow]"
+                    )
+                    selected_stem = self.session.input_video
 
         self.session.set_data("selected_audio", selected_stem)
         self.console.print(f"[green]✓ Using audio: {selected_stem}[/green]")
@@ -298,7 +420,7 @@ class WorkflowOrchestrator:
         """Pause for user to fix MIDI in DAW.
 
         User manually edits the generated MIDI in Ableton/Logic/etc.
-        Workflow waits for user confirmation before continuing.
+        Workflow waits for user confirmation, then validates MIDI before continuing.
         """
         self.console.print(
             Panel(
@@ -311,13 +433,149 @@ class WorkflowOrchestrator:
             )
         )
 
-        if (
+        if not (
             self.auto_approve
             or questionary.confirm(
                 "Have you finished fixing the MIDI?", default=False
             ).ask()
         ):
+            return  # User not ready, stay in MIDI_FIXING state
+
+        # Validate MIDI before proceeding
+        validation_passed = self._validate_midi()
+
+        proceed = False
+        if validation_passed:
+            proceed = True
+        elif self.auto_approve:
+            # In auto-approve mode, proceed despite validation failure
+            self.console.print(
+                "[yellow]Auto-approve: proceeding despite validation issues[/yellow]"
+            )
+            proceed = True
+        else:
+            # Ask user if they want to proceed anyway
+            proceed_anyway = questionary.confirm(
+                "Proceed anyway despite validation issues?",
+                default=False,
+            ).ask()
+
+            if proceed_anyway:
+                self.console.print(
+                    "[yellow]⚠️  Proceeding with validation issues...[/yellow]"
+                )
+                proceed = True
+            # else: stay in MIDI_FIXING state
+
+        if proceed:
+            # Ask for FPS selection before video generation
+            self._select_fps()
             self.session.transition_to(WorkflowState.HARMONICA_REVIEW)
+
+    def _validate_midi(self) -> bool:
+        """Validate MIDI file against tab file.
+
+        Returns:
+            True if validation passed, False otherwise
+        """
+        from utils.midi_validator import validate_midi
+
+        midi_path = self.session.get_data("generated_midi")
+        tabs_path = self.session.input_tabs
+        harmonica_key = self.session.config.get("key", "C")
+
+        if not midi_path or not os.path.exists(midi_path):
+            self.console.print(
+                "[yellow]⚠️  Cannot validate: MIDI file not found[/yellow]"
+            )
+            return True  # Skip validation if no MIDI
+
+        self.console.print("[dim]Validating MIDI against tab file...[/dim]")
+
+        try:
+            result = validate_midi(midi_path, tabs_path, harmonica_key)
+
+            if result.passed:
+                self.console.print(
+                    Panel(
+                        f"[green]{result.get_summary()}[/green]",
+                        title="✅ Validation Passed",
+                    )
+                )
+                return True
+            else:
+                self.console.print(
+                    Panel(
+                        f"[red]{result.get_summary()}[/red]",
+                        title="❌ Validation Failed",
+                    )
+                )
+                return False
+
+        except Exception as e:
+            self.console.print(
+                f"[yellow]⚠️  Validation error: {e}[/yellow]\n"
+                "[dim]Proceeding without validation...[/dim]"
+            )
+            return True  # Don't block on validation errors
+
+    def _select_fps(self) -> None:
+        """Ask user to select FPS for video generation.
+
+        Lower FPS = faster rendering, good for sparse notes.
+        Higher FPS = smoother animation, better for dense notes.
+        """
+        # Check if already selected (resuming session)
+        if self.session.get_data("fps"):
+            return
+
+        self.console.print(
+            Panel(
+                "[cyan]Select video frame rate (FPS)[/cyan]\n\n"
+                "Lower FPS = faster rendering (good for long videos with sparse notes)\n"
+                "Higher FPS = smoother animation (better for fast note sequences)\n\n"
+                "[dim]Tip: For 2+ minute videos with few notes, use 5-10 FPS[/dim]",
+                title="Video Quality Settings",
+            )
+        )
+
+        if self.auto_approve:
+            # Use default FPS from filename config or 15
+            fps = self.filename_config.fps
+            self.console.print(f"[dim]Auto-approve: using {fps} FPS[/dim]")
+        else:
+            # Show numbered options for easier selection
+            fps_options = [5, 10, 15, 20, 30]
+            self.console.print("\n[cyan]FPS Options:[/cyan]")
+            self.console.print(
+                "  1. 5 FPS  - Fastest render, minimal animation (sparse notes)"
+            )
+            self.console.print(
+                "  2. 10 FPS - Fast render, smooth enough for most cases (Recommended)"
+            )
+            self.console.print("  3. 15 FPS - Balanced quality and speed")
+            self.console.print("  4. 20 FPS - Higher quality, slower render")
+            self.console.print(
+                "  5. 30 FPS - Full quality, slowest render (dense notes)"
+            )
+            self.console.print()
+
+            choice = questionary.text(
+                "Enter number (1-5), default is 2 (10 FPS):",
+                default="2",
+            ).ask()
+
+            try:
+                choice_num = int(choice) if choice else 2
+                if 1 <= choice_num <= 5:
+                    fps = fps_options[choice_num - 1]
+                else:
+                    fps = 10  # Default to 10 FPS
+            except ValueError:
+                fps = 10  # Default to 10 FPS
+
+        self.session.set_data("fps", fps)
+        self.console.print(f"[green]✓ Using {fps} FPS for video generation[/green]")
 
     def _step_harmonica_review(self) -> None:
         """Generate harmonica animation and wait for user approval.
@@ -347,13 +605,16 @@ class WorkflowOrchestrator:
         output_video = f"{self.session.song_name}_harmonica.mov"
         output_video_path = os.path.join(OUTPUTS_DIR, output_video)
 
+        # Get FPS from session (selected after MIDI fixing)
+        fps = self.session.get_data("fps", 15)
+
         self.console.print(
             Panel(
                 f"[cyan]Generating harmonica animation[/cyan]\n\n"
                 f"Video: {video_path}\n"
                 f"MIDI: {midi_path}\n"
                 f"Key: {harmonica_key}\n"
-                f"Model: {harmonica_path}\n"
+                f"FPS: {fps}\n"
                 f"Output: {output_video_path}\n\n"
                 "[dim]This may take 1-2 minutes...[/dim]",
                 title="Harmonica Video Generation",
@@ -373,6 +634,7 @@ class WorkflowOrchestrator:
             only_full_tab_video=False,
             harmonica_key=harmonica_key,
             tab_page_buffer=self.session.config.get("tab_buffer", 0.1),
+            fps=fps,
         )
 
         # Generate harmonica video
@@ -430,11 +692,15 @@ class WorkflowOrchestrator:
         output_video = f"{self.session.song_name}_full_tabs.mov"
         output_video_path = os.path.join(OUTPUTS_DIR, output_video)
 
+        # Get FPS from session (selected after MIDI fixing)
+        fps = self.session.get_data("fps", 15)
+
         self.console.print(
             Panel(
                 f"[cyan]Generating full tab video[/cyan]\n\n"
                 f"Tabs: {tabs_path}\n"
                 f"MIDI: {midi_path}\n"
+                f"FPS: {fps}\n"
                 f"Output: {output_video_path}\n\n"
                 "[dim]This may take 2-3 minutes...[/dim]",
                 title="Tab Video Generation",
@@ -458,6 +724,7 @@ class WorkflowOrchestrator:
             only_full_tab_video=True,  # Skip individual pages
             harmonica_key=harmonica_key,
             tab_page_buffer=self.session.config.get("tab_buffer", 0.1),
+            fps=fps,
         )
 
         # Generate tab video
@@ -517,10 +784,14 @@ class WorkflowOrchestrator:
         if harmonica_video or tab_video:
             self.console.print(f"[dim]Creating ZIP: {zip_path}.zip[/dim]")
 
-            # Create ZIP with videos
-            shutil.make_archive(
-                zip_path, "zip", "outputs", base_dir=None
-            )  # Will include all outputs
+            # Create ZIP with only this song's videos
+            import zipfile
+
+            with zipfile.ZipFile(f"{zip_path}.zip", "w", zipfile.ZIP_DEFLATED) as zf:
+                if harmonica_video and os.path.exists(harmonica_video):
+                    zf.write(harmonica_video, os.path.basename(harmonica_video))
+                if tab_video and os.path.exists(tab_video):
+                    zf.write(tab_video, os.path.basename(tab_video))
 
             self.console.print(f"[green]✓ Created ZIP: {zip_path}.zip[/green]")
 
