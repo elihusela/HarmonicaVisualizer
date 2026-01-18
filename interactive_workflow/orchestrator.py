@@ -9,6 +9,8 @@ This module orchestrates the complete interactive workflow:
 
 import logging
 import os
+import platform
+import subprocess
 import warnings
 from datetime import datetime
 
@@ -118,6 +120,34 @@ class WorkflowOrchestrator:
 
         # Log session start
         logging.info(f"Workflow session started at {datetime.now()}")
+
+    def _open_folder(self, folder_path: str) -> None:
+        """Open a folder in the system file browser.
+
+        Works on macOS (Finder), Windows (Explorer), and Linux (xdg-open).
+
+        Args:
+            folder_path: Path to the folder to open
+        """
+        if self.auto_approve:
+            return  # Skip in auto-approve mode (testing)
+
+        try:
+            abs_path = os.path.abspath(folder_path)
+            if not os.path.exists(abs_path):
+                os.makedirs(abs_path, exist_ok=True)
+
+            system = platform.system()
+            if system == "Darwin":  # macOS
+                subprocess.run(["open", abs_path], check=False)
+            elif system == "Windows":
+                subprocess.run(["explorer", abs_path], check=False)
+            else:  # Linux
+                subprocess.run(["xdg-open", abs_path], check=False)
+
+            self.console.print(f"[dim]📂 Opened folder: {abs_path}[/dim]")
+        except Exception as e:
+            logging.warning(f"Could not open folder {folder_path}: {e}")
 
     def _get_session_file_path(self, session_dir: str) -> str:
         """Generate session file path based on song name.
@@ -414,6 +444,10 @@ class WorkflowOrchestrator:
         self.session.set_data("generated_midi", output_midi)
 
         self.console.print(f"[green]✓ MIDI generated: {output_midi}[/green]")
+
+        # Open the MIDI folder for user to edit
+        self._open_folder(MIDI_DIR)
+
         self.session.transition_to(WorkflowState.MIDI_FIXING)
 
     def _step_midi_fixing(self) -> None:
@@ -648,6 +682,9 @@ class WorkflowOrchestrator:
         # Save output path to session
         self.session.set_data("harmonica_video", output_video_path)
 
+        # Open outputs folder for user to review the video
+        self._open_folder(OUTPUTS_DIR)
+
         # Wait for user approval
         if (
             self.auto_approve
@@ -735,6 +772,9 @@ class WorkflowOrchestrator:
 
         # Save output path to session
         self.session.set_data("tab_video", output_video_path)
+
+        # Open outputs folder for user to review the video
+        self._open_folder(OUTPUTS_DIR)
 
         # Wait for user approval
         if (
