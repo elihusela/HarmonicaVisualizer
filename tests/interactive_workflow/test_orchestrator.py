@@ -509,10 +509,10 @@ class TestWorkflowSteps:
         )
         orchestrator.session.transition_to(WorkflowState.FINALIZATION)
 
-        # Mock file operations to avoid creating real ZIPs/folders
+        # Session has no video paths, so ZIP/copy steps are skipped
+        # Mock os.path.exists to skip file operations and Path.mkdir to skip folder creation
         with (
-            patch("zipfile.ZipFile"),
-            patch("shutil.copy2"),
+            patch("os.path.exists", return_value=False),
             patch("pathlib.Path.mkdir"),
         ):
             orchestrator._step_finalization()

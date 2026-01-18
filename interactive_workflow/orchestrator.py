@@ -881,7 +881,6 @@ class WorkflowOrchestrator:
         Creates final output package and archives source files.
         """
         import shutil
-        from datetime import datetime
         from pathlib import Path
 
         self.console.print(
@@ -895,8 +894,7 @@ class WorkflowOrchestrator:
         )
 
         # Create output ZIP with both videos
-        timestamp = datetime.now().strftime("%Y%m%d")
-        zip_name = f"{self.session.song_name}_{self.session.config.get('key', 'C')}_{timestamp}"
+        zip_name = f"{self.session.song_name}_{self.session.config.get('key', 'C')}"
         zip_path = os.path.join("outputs", zip_name)
 
         # Get video paths from session
@@ -918,7 +916,7 @@ class WorkflowOrchestrator:
             self.console.print(f"[green]✓ Created ZIP: {zip_path}.zip[/green]")
 
         # Archive MIDI and tabs to legacy folder
-        legacy_dir = os.path.join("legacy", f"{self.session.song_name}_{timestamp}")
+        legacy_dir = os.path.join("legacy", self.session.song_name)
         Path(legacy_dir).mkdir(parents=True, exist_ok=True)
 
         midi_path = self.session.get_data("generated_midi")
