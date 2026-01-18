@@ -766,7 +766,7 @@ class TestCLIIntegration:
         """Test main dispatches to interactive workflow with explicit tabs."""
         main()
         mock_interactive.assert_called_once_with(
-            "test.mp4", "tabs.txt", "sessions", False, False
+            "test.mp4", "tabs.txt", "sessions", False, False, None
         )
 
     @patch("cli.interactive_workflow")
@@ -775,7 +775,7 @@ class TestCLIIntegration:
         """Test main dispatches to interactive workflow with auto-inferred tabs."""
         main()
         mock_interactive.assert_called_once_with(
-            "test.mp4", None, "sessions", False, False
+            "test.mp4", None, "sessions", False, False, None
         )
 
     @patch("cli.interactive_workflow")
@@ -795,7 +795,7 @@ class TestCLIIntegration:
         """Test main dispatches interactive workflow with options."""
         main()
         mock_interactive.assert_called_once_with(
-            "test.mp4", "tabs.txt", "custom", True, False
+            "test.mp4", "tabs.txt", "custom", True, False, None
         )
 
     @patch("cli.interactive_workflow")
@@ -807,5 +807,17 @@ class TestCLIIntegration:
         """Test main dispatches interactive workflow with --clean flag."""
         main()
         mock_interactive.assert_called_once_with(
-            "test.mp4", None, "sessions", False, True
+            "test.mp4", None, "sessions", False, True, None
+        )
+
+    @patch("cli.interactive_workflow")
+    @patch(
+        "sys.argv",
+        ["cli.py", "interactive", "test.mp4", "--skip-to", "tabs"],
+    )
+    def test_main_interactive_with_skip_to(self, mock_interactive):
+        """Test main dispatches interactive workflow with --skip-to flag."""
+        main()
+        mock_interactive.assert_called_once_with(
+            "test.mp4", None, "sessions", False, False, "tabs"
         )

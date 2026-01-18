@@ -297,6 +297,18 @@ Examples:
         action="store_true",
         help="Delete existing session and start fresh",
     )
+    interactive_parser.add_argument(
+        "--skip-to",
+        choices=["midi-fixing", "harmonica", "tabs", "finalize"],
+        help=(
+            "Skip directly to a specific stage. Useful when you already have "
+            "MIDI/videos ready. Choices: "
+            "midi-fixing (have MIDI, need to fix/validate), "
+            "harmonica (regenerate harmonica video), "
+            "tabs (regenerate tab video only), "
+            "finalize (just create ZIP/archive)"
+        ),
+    )
 
     return parser
 
@@ -614,6 +626,7 @@ def interactive_workflow(
     session_dir: str = "sessions",
     auto_approve: bool = False,
     clean: bool = False,
+    skip_to: Optional[str] = None,
 ) -> None:
     """Run interactive workflow with approval gates and session persistence.
 
@@ -630,6 +643,7 @@ def interactive_workflow(
         session_dir: Directory for session files
         auto_approve: Skip all approval prompts (for testing)
         clean: Delete existing session and start fresh
+        skip_to: Skip directly to a specific stage (midi-fixing, harmonica, tabs, finalize)
     """
     from interactive_workflow.orchestrator import WorkflowOrchestrator
     from utils.filename_parser import parse_filename
@@ -670,6 +684,8 @@ def interactive_workflow(
     print(f"📹 Input: {video_path}")
     print(f"📄 Tabs: {tabs_path}")
     print(f"💾 Sessions: {session_dir}/")
+    if skip_to:
+        print(f"⏭️  Skipping to: {skip_to}")
     print()
 
     # Create and run orchestrator
@@ -678,6 +694,7 @@ def interactive_workflow(
         input_tabs=tabs_path,
         session_dir=session_dir,
         auto_approve=auto_approve,
+        skip_to=skip_to,
     )
 
     orchestrator.run()
@@ -743,7 +760,12 @@ def main():
         elif args.command == "interactive":
             # tabs is optional, will be None if not provided
             interactive_workflow(
-                args.video, args.tabs, args.session_dir, args.auto_approve, args.clean
+                args.video,
+                args.tabs,
+                args.session_dir,
+                args.auto_approve,
+                args.clean,
+                args.skip_to,
             )
 
     except KeyboardInterrupt:

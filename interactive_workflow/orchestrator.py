@@ -34,12 +34,21 @@ class WorkflowOrchestrator:
         session_file: Path to session persistence file
     """
 
+    # Map CLI skip-to values to WorkflowState
+    SKIP_TO_STATE_MAP = {
+        "midi-fixing": WorkflowState.MIDI_FIXING,
+        "harmonica": WorkflowState.HARMONICA_REVIEW,
+        "tabs": WorkflowState.TAB_VIDEO_REVIEW,
+        "finalize": WorkflowState.FINALIZATION,
+    }
+
     def __init__(
         self,
         input_video: str,
         input_tabs: str,
         session_dir: str = "sessions",
         auto_approve: bool = False,
+        skip_to: str | None = None,
     ):
         """Initialize workflow orchestrator.
 
@@ -48,10 +57,12 @@ class WorkflowOrchestrator:
             input_tabs: Path to input tab file (or MIDI for auto-generation)
             session_dir: Directory for session persistence files
             auto_approve: If True, skip all approval prompts (for testing)
+            skip_to: Skip directly to a specific stage (midi-fixing, harmonica, tabs, finalize)
         """
         self.console = Console()
         self.auto_approve = auto_approve
         self.session_dir = session_dir
+        self.skip_to = skip_to
 
         # Configure logging to suppress library warnings
         self._configure_logging(session_dir)
@@ -62,6 +73,10 @@ class WorkflowOrchestrator:
         # Initialize or resume session
         self.session_file = self._get_session_file_path(session_dir)
         self.session = self._initialize_session(input_video, input_tabs)
+
+        # Handle skip_to: jump directly to specified stage
+        if skip_to:
+            self._apply_skip_to(skip_to, input_video)
 
     def _configure_logging(self, session_dir: str) -> None:
         """Configure logging to redirect library warnings to a log file.
@@ -148,6 +163,69 @@ class WorkflowOrchestrator:
             self.console.print(f"[dim]📂 Opened folder: {abs_path}[/dim]")
         except Exception as e:
             logging.warning(f"Could not open folder {folder_path}: {e}")
+
+    def _apply_skip_to(self, skip_to: str, input_video: str) -> None:
+        """Apply skip_to by setting session state and required data.
+
+        Args:
+            skip_to: Stage to skip to (midi-fixing, harmonica, tabs, finalize)
+            input_video: Original input video path (for deriving MIDI path)
+        """
+        from utils.utils import MIDI_DIR, OUTPUTS_DIR
+
+        target_state = self.SKIP_TO_STATE_MAP.get(skip_to)
+        if not target_state:
+            self.console.print(f"[yellow]Unknown skip-to stage: {skip_to}[/yellow]")
+            return
+
+        self.console.print(
+            Panel(
+                f"[cyan]Skipping to: {skip_to}[/cyan]\n\n"
+                f"Target state: {target_state.value}",
+                title="⏭️  Skip Mode",
+            )
+        )
+
+        # Set up required session data based on target state
+        # All stages need the MIDI path
+        midi_path = os.path.join(MIDI_DIR, f"{self.session.song_name}_fixed.mid")
+        if os.path.exists(midi_path):
+            self.session.set_data("generated_midi", midi_path)
+            self.console.print(f"[green]✓ Found MIDI: {midi_path}[/green]")
+        else:
+            self.console.print(
+                f"[yellow]⚠️  MIDI not found: {midi_path}[/yellow]\n"
+                "[dim]Video generation may fail without MIDI.[/dim]"
+            )
+
+        # For harmonica/tabs/finalize, check for existing videos
+        if target_state in (
+            WorkflowState.TAB_VIDEO_REVIEW,
+            WorkflowState.FINALIZATION,
+        ):
+            harmonica_video = os.path.join(
+                OUTPUTS_DIR, f"{self.session.song_name}_harmonica.mov"
+            )
+            if os.path.exists(harmonica_video):
+                self.session.set_data("harmonica_video", harmonica_video)
+                self.console.print(
+                    f"[green]✓ Found harmonica video: {harmonica_video}[/green]"
+                )
+
+        if target_state == WorkflowState.FINALIZATION:
+            tab_video = os.path.join(
+                OUTPUTS_DIR, f"{self.session.song_name}_full_tabs.mov"
+            )
+            if os.path.exists(tab_video):
+                self.session.set_data("tab_video", tab_video)
+                self.console.print(f"[green]✓ Found tab video: {tab_video}[/green]")
+
+        # Transition to target state
+        self.session.state = target_state
+        self._save_session()
+        self.console.print(
+            f"[green]✓ Session state set to: {target_state.value}[/green]\n"
+        )
 
     def _get_session_file_path(self, session_dir: str) -> str:
         """Generate session file path based on song name.
