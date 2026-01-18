@@ -778,6 +778,8 @@ class WorkflowOrchestrator:
                 "[yellow]⮌ Returning to MIDI fixing step. "
                 "Fix your MIDI and we'll regenerate the harmonica video.[/yellow]"
             )
+            # Clear FPS so user can choose again
+            self.session.set_data("fps", None)
             self.session.transition_to(WorkflowState.MIDI_FIXING)
 
     def _step_tab_video_review(self) -> None:
@@ -869,6 +871,8 @@ class WorkflowOrchestrator:
                 "[yellow]⮌ Returning to MIDI fixing step. "
                 "Fix your MIDI/tabs and we'll regenerate the tab video.[/yellow]"
             )
+            # Clear FPS so user can choose again
+            self.session.set_data("fps", None)
             self.session.transition_to(WorkflowState.MIDI_FIXING)
 
     def _step_finalization(self) -> None:
