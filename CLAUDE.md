@@ -88,7 +88,7 @@ python cli.py create-video MySong.m4v MySong.txt --key Bb --only-full-tab-video
 ### Interactive Workflow (NEW)
 ```bash
 # Full guided workflow - tab file auto-inferred from video name
-python cli.py interactive BeginnerBlues_KeyC_Stem.MOV --clean
+python cli.py interactive MySong_KeyG.mp4
 
 # Explicit tab file (if different name)
 python cli.py interactive MySong_KeyG.mp4 CustomTabs.txt
@@ -104,7 +104,19 @@ python cli.py interactive MySong_KeyBb_Stem_FPS10.mp4
 
 # Clean/reset existing session and start fresh
 python cli.py interactive MySong_KeyG.mp4 --clean
+
+# Skip to specific stage (when you already have MIDI/videos ready)
+python cli.py interactive MySong_KeyG.mp4 --skip-to tabs        # Regenerate tab video only
+python cli.py interactive MySong_KeyG.mp4 --skip-to harmonica   # Regenerate harmonica video
+python cli.py interactive MySong_KeyG.mp4 --skip-to midi-fixing # Have MIDI, need to fix/validate
+python cli.py interactive MySong_KeyG.mp4 --skip-to finalize    # Just create ZIP/archive
 ```
+
+**Skip-to Options:**
+- `midi-fixing` - Already have MIDI, skip to fixing/validation step
+- `harmonica` - Regenerate harmonica video (needs MIDI)
+- `tabs` - Regenerate tab video only (needs MIDI)
+- `finalize` - Just create ZIP and archive (needs existing videos)
 
 **Stem Separation Flow** (when `_Stem` in filename):
 1. Workflow detects `_Stem` flag and pauses
@@ -115,11 +127,12 @@ python cli.py interactive MySong_KeyG.mp4 --clean
 
 **Workflow Steps:**
 1. Parse config from filename (key, stem flag, FPS)
-2. Generate MIDI → pause for DAW editing
+2. Generate MIDI → pause for DAW editing → opens `fixed_midis/` folder
 3. **Validate MIDI** (auto-runs, shows mismatches)
-4. Generate harmonica video → approval gate
-5. Generate tab video → approval gate
-6. Finalize (ZIP outputs, archive to legacy/)
+4. Select FPS (5-30, lower = faster render)
+5. Generate harmonica video → opens `outputs/` → approval gate
+6. Generate tab video → opens `outputs/` → approval gate
+7. Finalize (ZIP outputs, archive to legacy/)
 
 **Session Resume:** If interrupted, re-run same command to resume from last step.
 
