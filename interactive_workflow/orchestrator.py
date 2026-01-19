@@ -805,9 +805,13 @@ class WorkflowOrchestrator:
         )
         harmonica_path = os.path.join("harmonica-models", harmonica_config.model_image)
 
-        # Output paths
-        output_video = f"{self.session.song_name}_full_tabs.mov"
+        # Output paths (video_creator will rename _tabs.mov to _full_tabs.mov)
+        output_video = f"{self.session.song_name}_tabs.mov"
         output_video_path = os.path.join(OUTPUTS_DIR, output_video)
+        # The actual output file will be named _full_tabs.mov
+        final_output_path = os.path.join(
+            OUTPUTS_DIR, f"{self.session.song_name}_full_tabs.mov"
+        )
 
         # Get FPS from session (selected after MIDI fixing)
         fps = self.session.get_data("fps", 15)
@@ -848,10 +852,10 @@ class WorkflowOrchestrator:
         creator = VideoCreator(config)
         creator.create(create_harmonica=False, create_tabs=True)
 
-        self.console.print(f"[green]✓ Tab video created: {output_video_path}[/green]")
+        self.console.print(f"[green]✓ Tab video created: {final_output_path}[/green]")
 
-        # Save output path to session
-        self.session.set_data("tab_video", output_video_path)
+        # Save output path to session (the actual _full_tabs.mov file)
+        self.session.set_data("tab_video", final_output_path)
 
         # Open outputs folder for user to review the video
         self._open_folder(OUTPUTS_DIR)
