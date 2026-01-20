@@ -35,6 +35,9 @@ class CompositorConfig:
     transition_gap: float = 0.1  # Gap between pages (transparent frames)
     background_color: tuple = (0, 0, 0, 0)  # RGBA for transparent background
     cleanup_temp_files: bool = True
+    temp_dir: Optional[str] = (
+        None  # Project-specific temp directory (defaults to global TEMP_DIR)
+    )
 
 
 class FullTabVideoCompositorError(Exception):
@@ -60,6 +63,12 @@ class FullTabVideoCompositor:
         """
         self._config = config or CompositorConfig()
         self._page_windows: List[PageWindow] = []
+
+        # Resolve temp_dir (use global TEMP_DIR if not provided)
+        if self._config.temp_dir is None:
+            self._temp_dir = TEMP_DIR
+        else:
+            self._temp_dir = self._config.temp_dir
 
     def generate(
         self,
@@ -176,7 +185,7 @@ class FullTabVideoCompositor:
         output_path = final_output_path.replace(".mov", "_noaudio.mov")
         try:
             # Create concat file for ffmpeg
-            concat_file_path = os.path.join(TEMP_DIR, "full_tab_concat.txt")
+            concat_file_path = os.path.join(self._temp_dir, "full_tab_concat.txt")
             temp_files = []
             current_time = 0.0
 
@@ -345,7 +354,7 @@ class FullTabVideoCompositor:
         import time
 
         timestamp = str(int(time.time() * 1000000))
-        trimmed_path = os.path.join(TEMP_DIR, f"trimmed_{timestamp}.mov")
+        trimmed_path = os.path.join(self._temp_dir, f"trimmed_{timestamp}.mov")
 
         try:
             duration = end_time - start_time
@@ -398,7 +407,7 @@ class FullTabVideoCompositor:
         import time
 
         timestamp = str(int(time.time() * 1000000))
-        extended_path = os.path.join(TEMP_DIR, f"extended_{timestamp}.mov")
+        extended_path = os.path.join(self._temp_dir, f"extended_{timestamp}.mov")
 
         try:
             # Use tpad filter to extend video by repeating last frame
@@ -444,7 +453,7 @@ class FullTabVideoCompositor:
 
         # Create unique temporary file
         timestamp = str(int(time.time() * 1000000))
-        blank_path = os.path.join(TEMP_DIR, f"blank_{timestamp}.mov")
+        blank_path = os.path.join(self._temp_dir, f"blank_{timestamp}.mov")
 
         width, height = size
 

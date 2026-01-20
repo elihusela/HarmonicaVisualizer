@@ -20,6 +20,7 @@ from rich.panel import Panel
 
 from interactive_workflow.state_machine import WorkflowSession, WorkflowState
 from utils.filename_parser import parse_filename
+from utils.utils import get_project_temp_dir
 
 
 class WorkflowOrchestrator:
@@ -73,6 +74,9 @@ class WorkflowOrchestrator:
         # Initialize or resume session
         self.session_file = self._get_session_file_path(session_dir)
         self.session = self._initialize_session(input_video, input_tabs)
+
+        # Create project-specific temp directory for parallel project support
+        self.project_temp_dir = get_project_temp_dir(self.session.song_name)
 
         # Handle skip_to: jump directly to specified stage
         if skip_to:
@@ -514,8 +518,10 @@ class WorkflowOrchestrator:
             )
         )
 
-        # Generate MIDI
-        generator = MidiGenerator(input_file, output_midi)
+        # Generate MIDI (using project-specific temp directory)
+        generator = MidiGenerator(
+            input_file, output_midi, temp_dir=self.project_temp_dir
+        )
         generator.generate()
 
         # Save to session
@@ -733,7 +739,7 @@ class WorkflowOrchestrator:
             )
         )
 
-        # Create configuration
+        # Create configuration (using project-specific temp directory)
         config = VideoCreatorConfig(
             video_path=video_path,
             tabs_path=tabs_path,
@@ -747,6 +753,7 @@ class WorkflowOrchestrator:
             harmonica_key=harmonica_key,
             tab_page_buffer=self.session.config.get("tab_buffer", 0.1),
             fps=fps,
+            temp_dir=self.project_temp_dir,
         )
 
         # Generate harmonica video
@@ -828,7 +835,7 @@ class WorkflowOrchestrator:
             )
         )
 
-        # Create configuration
+        # Create configuration (using project-specific temp directory)
         # Note: output_video_path is required by config validation even for tab-only
         dummy_harmonica_path = os.path.join(
             OUTPUTS_DIR, f"{self.session.song_name}_dummy.mov"
@@ -846,6 +853,7 @@ class WorkflowOrchestrator:
             harmonica_key=harmonica_key,
             tab_page_buffer=self.session.config.get("tab_buffer", 0.1),
             fps=fps,
+            temp_dir=self.project_temp_dir,
         )
 
         # Generate tab video

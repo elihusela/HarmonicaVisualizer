@@ -15,12 +15,14 @@ from image_converter.figure_factory import FigureFactory
 from image_converter.harmonica_layout import HarmonicaLayout
 from tab_converter.models import Tabs, TabEntry
 from tab_converter.tab_mapper import TabMapper
-from tab_phrase_animator.full_tab_video_compositor import FullTabVideoCompositor
+from tab_phrase_animator.full_tab_video_compositor import (
+    FullTabVideoCompositor,
+    CompositorConfig,
+)
 from tab_phrase_animator.tab_matcher import TabMatcher
 from tab_phrase_animator.tab_phrase_animator import TabPhraseAnimator, PageStatistics
 from tab_phrase_animator.tab_text_parser import TabTextParser
 from utils.audio_extractor import AudioExtractor
-from utils.utils import TEMP_DIR
 
 
 class VideoCreatorError(Exception):
@@ -96,8 +98,10 @@ class VideoCreator:
         self.produce_tabs = config.produce_tabs
 
         try:
-            # Audio extraction setup
-            self.extracted_audio_path = TEMP_DIR + "extracted_audio.wav"
+            # Audio extraction setup (temp_dir is resolved in config.__post_init__)
+            assert config.temp_dir is not None  # Guaranteed by __post_init__
+            self.temp_dir: str = config.temp_dir
+            self.extracted_audio_path = self.temp_dir + "extracted_audio.wav"
             self.audio_extractor = AudioExtractor(
                 config.video_path, self.extracted_audio_path
             )
@@ -105,7 +109,7 @@ class VideoCreator:
             # MIDI and tab processing setup
             self.midi_processor = MidiProcessor(config.midi_path)
             # Use key-specific MIDI mapping from config
-            self.tab_mapper = TabMapper(config._key_config.midi_mapping, TEMP_DIR)
+            self.tab_mapper = TabMapper(config._key_config.midi_mapping, self.temp_dir)
 
             # Tab text parsing setup (always load to preserve bend notation)
             # The harmonica animation also needs bend info from the .txt file
@@ -130,20 +134,28 @@ class VideoCreator:
             )
             figure_factory = FigureFactory(config.harmonica_path)
 
-            self.animator = Animator(harmonica_layout, figure_factory)
+            # Pass temp_dir to animator
+            self.animator = Animator(
+                harmonica_layout, figure_factory, temp_dir=self.temp_dir
+            )
 
-            # Create AnimationConfig with custom buffer and FPS
+            # Create AnimationConfig with custom buffer, FPS, and temp_dir
             from tab_phrase_animator.tab_phrase_animator import AnimationConfig
 
             self.fps = config.fps
             animation_config = AnimationConfig(
-                time_buffer=config.tab_page_buffer, fps=config.fps
+                time_buffer=config.tab_page_buffer,
+                fps=config.fps,
+                temp_dir=self.temp_dir,
             )
 
             self.tab_phrase_animator = TabPhraseAnimator(
                 harmonica_layout, figure_factory, config=animation_config
             )
-            self.full_tab_compositor = FullTabVideoCompositor()
+
+            # Pass temp_dir to full tab compositor
+            compositor_config = CompositorConfig(temp_dir=self.temp_dir)
+            self.full_tab_compositor = FullTabVideoCompositor(config=compositor_config)
 
         except MidiProcessorError as e:
             raise VideoCreatorError(f"MIDI processing error: {e}")

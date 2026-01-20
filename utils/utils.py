@@ -145,6 +145,36 @@ def clean_temp_folder(path: Optional[str] = None) -> None:
         raise UtilsError(f"Failed to clean temp folder '{target_path}': {e}")
 
 
+def get_project_temp_dir(song_name: str, clean: bool = False) -> str:
+    """
+    Get or create a project-specific temp directory.
+
+    Creates temp/{song_name}/ to isolate temp files per project,
+    allowing parallel processing of multiple songs.
+
+    Args:
+        song_name: Name of the song/project
+        clean: If True, clean the directory before returning
+
+    Returns:
+        Path to the project-specific temp directory (with trailing slash)
+
+    Raises:
+        UtilsError: If directory operations fail
+    """
+    project_temp = os.path.join(TEMP_DIR, song_name, "")  # Trailing slash
+
+    try:
+        if clean and os.path.exists(project_temp):
+            shutil.rmtree(project_temp)
+
+        os.makedirs(project_temp, exist_ok=True)
+        return project_temp
+
+    except (OSError, IOError) as e:
+        raise UtilsError(f"Failed to create project temp dir '{project_temp}': {e}")
+
+
 def ensure_directories_exist(directories: Optional[List[str]] = None) -> None:
     """
     Ensure project directories exist, creating them if necessary.

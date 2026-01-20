@@ -44,6 +44,9 @@ class AnimationConfig:
         0.5  # Extra buffer after last note to ensure glow turns off
     )
     cleanup_temp_files: bool = True
+    temp_dir: Optional[str] = (
+        None  # Project-specific temp directory (defaults to global TEMP_DIR)
+    )
 
 
 @dataclass
@@ -93,6 +96,12 @@ class TabPhraseAnimator:
         self._figure_factory = figure_factory
         self._config = config or AnimationConfig()
         self._page_statistics: List[PageStatistics] = []
+
+        # Resolve temp_dir (use global TEMP_DIR if not provided)
+        if self._config.temp_dir is None:
+            self._temp_dir = TEMP_DIR
+        else:
+            self._temp_dir = self._config.temp_dir
 
         # Load custom font
         self._load_font()
@@ -430,19 +439,19 @@ class TabPhraseAnimator:
         temp_files = []
         try:
             # Save raw animation
-            temp_path = os.path.join(TEMP_DIR, f"temp_page_{page_idx}.mp4")
+            temp_path = os.path.join(self._temp_dir, f"temp_page_{page_idx}.mp4")
             temp_files.append(temp_path)
             ani.save(temp_path, fps=fps, writer="ffmpeg")
 
             # Create transparent video
             transparent_path = os.path.join(
-                TEMP_DIR, f"page_{page_idx}_transparent.mov"
+                self._temp_dir, f"page_{page_idx}_transparent.mov"
             )
             temp_files.append(transparent_path)
             self._create_transparent_video(temp_path, transparent_path)
 
             # Extract audio slice
-            audio_trimmed = os.path.join(TEMP_DIR, f"audio_page_{page_idx}.m4a")
+            audio_trimmed = os.path.join(self._temp_dir, f"audio_page_{page_idx}.m4a")
             temp_files.append(audio_trimmed)
             self._extract_audio_slice(
                 extracted_audio_path, audio_trimmed, start_time, end_time
