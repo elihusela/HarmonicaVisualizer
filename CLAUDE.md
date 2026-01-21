@@ -37,11 +37,19 @@ Generates animated harmonica tablature videos from input videos, tab files, and 
 
 **Command:** `python cli.py split-stems MySong.mp4 --output stems/`
 
-**Status:** Not started
+**Status:** In progress
+
+**Test Script:** `scripts/test_demucs.py` - Standalone script to test Demucs before integration
+```bash
+python scripts/test_demucs.py --check-gpu           # Check GPU availability
+python scripts/test_demucs.py video-files/MySong.mp4  # Run 6-stem separation
+```
 
 **Progress:**
+- [x] Create standalone Demucs test script (scripts/test_demucs.py)
+- [ ] Test Demucs on sample files, verify harmonica isolation quality
 - [ ] Add Demucs dependency to pyproject.toml
-- [ ] Implement stem separation (vocals, drums, bass, other)
+- [ ] Implement stem separation (vocals, drums, bass, guitar, piano, other)
 - [ ] Add CLI command `split-stems`
 - [ ] Integrate with interactive workflow (auto-detect best stem)
 - [ ] Handle GPU/CPU fallback
