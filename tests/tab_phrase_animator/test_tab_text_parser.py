@@ -253,16 +253,14 @@ class TestTabTextParserInvalidInputs:
             TabTextParser(str(test_file), config)
 
     def test_invalid_multi_digit_holes(self, temp_test_dir):
-        """Test that unrealistic multi-digit holes are rejected."""
+        """Test that 4+ note chords are rejected (3-note chords are now allowed)."""
         test_file = temp_test_dir / "multi_digit.txt"
-        test_file.write_text(
-            "Page 1:\n123 -456"
-        )  # These don't exist on real harmonicas
+        test_file.write_text("Page 1:\n1234 -4567")  # 4-note chords exceed maximum
 
         config = ParseConfig(validate_hole_numbers=True, allow_empty_chords=False)
 
         with pytest.raises(
-            TabTextParserError, match="Chord with 3 notes is unrealistic for harmonica"
+            TabTextParserError, match="Chord with 4 notes is unrealistic for harmonica"
         ):
             TabTextParser(str(test_file), config)
 
@@ -350,15 +348,26 @@ class TestTabTextParserChordValidation:
         line = pages["Page 1"][0]
         assert line == [[1], [2, 3], [-4], [-5, -6], [7], [8, 9]]
 
-    def test_invalid_three_note_chords_rejected(self, temp_test_dir):
-        """Test that three-note chords are rejected."""
+    def test_valid_three_note_chords_accepted(self, temp_test_dir):
+        """Test that three-note chords are accepted (maximum allowed)."""
         test_file = temp_test_dir / "three_note_chord.txt"
-        test_file.write_text("Page 1:\n123")  # Three notes in one chord
+        test_file.write_text("Page 1:\n123")  # Three consecutive notes in one chord
+
+        config = ParseConfig(validate_hole_numbers=True, allow_empty_chords=False)
+        parser = TabTextParser(str(test_file), config)
+
+        pages = parser.get_pages_as_int()
+        assert pages["Page 1"][0] == [[1, 2, 3]]
+
+    def test_invalid_four_note_chords_rejected(self, temp_test_dir):
+        """Test that four-note chords are rejected."""
+        test_file = temp_test_dir / "four_note_chord.txt"
+        test_file.write_text("Page 1:\n1234")  # Four notes in one chord
 
         config = ParseConfig(validate_hole_numbers=True, allow_empty_chords=False)
 
         with pytest.raises(
-            TabTextParserError, match="Chord with 3 notes is unrealistic for harmonica"
+            TabTextParserError, match="Chord with 4 notes is unrealistic for harmonica"
         ):
             TabTextParser(str(test_file), config)
 

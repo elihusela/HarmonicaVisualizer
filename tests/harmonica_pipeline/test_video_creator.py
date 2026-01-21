@@ -576,6 +576,7 @@ class TestVideoCreatorSelectiveCreation:
         creator._note_events_to_tabs = MagicMock(return_value=mock_empty_tabs)
         creator._create_text_based_structure = MagicMock(return_value={})
         creator._create_direct_tabs_structure = MagicMock(return_value={})
+        creator._get_audio_duration = MagicMock(return_value=10.0)
 
         # Test: Create only harmonica (no tabs)
         creator.create(create_harmonica=True, create_tabs=False)
@@ -618,6 +619,7 @@ class TestVideoCreatorSelectiveCreation:
         creator._note_events_to_tabs = MagicMock(return_value=mock_empty_tabs)
         creator._create_text_based_structure = MagicMock(return_value={})
         creator._create_direct_tabs_structure = MagicMock(return_value={})
+        creator._get_audio_duration = MagicMock(return_value=10.0)
 
         # Call create without specifying create_tabs - should use config default (False)
         creator.create()
@@ -641,6 +643,7 @@ class TestVideoCreatorSelectiveCreation:
         creator._load_midi_note_events = MagicMock(return_value=[])
         creator._note_events_to_tabs = MagicMock(return_value=MagicMock())
         creator._create_direct_tabs_structure = MagicMock(return_value={})
+        creator._get_audio_duration = MagicMock(return_value=10.0)
 
         # Should skip tabs even when create_tabs=True due to no output path
         creator.create(create_harmonica=True, create_tabs=True)

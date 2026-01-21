@@ -14,6 +14,7 @@ from image_converter.harmonica_layout import HarmonicaLayout
 from image_converter.video_processor import VideoProcessor, VideoProcessorError
 from tab_converter.models import TabEntry
 from utils.utils import TEMP_DIR
+from typing import Optional as OptionalType
 
 
 def adjust_consecutive_identical_notes(
@@ -59,26 +60,30 @@ def adjust_consecutive_identical_notes(
 
 class Animator:
     def __init__(
-        self, harmonica_layout: HarmonicaLayout, figure_factory: FigureFactory
+        self,
+        harmonica_layout: HarmonicaLayout,
+        figure_factory: FigureFactory,
+        temp_dir: OptionalType[str] = None,
     ):
         self._frame_timings: List[float] = []
         self._harmonica_layout = harmonica_layout
         self._figure_factory = figure_factory
         self._text_objects: List[Text] = []
         self._arrows: List[Text] = []
-        self._temp_video_path: str = TEMP_DIR + "temp_video.mp4"
+        self._temp_dir = temp_dir or TEMP_DIR
+        self._temp_video_path: str = self._temp_dir + "temp_video.mp4"
         self._ax: Optional[Axes] = None
         self._squares: List[Rectangle] = []
         self._flat_entries: List[TabEntry] = []
         self._audio_duration: Optional[float] = None
-        self._video_processor = VideoProcessor(TEMP_DIR)
+        self._video_processor = VideoProcessor(self._temp_dir)
 
     def create_animation(
         self,
         all_pages: Dict[str, List[List[Optional[List[TabEntry]]]]],
         extracted_audio_path: str,
         output_path: str,
-        fps: int = 50,
+        fps: int = 15,
         audio_duration: Optional[float] = None,
     ) -> None:
         self._flat_entries = [

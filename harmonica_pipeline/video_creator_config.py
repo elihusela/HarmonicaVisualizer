@@ -8,6 +8,7 @@ from dataclasses import dataclass
 from typing import Optional
 
 from harmonica_pipeline.harmonica_key_registry import get_harmonica_config
+from utils.utils import TEMP_DIR
 
 
 @dataclass
@@ -35,10 +36,18 @@ class VideoCreatorConfig:
     tab_page_buffer: float = (
         0.1  # Buffer time (seconds) before/after notes on each tab page
     )
+    fps: int = 15  # Frames per second for video generation (lower = faster render)
+    temp_dir: Optional[str] = (
+        None  # Project-specific temp directory (defaults to global TEMP_DIR)
+    )
 
     def __post_init__(self) -> None:
         """Validate configuration after initialization."""
         from pathlib import Path
+
+        # Resolve temp_dir to global TEMP_DIR if not provided
+        if self.temp_dir is None:
+            self.temp_dir = TEMP_DIR
 
         # Get key configuration and potentially override harmonica_path
         try:
@@ -100,6 +109,8 @@ class VideoCreatorConfig:
         only_full_tab_video: bool = False,
         harmonica_key: str = "C",
         tab_page_buffer: float = 0.1,
+        fps: int = 15,
+        temp_dir: Optional[str] = None,
     ) -> "VideoCreatorConfig":
         """
         Create configuration from CLI arguments.
@@ -116,6 +127,8 @@ class VideoCreatorConfig:
             only_full_tab_video: Only output full video, clean up individual pages
             harmonica_key: Harmonica key (C, G, BB, etc.)
             tab_page_buffer: Buffer time (seconds) before/after notes on each tab page
+            fps: Frames per second for video generation
+            temp_dir: Project-specific temp directory (defaults to global TEMP_DIR)
 
         Returns:
             VideoCreatorConfig instance
@@ -132,4 +145,6 @@ class VideoCreatorConfig:
             only_full_tab_video=only_full_tab_video,
             harmonica_key=harmonica_key,
             tab_page_buffer=tab_page_buffer,
+            fps=fps,
+            temp_dir=temp_dir,
         )

@@ -1,13 +1,20 @@
 """Global test fixtures for HarmonicaTabs project."""
 
+import sys
+from pathlib import Path
+
+# Add project root to Python path for imports
+project_root = Path(__file__).parent.parent
+if str(project_root) not in sys.path:
+    sys.path.insert(0, str(project_root))
+
 # Configure matplotlib to use non-interactive backend for testing
 # Must be done before any matplotlib imports
-import matplotlib
+import matplotlib  # noqa: E402
 
 matplotlib.use("Agg")
 
 import pytest  # noqa: E402
-from pathlib import Path  # noqa: E402
 
 from tab_converter.models import TabEntry, Tabs, NoteEvent  # noqa: E402
 

@@ -16,6 +16,7 @@ from cli import (
     full_pipeline,
     generate_midi_phase,
     get_video_base_name,
+    interactive_workflow,
     main,
     setup_parser,
     validate_file_exists,
@@ -32,7 +33,7 @@ class TestSetupParser:
         assert hasattr(parser, "parse_args")
 
     def test_parser_has_subcommands(self):
-        """Test that parser has all three subcommands."""
+        """Test that parser has all subcommands."""
         parser = setup_parser()
 
         # Test generate-midi subcommand
@@ -51,6 +52,18 @@ class TestSetupParser:
         assert args.command == "full"
         assert args.video == "test.mp4"
         assert args.tabs == "tabs.txt"
+
+        # Test interactive subcommand with tabs
+        args = parser.parse_args(["interactive", "test.mp4", "tabs.txt"])
+        assert args.command == "interactive"
+        assert args.video == "test.mp4"
+        assert args.tabs == "tabs.txt"
+
+        # Test interactive subcommand without tabs (auto-infer)
+        args = parser.parse_args(["interactive", "test.mp4"])
+        assert args.command == "interactive"
+        assert args.video == "test.mp4"
+        assert args.tabs is None
 
     def test_generate_midi_with_output_name(self):
         """Test generate-midi with custom output name."""
@@ -102,6 +115,45 @@ class TestSetupParser:
         assert args.no_produce_tabs is False
         assert args.only_tabs is False
         assert args.only_harmonica is False
+
+    def test_interactive_with_options(self):
+        """Test interactive command with all options."""
+        parser = setup_parser()
+        args = parser.parse_args(
+            [
+                "interactive",
+                "test.mp4",
+                "tabs.txt",
+                "--session-dir",
+                "custom_sessions",
+                "--auto-approve",
+            ]
+        )
+        assert args.command == "interactive"
+        assert args.video == "test.mp4"
+        assert args.tabs == "tabs.txt"
+        assert args.session_dir == "custom_sessions"
+        assert args.auto_approve is True
+
+    def test_interactive_defaults(self):
+        """Test interactive command has correct defaults."""
+        parser = setup_parser()
+        args = parser.parse_args(["interactive", "test.mp4"])
+        assert args.session_dir == "sessions"
+        assert args.auto_approve is False
+        assert args.tabs is None  # tabs is optional
+
+    def test_interactive_auto_infer_tabs(self):
+        """Test interactive command can omit tabs parameter."""
+        parser = setup_parser()
+
+        # Without tabs - should be None
+        args = parser.parse_args(["interactive", "MySong_KeyG.mp4"])
+        assert args.tabs is None
+
+        # With explicit tabs
+        args = parser.parse_args(["interactive", "MySong_KeyG.mp4", "CustomTabs.txt"])
+        assert args.tabs == "CustomTabs.txt"
 
 
 class TestValidateFileExists:
@@ -666,3 +718,106 @@ class TestCLIIntegration:
         assert "MySong_fixed.mid" in config.midi_path
         assert "MySong_harmonica.mov" in config.output_video_path
         assert "MySong_tabs.mov" in config.tabs_output_path
+
+    @patch("interactive_workflow.orchestrator.WorkflowOrchestrator")
+    @patch("cli.os.path.exists")
+    def test_interactive_workflow_integration(
+        self, mock_exists, mock_orchestrator_class
+    ):
+        """Test interactive workflow integration with explicit tabs."""
+        mock_exists.return_value = True
+        mock_orchestrator = MagicMock()
+        mock_orchestrator_class.return_value = mock_orchestrator
+
+        interactive_workflow("MySong_KeyG.mp4", "MySong.txt", "sessions", True)
+
+        # Verify orchestrator was created with correct parameters
+        mock_orchestrator_class.assert_called_once()
+        call_kwargs = mock_orchestrator_class.call_args[1]
+        assert "MySong_KeyG.mp4" in call_kwargs["input_video"]
+        assert "MySong.txt" in call_kwargs["input_tabs"]
+        assert call_kwargs["session_dir"] == "sessions"
+        assert call_kwargs["auto_approve"] is True
+
+        # Verify run was called
+        mock_orchestrator.run.assert_called_once()
+
+    @patch("interactive_workflow.orchestrator.WorkflowOrchestrator")
+    @patch("cli.os.path.exists")
+    def test_interactive_workflow_auto_infer_tabs(
+        self, mock_exists, mock_orchestrator_class
+    ):
+        """Test interactive workflow auto-infers tab file from video name."""
+        mock_exists.return_value = True
+        mock_orchestrator = MagicMock()
+        mock_orchestrator_class.return_value = mock_orchestrator
+
+        # Call without tabs parameter - should auto-infer
+        interactive_workflow("MySong_KeyG.mp4", None, "sessions", True)
+
+        # Verify tabs path was auto-inferred to MySong.txt
+        mock_orchestrator_class.assert_called_once()
+        call_kwargs = mock_orchestrator_class.call_args[1]
+        assert "MySong.txt" in call_kwargs["input_tabs"]
+
+    @patch("cli.interactive_workflow")
+    @patch("sys.argv", ["cli.py", "interactive", "test.mp4", "tabs.txt"])
+    def test_main_interactive(self, mock_interactive):
+        """Test main dispatches to interactive workflow with explicit tabs."""
+        main()
+        mock_interactive.assert_called_once_with(
+            "test.mp4", "tabs.txt", "sessions", False, False, None
+        )
+
+    @patch("cli.interactive_workflow")
+    @patch("sys.argv", ["cli.py", "interactive", "test.mp4"])
+    def test_main_interactive_auto_infer(self, mock_interactive):
+        """Test main dispatches to interactive workflow with auto-inferred tabs."""
+        main()
+        mock_interactive.assert_called_once_with(
+            "test.mp4", None, "sessions", False, False, None
+        )
+
+    @patch("cli.interactive_workflow")
+    @patch(
+        "sys.argv",
+        [
+            "cli.py",
+            "interactive",
+            "test.mp4",
+            "tabs.txt",
+            "--session-dir",
+            "custom",
+            "--auto-approve",
+        ],
+    )
+    def test_main_interactive_with_options(self, mock_interactive):
+        """Test main dispatches interactive workflow with options."""
+        main()
+        mock_interactive.assert_called_once_with(
+            "test.mp4", "tabs.txt", "custom", True, False, None
+        )
+
+    @patch("cli.interactive_workflow")
+    @patch(
+        "sys.argv",
+        ["cli.py", "interactive", "test.mp4", "--clean"],
+    )
+    def test_main_interactive_with_clean(self, mock_interactive):
+        """Test main dispatches interactive workflow with --clean flag."""
+        main()
+        mock_interactive.assert_called_once_with(
+            "test.mp4", None, "sessions", False, True, None
+        )
+
+    @patch("cli.interactive_workflow")
+    @patch(
+        "sys.argv",
+        ["cli.py", "interactive", "test.mp4", "--skip-to", "tabs"],
+    )
+    def test_main_interactive_with_skip_to(self, mock_interactive):
+        """Test main dispatches interactive workflow with --skip-to flag."""
+        main()
+        mock_interactive.assert_called_once_with(
+            "test.mp4", None, "sessions", False, False, "tabs"
+        )

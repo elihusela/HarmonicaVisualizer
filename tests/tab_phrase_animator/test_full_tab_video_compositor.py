@@ -239,23 +239,23 @@ def test_stitch_videos_basic(
 
 @patch("tab_phrase_animator.full_tab_video_compositor.subprocess.run")
 @patch.object(FullTabVideoCompositor, "_get_video_dimensions")
-@patch.object(FullTabVideoCompositor, "_create_blank_video")
+@patch.object(FullTabVideoCompositor, "_extend_video_with_last_frame")
 def test_stitch_videos_with_gaps(
-    mock_create_blank,
+    mock_create_static,
     mock_get_dimensions,
     mock_subprocess,
     default_compositor,
     create_dummy_video_files,
     temp_test_dir,
 ):
-    """Test video stitching transitions directly without blank gaps."""
+    """Test video stitching with gaps - static frame videos should be inserted."""
     # Modify statistics to have gaps in timing
     stats = create_dummy_video_files
     stats[0].start_time = 0.0
     stats[0].end_time = 5.0
-    stats[1].start_time = 7.0  # Original gap - now ignored
+    stats[1].start_time = 7.0  # 2.0s gap after page 1
     stats[1].end_time = 12.0
-    stats[2].start_time = 15.0  # Original gap - now ignored
+    stats[2].start_time = 15.0  # 3.0s gap after page 2
     stats[2].end_time = 18.0
 
     default_compositor._page_windows = default_compositor._calculate_page_windows(stats)
@@ -263,14 +263,14 @@ def test_stitch_videos_with_gaps(
     # Mock video dimensions
     mock_get_dimensions.return_value = (1920, 1080)
 
-    # Mock blank video creation (should not be called)
-    blank_counter = [0]
+    # Mock static frame video creation - should be called for each gap
+    static_counter = [0]
 
-    def create_blank_side_effect(dur, size):
-        blank_counter[0] += 1
-        return str(temp_test_dir / f"blank_{blank_counter[0]}.mov")
+    def create_static_side_effect(source, dur, size):
+        static_counter[0] += 1
+        return str(temp_test_dir / f"static_{static_counter[0]}.mov")
 
-    mock_create_blank.side_effect = create_blank_side_effect
+    mock_create_static.side_effect = create_static_side_effect
 
     # Mock ffmpeg subprocess
     mock_subprocess.return_value = MagicMock(returncode=0)
@@ -280,8 +280,14 @@ def test_stitch_videos_with_gaps(
 
     default_compositor._stitch_videos(audio_duration, output_path)
 
-    # Verify NO blank videos were created - pages transition directly
-    assert mock_create_blank.call_count == 0
+    # Verify static frame videos were created for both gaps (2.0s and 3.0s)
+    assert mock_create_static.call_count == 2
+    # First gap: 2.0s between page 1 and 2 (holding page 1's last frame)
+    assert mock_create_static.call_args_list[0][0][1] == 2.0  # duration
+    assert mock_create_static.call_args_list[0][0][2] == (1920, 1080)  # size
+    # Second gap: 3.0s between page 2 and 3 (holding page 2's last frame)
+    assert mock_create_static.call_args_list[1][0][1] == 3.0  # duration
+    assert mock_create_static.call_args_list[1][0][2] == (1920, 1080)  # size
 
 
 @patch("tab_phrase_animator.full_tab_video_compositor.subprocess.run")
@@ -373,6 +379,58 @@ def test_create_blank_video_failure(mock_subprocess, default_compositor):
         FullTabVideoCompositorError, match="Failed to create blank video"
     ):
         default_compositor._create_blank_video(2.5, (1920, 1080))
+
+
+# Static Frame Video Tests
+
+
+@patch("tab_phrase_animator.full_tab_video_compositor.subprocess.run")
+def test_extend_video_with_last_frame_success(
+    mock_subprocess, default_compositor, temp_test_dir
+):
+    """Test successful video extension using tpad filter."""
+    # Create dummy source video
+    source_video = temp_test_dir / "source.mov"
+    source_video.touch()
+
+    # Mock successful ffmpeg call
+    mock_subprocess.return_value = MagicMock(returncode=0)
+
+    result = default_compositor._extend_video_with_last_frame(
+        str(source_video), 2.5, (1920, 1080)
+    )
+
+    # Should return path to extended video
+    assert result.endswith(".mov")
+    assert "extended_" in result
+
+    # Should call ffmpeg once with tpad filter
+    assert mock_subprocess.call_count == 1
+    cmd = mock_subprocess.call_args[0][0]
+    assert "ffmpeg" in cmd
+    assert str(source_video) in cmd
+    assert "tpad" in " ".join(cmd)
+    assert "2.5" in " ".join(cmd)  # Duration
+
+
+@patch("tab_phrase_animator.full_tab_video_compositor.subprocess.run")
+def test_extend_video_with_last_frame_failure(
+    mock_subprocess, default_compositor, temp_test_dir
+):
+    """Test error handling when video extension fails."""
+    # Create dummy source video
+    source_video = temp_test_dir / "source.mov"
+    source_video.touch()
+
+    # Mock ffmpeg failure
+    mock_error = subprocess.CalledProcessError(1, "ffmpeg")
+    mock_error.stderr = "Extension failed"
+    mock_subprocess.side_effect = mock_error
+
+    with pytest.raises(FullTabVideoCompositorError, match="Failed to extend video"):
+        default_compositor._extend_video_with_last_frame(
+            str(source_video), 2.5, (1920, 1080)
+        )
 
 
 # FFmpeg Concatenation Tests

@@ -434,11 +434,11 @@ class TabTextParser:
                 f"Bends can only be applied to single notes."
             )
 
-        # No more than 2 notes in a chord (realistic harmonica limitation)
-        if len(chord) > 2:
+        # No more than 3 notes in a chord (realistic harmonica limitation)
+        if len(chord) > 3:
             raise TabTextParserError(
                 f"Chord with {len(chord)} notes is unrealistic for harmonica at line {line_number}. "
-                f"Maximum 2 notes allowed."
+                f"Maximum 3 notes allowed."
             )
 
         # All notes in chord must be same type (all blow or all draw)

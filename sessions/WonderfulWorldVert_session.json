@@ -1,0 +1,19 @@
+{
+  "state": "harmonica_review",
+  "song_name": "WonderfulWorldVert",
+  "input_video": "/Users/elihu.sela/Dev/HarmonicaTabs/video-files/WonderfulWorldVert_KeyC_Stem.m4v",
+  "input_tabs": "/Users/elihu.sela/Dev/HarmonicaTabs/tab-files/WonderfulWorldVert.txt",
+  "config": {
+    "key": "C",
+    "enable_stem": true,
+    "fps": 15,
+    "tab_buffer": 0.1
+  },
+  "data": {
+    "selected_audio": "/Users/elihu.sela/Dev/HarmonicaTabs/video-files/WonderfulWorldVert.wav",
+    "generated_midi": "/Users/elihu.sela/Dev/HarmonicaTabs/fixed_midis/WonderfulWorldVert_fixed.mid",
+    "harmonica_video": "/Users/elihu.sela/Dev/HarmonicaTabs/outputs/WonderfulWorldVert_harmonica.mov"
+  },
+  "created_at": "2025-12-22T15:16:59.392375",
+  "updated_at": "2025-12-22T16:08:17.959427"
+}

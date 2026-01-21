@@ -5,10 +5,13 @@ Provides robust audio extraction using MoviePy and FFmpeg with comprehensive
 error handling, format detection, and audio quality validation.
 """
 
+import logging
 import os
 import subprocess
 from dataclasses import dataclass
 from typing import Optional, List, Dict, Any, Callable
+
+logger = logging.getLogger(__name__)
 
 try:
     from moviepy import VideoFileClip
@@ -113,7 +116,11 @@ class AudioExtractor:
 
             except Exception as e:
                 last_error = e
-                print(f"⚠️  {method_name} failed: {e}")
+                # Log full error to file, show brief message in terminal
+                logger.warning(f"{method_name} extraction failed: {e}")
+                # Extract first line of error for brief terminal output
+                error_brief = str(e).split("\n")[0][:80]
+                print(f"⚠️  {method_name} failed: {error_brief}...")
 
                 # Cleanup partial files on error
                 if self._config.cleanup_on_error and os.path.exists(

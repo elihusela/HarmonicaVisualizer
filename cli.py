@@ -6,13 +6,34 @@ Phase 1: Generate MIDI from video
 Phase 2: Create harmonica video from fixed MIDI
 """
 
-import argparse
+# Suppress third-party library warnings BEFORE importing them
+# This must come before any library imports to catch import-time warnings
+import warnings
+import logging
 import os
-import sys
-from pathlib import Path
-from typing import Optional
 
-from utils.utils import VIDEO_FILES_DIR, OUTPUTS_DIR, TAB_FILES_DIR, MIDI_DIR
+warnings.filterwarnings("ignore", category=UserWarning)
+warnings.filterwarnings("ignore", category=FutureWarning)
+warnings.filterwarnings("ignore", category=DeprecationWarning)
+
+# Suppress TensorFlow/basic_pitch warnings
+os.environ["TF_CPP_MIN_LOG_LEVEL"] = "3"  # Suppress TF logging
+
+# Suppress specific noisy loggers
+for logger_name in ["tensorflow", "absl", "numba", "moviepy", "imageio"]:
+    logging.getLogger(logger_name).setLevel(logging.ERROR)
+
+import argparse  # noqa: E402
+import sys  # noqa: E402
+from pathlib import Path  # noqa: E402
+from typing import Optional  # noqa: E402
+
+from utils.utils import (  # noqa: E402
+    VIDEO_FILES_DIR,
+    OUTPUTS_DIR,
+    TAB_FILES_DIR,
+    MIDI_DIR,
+)
 
 # Configuration constants
 DEFAULT_HARMONICA_MODEL = "G.png"
@@ -25,6 +46,12 @@ def setup_parser() -> argparse.ArgumentParser:
         formatter_class=argparse.RawDescriptionHelpFormatter,
         epilog="""
 Examples:
+  # Interactive workflow (recommended) - tab file auto-inferred
+  python cli.py interactive MySong_KeyG_Stem.mp4
+
+  # Interactive workflow - explicit tab file
+  python cli.py interactive MySong_KeyG_Stem.mp4 CustomTabs.txt
+
   # Phase 1: Generate MIDI from video or audio
   python cli.py generate-midi song.mp4
   python cli.py generate-midi song.wav
@@ -242,6 +269,45 @@ Examples:
         type=str,
         default="C",
         help="Harmonica key (C, G, BB, etc.). Default: C",
+    )
+
+    # Interactive workflow
+    interactive_parser = subparsers.add_parser(
+        "interactive",
+        help="Run interactive workflow with approval gates and state persistence",
+    )
+    interactive_parser.add_argument("video", help="Input video/audio file")
+    interactive_parser.add_argument(
+        "tabs",
+        nargs="?",
+        help="Tab file (.txt) - optional, defaults to same name as video",
+    )
+    interactive_parser.add_argument(
+        "--session-dir",
+        default="sessions",
+        help="Directory for session persistence files. Default: sessions/",
+    )
+    interactive_parser.add_argument(
+        "--auto-approve",
+        action="store_true",
+        help="Skip all approval prompts (for testing/automation)",
+    )
+    interactive_parser.add_argument(
+        "--clean",
+        action="store_true",
+        help="Delete existing session and start fresh",
+    )
+    interactive_parser.add_argument(
+        "--skip-to",
+        choices=["midi-fixing", "harmonica", "tabs", "finalize"],
+        help=(
+            "Skip directly to a specific stage. Useful when you already have "
+            "MIDI/videos ready. Choices: "
+            "midi-fixing (have MIDI, need to fix/validate), "
+            "harmonica (regenerate harmonica video), "
+            "tabs (regenerate tab video only), "
+            "finalize (just create ZIP/archive)"
+        ),
     )
 
     return parser
@@ -554,6 +620,86 @@ def validate_midi_phase(midi: str, tabs: str, harmonica_key: str = "C") -> None:
         sys.exit(1)
 
 
+def interactive_workflow(
+    video: str,
+    tabs: Optional[str] = None,
+    session_dir: str = "sessions",
+    auto_approve: bool = False,
+    clean: bool = False,
+    skip_to: Optional[str] = None,
+) -> None:
+    """Run interactive workflow with approval gates and session persistence.
+
+    This workflow:
+    - Parses configuration from filename
+    - Saves/resumes session state
+    - Pauses at each step for user approval
+    - Handles MIDI fixing iteration
+    - Supports crash recovery
+
+    Args:
+        video: Input video/audio file (filename encodes configuration)
+        tabs: Tab file (.txt) - optional, defaults to same name as video
+        session_dir: Directory for session files
+        auto_approve: Skip all approval prompts (for testing)
+        clean: Delete existing session and start fresh
+        skip_to: Skip directly to a specific stage (midi-fixing, harmonica, tabs, finalize)
+    """
+    from interactive_workflow.orchestrator import WorkflowOrchestrator
+    from utils.filename_parser import parse_filename
+
+    # Parse filename to get song name (needed for session file path)
+    filename_config = parse_filename(video)
+
+    # Handle --clean flag: delete existing session
+    if clean:
+        session_file = os.path.join(
+            session_dir, f"{filename_config.song_name}_session.json"
+        )
+        if os.path.exists(session_file):
+            os.remove(session_file)
+            print(f"🧹 Cleaned existing session: {session_file}")
+        else:
+            print(f"🧹 No existing session to clean for {filename_config.song_name}")
+
+    # Resolve file paths
+    # For WAV files, check current directory first
+    if video.endswith(".wav") and os.path.exists(video):
+        video_path = video
+    else:
+        video_path = os.path.join(VIDEO_FILES_DIR, video)
+
+    # Auto-infer tab file from video name if not provided
+    if tabs is None:
+        tabs = f"{filename_config.song_name}.txt"
+
+    tabs_path = os.path.join(TAB_FILES_DIR, tabs)
+
+    # Validate inputs exist
+    file_type = "Audio file" if video.endswith(".wav") else "Video"
+    validate_file_exists(video_path, file_type)
+    validate_file_exists(tabs_path, "Tabs")
+
+    print("🎭 Starting Interactive Workflow")
+    print(f"📹 Input: {video_path}")
+    print(f"📄 Tabs: {tabs_path}")
+    print(f"💾 Sessions: {session_dir}/")
+    if skip_to:
+        print(f"⏭️  Skipping to: {skip_to}")
+    print()
+
+    # Create and run orchestrator
+    orchestrator = WorkflowOrchestrator(
+        input_video=video_path,
+        input_tabs=tabs_path,
+        session_dir=session_dir,
+        auto_approve=auto_approve,
+        skip_to=skip_to,
+    )
+
+    orchestrator.run()
+
+
 def main():
     parser = setup_parser()
     args = parser.parse_args()
@@ -610,6 +756,17 @@ def main():
 
         elif args.command == "validate-midi":
             validate_midi_phase(args.midi, args.tabs, args.key)
+
+        elif args.command == "interactive":
+            # tabs is optional, will be None if not provided
+            interactive_workflow(
+                args.video,
+                args.tabs,
+                args.session_dir,
+                args.auto_approve,
+                args.clean,
+                args.skip_to,
+            )
 
     except KeyboardInterrupt:
         print("\n❌ Interrupted by user")

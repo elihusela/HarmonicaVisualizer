@@ -29,6 +29,7 @@ class MidiGenerator:
         minimum_frequency: Optional[float] = None,
         maximum_frequency: Optional[float] = None,
         melodia_trick: bool = True,
+        temp_dir: Optional[str] = None,
     ):
         """
         Initialize MIDI generator.
@@ -44,11 +45,13 @@ class MidiGenerator:
             minimum_frequency: Minimum frequency in Hz (default: None)
             maximum_frequency: Maximum frequency in Hz (default: None)
             melodia_trick: Enable melodia trick post-processing (default: True)
+            temp_dir: Project-specific temp directory (default: global TEMP_DIR)
         """
         self.video_path = video_path
         self.output_midi_path = output_midi_path
-        self.extracted_audio_path = TEMP_DIR + "extracted_audio.wav"
-        self.processed_audio_path = TEMP_DIR + "midi_ready_audio.wav"
+        self.temp_dir = temp_dir or TEMP_DIR
+        self.extracted_audio_path = self.temp_dir + "extracted_audio.wav"
+        self.processed_audio_path = self.temp_dir + "midi_ready_audio.wav"
 
         # Audio processing settings
         self.enable_audio_processing = enable_audio_processing

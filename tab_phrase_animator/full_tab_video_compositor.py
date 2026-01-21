@@ -35,6 +35,9 @@ class CompositorConfig:
     transition_gap: float = 0.1  # Gap between pages (transparent frames)
     background_color: tuple = (0, 0, 0, 0)  # RGBA for transparent background
     cleanup_temp_files: bool = True
+    temp_dir: Optional[str] = (
+        None  # Project-specific temp directory (defaults to global TEMP_DIR)
+    )
 
 
 class FullTabVideoCompositorError(Exception):
@@ -60,6 +63,12 @@ class FullTabVideoCompositor:
         """
         self._config = config or CompositorConfig()
         self._page_windows: List[PageWindow] = []
+
+        # Resolve temp_dir (use global TEMP_DIR if not provided)
+        if self._config.temp_dir is None:
+            self._temp_dir = TEMP_DIR
+        else:
+            self._temp_dir = self._config.temp_dir
 
     def generate(
         self,
@@ -176,7 +185,7 @@ class FullTabVideoCompositor:
         output_path = final_output_path.replace(".mov", "_noaudio.mov")
         try:
             # Create concat file for ffmpeg
-            concat_file_path = os.path.join(TEMP_DIR, "full_tab_concat.txt")
+            concat_file_path = os.path.join(self._temp_dir, "full_tab_concat.txt")
             temp_files = []
             current_time = 0.0
 
@@ -184,35 +193,68 @@ class FullTabVideoCompositor:
             video_segments: List[str] = []
             video_durations: List[float] = []  # Track duration for each segment
 
+            # Get video dimensions from first page
+            video_size = self._get_video_dimensions(self._page_windows[0].video_path)
+
             for window in self._page_windows:
-                # Pages transition directly - no blank gaps
-                # DISABLED: Overlap trimming was causing pages to disappear too early
-                # when buffer was increased. Now pages can overlap naturally.
-                # if current_time > window.start_time:
-                #     # Page overlaps with previous - need to truncate the previous segment
-                #     overlap = current_time - window.start_time
-                #     print(
-                #         f"   ⚠️  Page {window.page_idx} overlaps previous by {overlap:.3f}s"
-                #     )
-                #     # Trim overlap from the last segment that was added
-                #     if video_segments and video_durations:
-                #         prev_duration = video_durations[-1]
-                #         new_duration = prev_duration - overlap
-                #         if new_duration > 0.01:
-                #             # Re-add the previous segment with trimmed duration
-                #             prev_segment = video_segments.pop()
-                #             prev_duration_val = video_durations.pop()
-                #             trimmed_video = self._trim_video(
-                #                 prev_segment, 0, new_duration, video_size
-                #             )
-                #             video_segments.append(trimmed_video)
-                #             video_durations.append(new_duration)
-                #             temp_files.append(trimmed_video)
-                #             print(
-                #                 f"   ✂️  Trimmed previous segment from "
-                #                 f"{prev_duration_val:.3f}s to {new_duration:.3f}s"
-                #             )
-                #         current_time = window.start_time
+                # Check if there's a GAP before this page (e.g., a pause in the music)
+                if current_time < window.start_time:
+                    gap_duration = window.start_time - current_time
+                    # Only handle significant gaps (> 0.01s)
+                    if gap_duration > 0.01:
+                        print(
+                            f"   ⏸️  Gap before page {window.page_idx}: {gap_duration:.3f}s "
+                            f"({current_time:.3f}s -> {window.start_time:.3f}s)"
+                        )
+                        # If there's a previous page, extend it to fill the gap
+                        # Otherwise (first page with delay), use blank transparent video
+                        if video_segments and video_durations:
+                            print("      📌 Extending previous page to fill gap")
+                            # Extend the previous page video using tpad filter
+                            prev_video = video_segments[-1]
+                            extended_video = self._extend_video_with_last_frame(
+                                prev_video, gap_duration, video_size
+                            )
+                            # Replace the previous video with extended version
+                            video_segments[-1] = extended_video
+                            video_durations[-1] += gap_duration
+                            temp_files.append(extended_video)
+                            current_time = window.start_time
+                        else:
+                            print("      🔳 Using blank video (no previous page)")
+                            gap_video = self._create_blank_video(
+                                gap_duration, video_size
+                            )
+                            video_segments.append(gap_video)
+                            video_durations.append(gap_duration)
+                            temp_files.append(gap_video)
+                            current_time = window.start_time
+
+                # Check if there's an OVERLAP with previous page
+                elif current_time > window.start_time:
+                    overlap = current_time - window.start_time
+                    print(
+                        f"   ⚠️  Page {window.page_idx} overlaps previous by {overlap:.3f}s"
+                    )
+                    # Trim overlap from the last segment that was added
+                    if video_segments and video_durations:
+                        prev_duration = video_durations[-1]
+                        new_duration = prev_duration - overlap
+                        if new_duration > 0.01:
+                            # Re-add the previous segment with trimmed duration
+                            prev_segment = video_segments.pop()
+                            prev_duration_val = video_durations.pop()
+                            trimmed_video = self._trim_video(
+                                prev_segment, 0, new_duration, video_size
+                            )
+                            video_segments.append(trimmed_video)
+                            video_durations.append(new_duration)
+                            temp_files.append(trimmed_video)
+                            print(
+                                f"   ✂️  Trimmed previous segment from "
+                                f"{prev_duration_val:.3f}s to {new_duration:.3f}s"
+                            )
+                        current_time = window.start_time
 
                 # Add page video at correct position
                 video_segments.append(window.video_path)
@@ -312,7 +354,7 @@ class FullTabVideoCompositor:
         import time
 
         timestamp = str(int(time.time() * 1000000))
-        trimmed_path = os.path.join(TEMP_DIR, f"trimmed_{timestamp}.mov")
+        trimmed_path = os.path.join(self._temp_dir, f"trimmed_{timestamp}.mov")
 
         try:
             duration = end_time - start_time
@@ -342,6 +384,57 @@ class FullTabVideoCompositor:
                 f"Failed to trim video: {e.stderr}"
             ) from e
 
+    def _extend_video_with_last_frame(
+        self, source_video: str, extension_duration: float, size: tuple[int, int]
+    ) -> str:
+        """
+        Extend a video by padding it with its last frame for the specified duration.
+
+        This keeps the page visible during gaps by repeating the last frame
+        (which has all notes turned off).
+
+        Args:
+            source_video: Path to source video to extend
+            extension_duration: How long to extend the video (in seconds)
+            size: Tuple of (width, height) - not used but kept for compatibility
+
+        Returns:
+            Path to the extended video file
+
+        Raises:
+            FullTabVideoCompositorError: If video extension fails
+        """
+        import time
+
+        timestamp = str(int(time.time() * 1000000))
+        extended_path = os.path.join(self._temp_dir, f"extended_{timestamp}.mov")
+
+        try:
+            # Use tpad filter to extend video by repeating last frame
+            cmd = [
+                "ffmpeg",
+                "-y",
+                "-i",
+                source_video,
+                "-vf",
+                f"tpad=stop_mode=clone:stop_duration={extension_duration:.3f}",
+                "-c:v",
+                "prores_ks",
+                "-profile:v",
+                "4",  # ProRes 4444 (preserves alpha)
+                "-pix_fmt",
+                "yuva444p10le",
+                extended_path,
+            ]
+
+            subprocess.run(cmd, capture_output=True, text=True, check=True)
+            return extended_path
+
+        except subprocess.CalledProcessError as e:
+            raise FullTabVideoCompositorError(
+                f"Failed to extend video: {e.stderr}"
+            ) from e
+
     def _create_blank_video(self, duration: float, size: tuple[int, int]) -> str:
         """
         Create a blank (transparent) video file using ffmpeg.
@@ -360,7 +453,7 @@ class FullTabVideoCompositor:
 
         # Create unique temporary file
         timestamp = str(int(time.time() * 1000000))
-        blank_path = os.path.join(TEMP_DIR, f"blank_{timestamp}.mov")
+        blank_path = os.path.join(self._temp_dir, f"blank_{timestamp}.mov")
 
         width, height = size
 

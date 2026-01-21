@@ -10,52 +10,224 @@ Create a fully automated, interactive workflow where users drop files in a folde
 ## 📊 IMPLEMENTATION PROGRESS
 
 **Started:** 2025-12-21
-**Current Phase:** Phase 0 - Preparation
-**Status:** 🟢 In Progress
+**Completed:** 2025-12-22
+**Current Phase:** Phase 6B - COMPLETE ✅
+**Status:** 🎉 All Phases Complete (Phases 0-6B Done, 680+ tests passing)
+
+---
+
+## 🚀 USAGE EXAMPLES (Current Implementation)
+
+### Basic Usage - No Stem Separation
+
+```bash
+# Simple workflow: video → MIDI → manual fix → (next steps TBD)
+python cli.py interactive MySong_KeyC.mp4 MySong.txt --auto-approve
+
+# What happens:
+# 1. Parses filename: MySong, Key C, no stem flag
+# 2. Generates MIDI: fixed_midis/MySong_fixed.mid
+# 3. Pauses at "MIDI Fixing" step
+# 4. Saves session: sessions/MySong_session.json
+```
+
+### With Manual Stem Separation
+
+```bash
+# Workflow with pre-separated stems
+python cli.py interactive MySong_KeyG_Stem.mp4 MySong.txt
+
+# Interactive prompts:
+# 1. "Enter stem filename: MySong_vocals.wav"
+# 2. User provides manually separated stem file
+# 3. Generates MIDI from that stem
+# 4. Pauses at "MIDI Fixing"
+```
+
+### Using Audio Input Directly
+
+```bash
+# Skip video extraction - use WAV directly
+python cli.py interactive MySong_vocals.wav MySong.txt --auto-approve
+
+# No stem flag needed - audio is already extracted
+# Goes straight to MIDI generation
+```
+
+### Filename Configuration Examples
+
+```bash
+# All parameters encoded in filename:
+
+# G harmonica, stem separation, 30 FPS, 0.5s tab buffer
+MySong_KeyG_Stem_FPS30_TabBuffer0.5.mp4
+
+# Bb harmonica, no stem, default settings
+MySong_KeyBb.wav
+
+# F# harmonica, stem separation, default FPS
+MySong_KeyFS_Stem.mp4  # FS = F#
+
+# C harmonica, custom tab page buffer
+MySong_KeyC_TabBuffer0.2.mp4
+```
+
+### Session Management
+
+```bash
+# Start workflow
+python cli.py interactive MySong_KeyG.mp4 MySong.txt
+
+# Workflow interrupted (Ctrl+C, crash, etc.)
+# → Session saved to sessions/MySong_session.json
+
+# Resume from saved session
+python cli.py interactive MySong_KeyG.mp4 MySong.txt
+# → Detects existing session, prompts to resume
+# → Continues from last completed step
+```
+
+### Current Workflow States
+
+```
+INIT → (STEM_SELECTION)* → MIDI_GENERATION → MIDI_FIXING → ...
+       *only if _Stem flag present
+
+All Phases Complete (6B):
+✅ Filename parsing (all 12 harmonica keys)
+✅ Stem selection (manual - user provides stem file)
+✅ MIDI generation (supports video/audio input)
+✅ Session persistence and resumption
+✅ MIDI fixing pause step
+✅ Harmonica video generation with approval gate
+✅ Tab video generation with approval gate
+✅ Finalization (ZIP with song videos, archive to legacy/)
+```
+
+### File Locations
+
+```
+Input Files:
+  video-files/MySong_KeyG.mp4    # Video or audio input
+  tab-files/MySong.txt           # Tab file
+
+Generated Files:
+  fixed_midis/MySong_fixed.mid   # Generated MIDI (edit in DAW)
+  sessions/MySong_session.json   # Workflow state
+
+Future Outputs (Phase 6B+):
+  outputs/MySong_harmonica.mov   # Harmonica animation
+  outputs/MySong_full_tabs.mov   # Tab page video
+```
+
+---
 
 ### Completed Phases
-_None yet_
 
-### Current Phase: Phase 0 - Preparation 🛡️
-**Goal:** Set up safety nets before any changes
+#### ✅ Phase 2: Build Filename Parser (COMPLETE)
+**Completed:** 2025-12-21 16:30
+**Duration:** ~30 minutes
 
-**Tasks:**
-- [ ] Check git status and current changes
-- [ ] Decide: commit current work or stash it
-- [ ] Create feature branch: `feature/interactive-workflow`
-- [ ] Tag stable version: `stable-before-interactive`
-- [ ] Run baseline tests: `pytest`
-- [ ] Document baseline state
+**Tasks Completed:**
+- ✅ Created `utils/filename_parser.py` with FilenameConfig dataclass
+- ✅ Implemented parse_filename() function
+- ✅ Support for all 12 harmonica keys (A, Ab, B, Bb, C, C#, D, E, Eb, F, F#, G)
+- ✅ Support for both notation styles (F# and FS, Bb and BB)
+- ✅ Created comprehensive test suite (31 tests)
+- ✅ All tests passing (618 total in suite)
+- ✅ Committed changes
 
-**Progress Notes:**
-- 2025-12-21 15:30 - Started Phase 0
-- Found uncommitted changes in main:
-  - Modified: CLAUDE.md (updated examples)
-  - Modified: video_creator.py (tab text parsing improvements)
-  - Modified: animator.py (unknown changes)
-  - Modified: test_video_creator.py (test updates)
-  - Untracked: brainstorm.md (our planning doc)
-  - Untracked: debug_midi.py (debugging file)
-- **NEXT:** User decision - commit these changes or stash before branching?
+**Commits:**
+- `7fe4296` - "feat(parser): Add filename-based configuration parser"
 
-### Upcoming Phases
-- **Phase 1:** Add dependencies (questionary, rich) - 🔲 Not Started
-- **Phase 2:** Build filename parser (isolated) - 🔲 Not Started
-- **Phase 3:** Build state machine (isolated) - 🔲 Not Started
-- **Phase 4:** Build workflow orchestrator - 🔲 Not Started
-- **Phase 5:** Add CLI interactive command - 🔲 Not Started
-- **Phase 6:** Integrate planned features - 🔲 Not Started
+**Module Features:**
+- FilenameConfig dataclass: song_name, key, enable_stem, fps, tab_buffer
+- parse_filename(): Extract configuration from filename
+- Key parsing: Supports all 12 keys, case-insensitive
+- Stem flag: _Stem / _NoStem
+- FPS parameter: _FPS15, _FPS30, etc. (1-60 range)
+- TabBuffer parameter: _TabBuffer0.5 (0-5.0 range)
+- Validation: Error handling for invalid values
+- Zero integration: Completely isolated, no side effects
 
-### Abort Plan
-If things get too complicated:
-```bash
-# Nuclear option - back to stable
-git checkout main
-git branch -D feature/interactive-workflow
+**Notes:**
+- Completely isolated module - zero risk to existing code
+- 100% test coverage with comprehensive edge case testing
+- Ready for integration in Phase 4
 
-# Or restore to tagged version
-git checkout stable-before-interactive
-```
+---
+
+#### ✅ Phase 1: Add Dependencies (COMPLETE)
+**Completed:** 2025-12-21 16:00
+**Duration:** ~15 minutes
+
+**Tasks Completed:**
+- ✅ Added questionary ^2.1.1 to dependencies
+- ✅ Added rich ^14.2.0 to dependencies
+- ✅ Ran poetry install (5 new packages installed, 6 updated)
+- ✅ Verified tests still passing (587 tests ✅)
+- ✅ Committed changes
+
+**Commits:**
+- `3938208` - "feat(deps): Add questionary and rich for interactive CLI"
+
+**Dependencies Added:**
+- questionary: Interactive prompts and user input
+- rich: Beautiful terminal output, progress bars, panels
+- Also updated: scipy, pillow, prompt-toolkit, pygments
+
+**Notes:**
+- Zero breaking changes
+- All pre-commit hooks passing
+- Ready for interactive CLI development
+
+---
+
+#### ✅ Phase 0: Preparation (COMPLETE)
+**Completed:** 2025-12-21 15:45
+**Duration:** ~15 minutes
+
+**Tasks Completed:**
+- ✅ Checked git status and current changes
+- ✅ Committed improvements to main branch
+- ✅ Created feature branch: `feature/interactive-workflow`
+- ✅ Tagged stable version: `stable-before-interactive`
+- ✅ Ran baseline tests: 587 tests passing ✅
+- ✅ Documented baseline state
+
+**Commits:**
+- `5cbeddb` - "feat: Improve tab parsing and tune consecutive note gap"
+
+**Baseline State:**
+- Branch: `feature/interactive-workflow` (created from main)
+- Tests: 587 passing, 1 warning
+- Git tag: `stable-before-interactive` (rollback point)
+- All pre-commit hooks passing (black, mypy, flake8, pytest)
+
+**Notes:**
+- Added debug_*.py pattern to .gitignore
+- Committed tab parsing improvements and gap tuning before branching
+- Clean starting point for interactive workflow development
+
+---
+
+### All Phases Complete ✅
+
+**Completed Phases:**
+- **Phase 0:** Preparation - branch created, baseline established
+- **Phase 1:** Dependencies - questionary + rich added
+- **Phase 2:** Filename parser - all 12 keys, config extraction
+- **Phase 3:** State machine - session persistence, transitions
+- **Phase 4:** Workflow orchestrator - step execution, error handling
+- **Phase 5:** CLI command - `python cli.py interactive`
+- **Phase 6A:** MIDI generation integration
+- **Phase 6B:** Video generation + finalization
+
+**Implementation Summary:**
+- 58 tests covering state machine and orchestrator
+- Full end-to-end workflow with approval gates
+- Session persistence for crash recovery
+- ZIP packaging with only song-specific videos (fixed 2025-01-18)
 
 ---
 
@@ -608,12 +780,79 @@ Ready for next project!
 
 ## Next Steps
 
-1. **Decide:** CLI-only or GUI? (Recommend CLI with `questionary` + `rich`)
-2. **Prototype:** Build filename parser + state machine
-3. **Implement:** Interactive workflow for steps 1-5
-4. **Test:** Run through full workflow with real video
-5. **Polish:** Add progress bars, better error messages
-6. **Document:** Update README with new workflow instructions
+### ✅ MIDI Validation Tool - IMPLEMENTED
+
+**Status:** Complete (commit `4749940`)
+
+**Command:** `python cli.py validate-midi MySong_fixed.mid MySong.txt --key G`
+
+**Implementation Details:**
+1. **Validation module** (`utils/midi_validator.py`)
+   - Loads MIDI file and parses note events (sorted by time)
+   - Loads tab file and counts expected notes per hole
+   - Compares MIDI notes vs expected tab notes
+   - Detects:
+     - Extra notes (MIDI has more notes than tab expects)
+     - Missing notes (tab expects notes not in MIDI)
+     - Wrong notes (MIDI note doesn't match harmonica key mapping)
+     - Unmappable notes (MIDI notes not playable on specified harmonica)
+
+2. **Add CLI command** (`cli.py validate-midi`)
+   ```bash
+   python cli.py validate-midi MySong_fixed.mid MySong.txt --key G
+   ```
+
+3. **Output format:**
+   ```
+   ✅ MIDI validation passed: 79/79 notes match
+
+   OR
+
+   ❌ MIDI validation failed:
+      • Position 16: Extra note (hole 5, MIDI 76) at time 2739
+      • Position 41: Wrong note (expected hole 4/MIDI 67, got MIDI 68)
+      • Total: 80 MIDI notes, 79 expected from tab file
+
+   Fix suggestions:
+      - Delete MIDI 76 at position 16 (time 2739)
+      - Change MIDI 68 to MIDI 67 at position 41 (time 5741)
+   ```
+
+4. **Integration points:**
+   - Optionally run validation automatically before `create-video`
+   - Add `--validate` flag to `create-video` command
+   - Integrate into interactive workflow (validate after MIDI_FIXING step)
+
+5. **Testing:**
+   - Test with known good MIDI/tab pairs
+   - Test with known mismatches (MaryJane, WonderfulWorldHori examples)
+   - Test all 12 harmonica keys
+   - Edge cases: empty files, corrupted MIDI, missing mappings
+
+**Benefits:**
+- Catch errors early, before expensive video generation
+- Pinpoint exact problem locations for quick DAW fixes
+- Eliminate "-X MIDI entries unused" warnings
+- Save time and frustration
+
+**Estimated Effort:** 2-3 hours
+
+---
+
+### Future Enhancements
+
+**Already Completed:**
+- ✅ CLI with questionary + rich implemented
+- ✅ Filename parser built (all 12 keys)
+- ✅ State machine with session persistence
+- ✅ Interactive workflow (all steps 1-5)
+- ✅ MIDI Validation Tool (`validate-midi` command)
+
+**Remaining Ideas:**
+1. **Auto-stem splitting** - Integrate Demucs for automatic stem separation
+2. **Progress bars** - Add rich progress bars for long operations
+3. ~~**Validation integration**~~ - ✅ Integrated (2025-01-18)
+4. **README update** - Document new workflow instructions
 
 ---
 

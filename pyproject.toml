@@ -12,13 +12,25 @@ dependencies = [
     "mido (==1.3.3)",
     "moviepy (==2.1.2)",
     "pillow (==10.2.0)",
-    "basic-pitch (==0.4.0)"
+    "basic-pitch (==0.4.0)",
+    "questionary (>=2.1.1,<3.0.0)",
+    "rich (>=14.2.0,<15.0.0)"
 ]
 
 
 [build-system]
 requires = ["poetry-core>=2.0.0,<3.0.0"]
 build-backend = "poetry.core.masonry.api"
+
+[tool.poetry]
+packages = [
+    { include = "utils" },
+    { include = "tab_converter" },
+    { include = "harmonica_pipeline" },
+    { include = "image_converter" },
+    { include = "tab_phrase_animator" },
+    { include = "interactive_workflow" }
+]
 
 [tool.poetry.group.dev.dependencies]
 flake8 = "^7.2.0"
