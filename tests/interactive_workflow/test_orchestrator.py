@@ -202,18 +202,19 @@ class TestWorkflowSteps:
         orchestrator.session.transition_to(WorkflowState.MIDI_GENERATION)
 
         # Mock os.path.exists to return True (existing MIDI file)
-        # Mock questionary to decline overwrite
-        with patch("os.path.exists", return_value=True):
-            with patch("questionary.confirm") as mock_confirm:
-                mock_confirm.return_value.ask.return_value = False
-                with patch(
-                    "harmonica_pipeline.midi_generator.MidiGenerator"
-                ) as mock_gen:
-                    orchestrator._step_midi_generation()
-                    # Should NOT generate MIDI
-                    mock_gen.assert_not_called()
-                    # Should transition to MIDI_FIXING
-                    assert orchestrator.session.state == WorkflowState.MIDI_FIXING
+        # Mock questionary to decline overwrite, and subprocess to prevent Finder
+        with (
+            patch("os.path.exists", return_value=True),
+            patch("subprocess.run"),  # Prevent Finder from opening
+            patch("questionary.confirm") as mock_confirm,
+            patch("harmonica_pipeline.midi_generator.MidiGenerator") as mock_gen,
+        ):
+            mock_confirm.return_value.ask.return_value = False
+            orchestrator._step_midi_generation()
+            # Should NOT generate MIDI
+            mock_gen.assert_not_called()
+            # Should transition to MIDI_FIXING
+            assert orchestrator.session.state == WorkflowState.MIDI_FIXING
 
     def test_midi_generation_overwrites_existing_midi(self, tmp_path):
         """Test MIDI generation overwrites when existing MIDI found and user confirms."""
@@ -226,18 +227,19 @@ class TestWorkflowSteps:
         orchestrator.session.transition_to(WorkflowState.MIDI_GENERATION)
 
         # Mock os.path.exists to return True (existing MIDI file)
-        # Mock questionary to accept overwrite
-        with patch("os.path.exists", return_value=True):
-            with patch("questionary.confirm") as mock_confirm:
-                mock_confirm.return_value.ask.return_value = True
-                with patch(
-                    "harmonica_pipeline.midi_generator.MidiGenerator"
-                ) as mock_gen:
-                    orchestrator._step_midi_generation()
-                    # Should generate MIDI (overwrite)
-                    mock_gen.assert_called_once()
-                    # Should transition to MIDI_FIXING
-                    assert orchestrator.session.state == WorkflowState.MIDI_FIXING
+        # Mock questionary to accept overwrite, and subprocess to prevent Finder
+        with (
+            patch("os.path.exists", return_value=True),
+            patch("subprocess.run"),  # Prevent Finder from opening
+            patch("questionary.confirm") as mock_confirm,
+            patch("harmonica_pipeline.midi_generator.MidiGenerator") as mock_gen,
+        ):
+            mock_confirm.return_value.ask.return_value = True
+            orchestrator._step_midi_generation()
+            # Should generate MIDI (overwrite)
+            mock_gen.assert_called_once()
+            # Should transition to MIDI_FIXING
+            assert orchestrator.session.state == WorkflowState.MIDI_FIXING
 
     def test_midi_fixing_step_approved(self, tmp_path):
         """Test MIDI fixing step transitions when approved."""
@@ -476,13 +478,16 @@ class TestWorkflowSteps:
         )
         orchestrator.session.transition_to(WorkflowState.HARMONICA_REVIEW)
 
-        # Mock VideoCreator to avoid actual video generation
-        with patch("harmonica_pipeline.video_creator.VideoCreator"):
-            with patch("questionary.confirm") as mock_confirm:
-                mock_confirm.return_value.ask.return_value = False
-                orchestrator._step_harmonica_review()
-                # Should return to MIDI_FIXING for re-editing
-                assert orchestrator.session.state == WorkflowState.MIDI_FIXING
+        # Mock VideoCreator, subprocess (folder opening), and questionary
+        with (
+            patch("harmonica_pipeline.video_creator.VideoCreator"),
+            patch("subprocess.run"),  # Prevent Finder from opening
+            patch("questionary.confirm") as mock_confirm,
+        ):
+            mock_confirm.return_value.ask.return_value = False
+            orchestrator._step_harmonica_review()
+            # Should return to MIDI_FIXING for re-editing
+            assert orchestrator.session.state == WorkflowState.MIDI_FIXING
 
     def test_tab_video_review_step_approved(self, tmp_path):
         """Test tab video review step transitions when approved."""
