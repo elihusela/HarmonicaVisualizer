@@ -15,12 +15,12 @@ Requirements (will be installed if missing):
 
 Output:
     stems/<song_name>/
-    ├── vocals.wav      # Singing/melodic content (harmonica often here)
-    ├── drums.wav       # Percussion
-    ├── bass.wav        # Bass instruments
-    ├── guitar.wav      # Guitar (6-stem model)
-    ├── piano.wav       # Piano (6-stem model)
-    └── other.wav       # Everything else
+    ├── vocals.mp3      # Singing/melodic content (harmonica often here)
+    ├── drums.mp3       # Percussion
+    ├── bass.mp3        # Bass instruments
+    ├── guitar.mp3      # Guitar (6-stem model)
+    ├── piano.mp3       # Piano (6-stem model)
+    └── other.mp3       # Everything else
 """
 
 import argparse
@@ -133,6 +133,7 @@ def run_demucs(input_file: str, output_dir: str, model: str = "htdemucs_6s"):
     print("\nThis may take a few minutes...")
 
     # Build command
+    # Note: Using --mp3 to avoid torchcodec compatibility issues with newer torchaudio
     cmd = [
         sys.executable,
         "-m",
@@ -141,6 +142,7 @@ def run_demucs(input_file: str, output_dir: str, model: str = "htdemucs_6s"):
         model,  # Model name
         "-o",
         output_dir,  # Output directory
+        "--mp3",  # Use MP3 output (workaround for torchcodec/torchaudio compatibility)
         input_file,
     ]
 
@@ -169,7 +171,7 @@ def run_demucs(input_file: str, output_dir: str, model: str = "htdemucs_6s"):
 
         if stems_dir.exists():
             print(f"\nOutput files in: {stems_dir}")
-            for stem_file in sorted(stems_dir.glob("*.wav")):
+            for stem_file in sorted(stems_dir.glob("*.mp3")):
                 size_mb = stem_file.stat().st_size / (1024 * 1024)
                 print(f"  - {stem_file.name} ({size_mb:.1f} MB)")
 
