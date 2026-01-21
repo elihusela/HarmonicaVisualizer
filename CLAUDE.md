@@ -7,7 +7,59 @@ Generates animated harmonica tablature videos from input videos, tab files, and 
 - Uses Poetry for dependency management
 - Has pre-commit hooks configured
 - MIDI files stored in `fixed_midis/` directory
-- **Test Coverage**: 99% (562 tests passing)
+- **Test Coverage**: 99% (697 tests passing)
+
+---
+
+## Active Development Branches
+
+### `feature/auto-tab-generation`
+**Purpose:** Generate .txt tab files from MIDI automatically
+
+**Command:** `python cli.py generate-tabs MySong.mid --output MySong.txt`
+
+**Status:** Not started
+
+**Progress:**
+- [ ] Design tab file output format (pages, lines, chords)
+- [ ] Implement MIDI → hole number mapping using existing TabMapper
+- [ ] Add CLI command `generate-tabs`
+- [ ] Handle page breaks (auto or configurable notes per page)
+- [ ] Add tests
+- [ ] Update documentation
+
+**Use case:** Quick starting point - generates structure from MIDI, user fixes mistakes
+
+---
+
+### `feature/stem-splitting`
+**Purpose:** Separate harmonica from guitar/background using Demucs AI
+
+**Command:** `python cli.py split-stems MySong.mp4 --output stems/`
+
+**Status:** Not started
+
+**Progress:**
+- [ ] Add Demucs dependency to pyproject.toml
+- [ ] Implement stem separation (vocals, drums, bass, other)
+- [ ] Add CLI command `split-stems`
+- [ ] Integrate with interactive workflow (auto-detect best stem)
+- [ ] Handle GPU/CPU fallback
+- [ ] Add tests
+- [ ] Update documentation
+
+**Use case:** One-stop workflow - no external tools needed for stem separation
+
+---
+
+### Archived Branches
+| Branch | Merged To | Date | Summary |
+|--------|-----------|------|---------|
+| `feature/interactive-workflow` | `main` | 2026-01-21 | Interactive workflow, MIDI validation, parallel support, 3-note chords |
+
+**Archived brainstorm files:** `archive/brainstorm_interactive-workflow.md`
+
+---
 
 ## Context7 MCP Server - Library Documentation
 **IMPORTANT**: Always use the context7 MCP server when working with external libraries.
