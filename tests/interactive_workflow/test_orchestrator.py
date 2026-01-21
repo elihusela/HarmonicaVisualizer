@@ -545,15 +545,20 @@ class TestWorkflowExecution:
             auto_approve=True,
         )
 
-        # Mock MidiGenerator and VideoCreator to avoid actual generation
-        with patch("harmonica_pipeline.midi_generator.MidiGenerator"):
-            with patch("harmonica_pipeline.video_creator.VideoCreator"):
-                # Run workflow - should go through all states automatically
-                orchestrator.run()
+        # Mock MidiGenerator, VideoCreator, and finalization file operations
+        with (
+            patch("harmonica_pipeline.midi_generator.MidiGenerator"),
+            patch("harmonica_pipeline.video_creator.VideoCreator"),
+            patch("zipfile.ZipFile"),
+            patch("shutil.copy2"),
+            patch("pathlib.Path.mkdir"),
+        ):
+            # Run workflow - should go through all states automatically
+            orchestrator.run()
 
-                # Should complete successfully
-                assert orchestrator.session.is_complete()
-                assert orchestrator.session.get_progress_percentage() == 100
+            # Should complete successfully
+            assert orchestrator.session.is_complete()
+            assert orchestrator.session.get_progress_percentage() == 100
 
     def test_run_workflow_with_stem(self, tmp_path):
         """Test workflow with stem separation enabled."""
@@ -564,11 +569,16 @@ class TestWorkflowExecution:
             auto_approve=True,
         )
 
-        # Mock MidiGenerator and VideoCreator to avoid actual generation
-        with patch("harmonica_pipeline.midi_generator.MidiGenerator"):
-            with patch("harmonica_pipeline.video_creator.VideoCreator"):
-                orchestrator.run()
-                assert orchestrator.session.is_complete()
+        # Mock MidiGenerator, VideoCreator, and finalization file operations
+        with (
+            patch("harmonica_pipeline.midi_generator.MidiGenerator"),
+            patch("harmonica_pipeline.video_creator.VideoCreator"),
+            patch("zipfile.ZipFile"),
+            patch("shutil.copy2"),
+            patch("pathlib.Path.mkdir"),
+        ):
+            orchestrator.run()
+            assert orchestrator.session.is_complete()
 
     def test_workflow_saves_session_after_each_step(self, tmp_path):
         """Test session is saved after each step."""
@@ -675,14 +685,19 @@ class TestSessionPersistence:
         orchestrator._save_session()
         assert session_file.exists()
 
-        # Mock MidiGenerator and VideoCreator to avoid actual generation
-        with patch("harmonica_pipeline.midi_generator.MidiGenerator"):
-            with patch("harmonica_pipeline.video_creator.VideoCreator"):
-                # Complete workflow
-                orchestrator.run()
+        # Mock MidiGenerator, VideoCreator, and finalization file operations
+        with (
+            patch("harmonica_pipeline.midi_generator.MidiGenerator"),
+            patch("harmonica_pipeline.video_creator.VideoCreator"),
+            patch("zipfile.ZipFile"),
+            patch("shutil.copy2"),
+            patch("pathlib.Path.mkdir"),
+        ):
+            # Complete workflow
+            orchestrator.run()
 
-                # Session file should be deleted
-                assert not session_file.exists()
+            # Session file should be deleted
+            assert not session_file.exists()
 
 
 class TestAutoApproveMode:
@@ -698,11 +713,17 @@ class TestAutoApproveMode:
         )
 
         # Should not call questionary at all
-        with patch("harmonica_pipeline.midi_generator.MidiGenerator"):
-            with patch("harmonica_pipeline.video_creator.VideoCreator"):
-                with patch("questionary.confirm") as mock_confirm:
-                    orchestrator.run()
-                    mock_confirm.assert_not_called()
+        # Mock MidiGenerator, VideoCreator, and finalization file operations
+        with (
+            patch("harmonica_pipeline.midi_generator.MidiGenerator"),
+            patch("harmonica_pipeline.video_creator.VideoCreator"),
+            patch("zipfile.ZipFile"),
+            patch("shutil.copy2"),
+            patch("pathlib.Path.mkdir"),
+            patch("questionary.confirm") as mock_confirm,
+        ):
+            orchestrator.run()
+            mock_confirm.assert_not_called()
 
     def test_manual_mode_uses_prompts(self, tmp_path):
         """Test manual mode uses questionary prompts."""
