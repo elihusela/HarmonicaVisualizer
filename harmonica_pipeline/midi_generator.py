@@ -77,7 +77,7 @@ class MidiGenerator:
     def generate(self) -> None:
         """Run the complete 3-step MIDI generation process."""
         print("🧹 Cleaning temporary files...")
-        clean_temp_folder()
+        clean_temp_folder(self.temp_dir)
 
         # Step 1: Extract WAV from video (if input is video)
         if self.is_video_input:
