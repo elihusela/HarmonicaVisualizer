@@ -362,12 +362,11 @@ class WorkflowOrchestrator:
             self.session.transition_to(WorkflowState.MIDI_GENERATION)
 
     def _step_stem_selection(self) -> None:
-        """Wait for user to provide manually separated stem file.
+        """Handle stem separation - either auto via Demucs or manual selection.
 
-        User separates stems offline (Demucs, RX, etc.) and provides
-        the stem file they want to use for MIDI generation.
-
-        Future: Auto-run Demucs here and let user pick from results.
+        Offers two options:
+        1. Run Demucs automatically (6-stem model, uses "other" stem for harmonica)
+        2. Manual selection from video-files/ folder
         """
         # Check if already selected (resuming session)
         if self.session.get_data("selected_audio"):
@@ -378,19 +377,34 @@ class WorkflowOrchestrator:
             self.session.transition_to(WorkflowState.MIDI_GENERATION)
             return
 
-        from utils.utils import VIDEO_FILES_DIR
         from pathlib import Path
+
+        from utils.utils import VIDEO_FILES_DIR
 
         self.console.print(
             Panel(
-                "[cyan]Manual Stem Separation Required[/cyan]\n\n"
-                "1. Separate stems using your preferred tool (Demucs, RX, etc.)\n"
-                "2. Save the stem you want to use in the video-files/ folder\n"
-                "3. Select the stem file below\n\n"
-                f"[dim]Looking in: {VIDEO_FILES_DIR}/[/dim]",
+                "[cyan]Stem Separation[/cyan]\n\n"
+                "Separate harmonica from other instruments for better MIDI detection.\n\n"
+                "[bold]Option 1:[/bold] Run Demucs AI (automatic, ~30 seconds)\n"
+                "[bold]Option 2:[/bold] Use pre-separated file from video-files/",
                 title="Stem Selection",
             )
         )
+
+        # Ask if user wants to run Demucs
+        if not self.auto_approve:
+            run_demucs = questionary.confirm(
+                "Run Demucs stem separation?",
+                default=True,
+            ).ask()
+
+            if run_demucs:
+                if self._run_demucs_separation():
+                    return  # Success - already transitioned to MIDI_GENERATION
+                # Demucs failed - fall through to manual selection
+
+        # Manual selection flow
+        self.console.print("\n[cyan]Manual Selection:[/cyan]")
 
         if self.auto_approve:
             # For testing: just use original video
@@ -463,6 +477,48 @@ class WorkflowOrchestrator:
         self.session.set_data("selected_audio", selected_stem)
         self.console.print(f"[green]✓ Using audio: {selected_stem}[/green]")
         self.session.transition_to(WorkflowState.MIDI_GENERATION)
+
+    def _run_demucs_separation(self) -> bool:
+        """Run Demucs stem separation and use "other" stem for harmonica.
+
+        Automatically:
+        1. Extracts audio from video if needed
+        2. Runs Demucs 6-stem model
+        3. Uses "other.mp3" stem (where harmonica typically ends up)
+
+        Returns:
+            True if separation succeeded, False if failed (fall back to manual)
+        """
+        from utils.stem_separator import StemSeparator, StemSeparatorError
+
+        self.console.print(
+            Panel(
+                "[cyan]Running Demucs Stem Separation[/cyan]\n\n"
+                "Model: htdemucs_6s (6 stems)\n"
+                "Output: stems/ folder\n"
+                "Using: 'other' stem (best for harmonica)\n\n"
+                "[dim]This may take 30-60 seconds...[/dim]",
+                title="Demucs",
+            )
+        )
+
+        try:
+            separator = StemSeparator(output_dir="stems")
+            stem_path = separator.separate(
+                self.session.input_video,
+                stem="other",  # Harmonica typically ends up here
+            )
+
+            self.session.set_data("selected_audio", stem_path)
+            self.console.print("[green]✓ Stem separation complete![/green]")
+            self.console.print(f"[green]✓ Using: {stem_path}[/green]")
+            self.session.transition_to(WorkflowState.MIDI_GENERATION)
+            return True
+
+        except StemSeparatorError as e:
+            self.console.print(f"[red]✗ Stem separation failed: {e}[/red]")
+            self.console.print("[yellow]Falling back to manual selection...[/yellow]")
+            return False
 
     def _step_midi_generation(self) -> None:
         """Generate MIDI from audio using basic_pitch.
