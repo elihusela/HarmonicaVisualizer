@@ -7,7 +7,7 @@ Generates animated harmonica tablature videos from input videos, tab files, and 
 - Uses Poetry for dependency management
 - Has pre-commit hooks configured
 - MIDI files stored in `fixed_midis/` directory
-- **Test Coverage**: 99% (697 tests passing)
+- **Test Coverage**: 99% (718 tests passing)
 
 ---
 
@@ -35,11 +35,16 @@ Generates animated harmonica tablature videos from input videos, tab files, and 
 ### `feature/stem-splitting`
 **Purpose:** Separate harmonica from guitar/background using Demucs AI
 
-**Command:** `python cli.py split-stems MySong.mp4 --output stems/`
+**Status:** Integration complete - ready for testing
 
-**Status:** In progress
+**How it works:**
+When running `python cli.py interactive MySong_KeyC_Stem.mp4`:
+1. Workflow detects `_Stem` flag and asks "Run Demucs stem separation?"
+2. If Yes → Runs Demucs 6-stem model → Auto-uses "other.mp3" (where harmonica ends up)
+3. If No → Manual file selection from video-files/
+4. Continues with MIDI generation from the selected audio
 
-**Test Script:** `scripts/test_demucs.py` - Standalone script to test Demucs before integration
+**Test Script:** `scripts/test_demucs.py` - Standalone script to test Demucs
 ```bash
 python scripts/test_demucs.py --check-gpu           # Check GPU availability
 python scripts/test_demucs.py video-files/MySong.mp4  # Run 6-stem separation
@@ -47,14 +52,19 @@ python scripts/test_demucs.py video-files/MySong.mp4  # Run 6-stem separation
 
 **Progress:**
 - [x] Create standalone Demucs test script (scripts/test_demucs.py)
-- [ ] Test Demucs on sample files, verify harmonica isolation quality
-- [ ] Add Demucs dependency to pyproject.toml
-- [ ] Implement stem separation (vocals, drums, bass, guitar, piano, other)
-- [ ] Add CLI command `split-stems`
-- [ ] Integrate with interactive workflow (auto-detect best stem)
-- [ ] Handle GPU/CPU fallback
-- [ ] Add tests
-- [ ] Update documentation
+- [x] Test Demucs on sample files (pianoman worked well)
+- [x] Implement StemSeparator class (utils/stem_separator.py)
+- [x] Handle GPU/CPU fallback (CUDA > MPS > CPU)
+- [x] Integrate with interactive workflow
+- [x] Add 21 tests for stem separator
+- [ ] Add Demucs dependency to pyproject.toml (currently manual install)
+- [ ] Add standalone CLI command `split-stems` (optional)
+
+**Technical details:**
+- Model: `htdemucs_6s` (6 stems: vocals, drums, bass, guitar, piano, other)
+- Output: MP3 format (workaround for torchcodec compatibility)
+- GPU: Auto-detects CUDA/MPS, falls back to CPU
+- Harmonica typically ends up in "other" stem
 
 **Use case:** One-stop workflow - no external tools needed for stem separation
 
@@ -148,7 +158,7 @@ python cli.py create-video MySong.m4v MySong.txt --key Bb --only-full-tab-video
 ### Interactive Workflow (NEW)
 ```bash
 # Full guided workflow - tab file auto-inferred from video name
-python cli.py interactive MySong_KeyG.mp4
+python cli.py interactive trillseng_KeyC_Stem.m4v
 
 # Explicit tab file (if different name)
 python cli.py interactive MySong_KeyG.mp4 CustomTabs.txt
