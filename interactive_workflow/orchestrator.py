@@ -551,13 +551,13 @@ class WorkflowOrchestrator:
             )
         )
 
-        if not (
-            self.auto_approve
-            or questionary.confirm(
-                "Have you finished fixing the MIDI?", default=False
+        if not self.auto_approve:
+            ready = questionary.confirm(
+                "Have you finished fixing the MIDI/tabs?", default=False
             ).ask()
-        ):
-            return  # User not ready, stay in MIDI_FIXING state
+            if ready is None or not ready:
+                self.console.print("[yellow]Exiting workflow.[/yellow]")
+                raise SystemExit(0)
 
         # Validate MIDI before proceeding
         validation_passed = self._validate_midi()
