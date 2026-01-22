@@ -266,10 +266,9 @@ class TestWorkflowSteps:
 
         with patch("questionary.confirm") as mock_confirm:
             mock_confirm.return_value.ask.return_value = False
-            orchestrator._step_midi_fixing()
-
-        # Should stay in MIDI_FIXING
-        assert orchestrator.session.state == WorkflowState.MIDI_FIXING
+            with pytest.raises(SystemExit) as exc_info:
+                orchestrator._step_midi_fixing()
+            assert exc_info.value.code == 0  # Clean exit
 
     def test_midi_fixing_with_validation_pass(self, tmp_path):
         """Test MIDI fixing step runs validation and proceeds when it passes."""
