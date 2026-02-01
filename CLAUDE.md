@@ -7,7 +7,7 @@ Generates animated harmonica tablature videos from input videos, tab files, and 
 - Uses Poetry for dependency management
 - Has pre-commit hooks configured
 - MIDI files stored in `fixed_midis/` directory
-- **Test Coverage**: 99% (718 tests passing)
+- **Test Coverage**: 99% (738 tests passing)
 
 ---
 
@@ -16,17 +16,25 @@ Generates animated harmonica tablature videos from input videos, tab files, and 
 ### `feature/auto-tab-generation`
 **Purpose:** Generate .txt tab files from MIDI automatically
 
-**Command:** `python cli.py generate-tabs MySong.mid --output MySong.txt`
+**Command:** `python cli.py generate-tabs MySong_fixed.mid --key G`
 
-**Status:** Not started
+**Status:** Complete - ready to merge
 
 **Progress:**
-- [ ] Design tab file output format (pages, lines, chords)
-- [ ] Implement MIDI → hole number mapping using existing TabMapper
-- [ ] Add CLI command `generate-tabs`
-- [ ] Handle page breaks (auto or configurable notes per page)
-- [ ] Add tests
-- [ ] Update documentation
+- [x] Design tab file output format (pages, lines, chords)
+- [x] Implement MIDI → hole number mapping using existing TabMapper
+- [x] Add CLI command `generate-tabs`
+- [x] Handle page breaks (auto or configurable notes per page)
+- [x] Add 20 tests for TabGenerator
+- [x] Chord detection (simultaneous notes → 56, -4-5)
+
+**CLI Options:**
+```bash
+python cli.py generate-tabs MySong_fixed.mid --key G
+python cli.py generate-tabs MySong_fixed.mid --key G --output CustomName.txt
+python cli.py generate-tabs MySong_fixed.mid --key G --notes-per-line 5
+python cli.py generate-tabs MySong_fixed.mid --key G --notes-per-page 20
+```
 
 **Use case:** Quick starting point - generates structure from MIDI, user fixes mistakes
 
