@@ -59,7 +59,7 @@ class TestDirectoryConfig:
             "midi_dir": str(temp_test_dir / "midis"),
         }
 
-        config = DirectoryConfig(
+        DirectoryConfig(
             **test_dirs,
             create_if_missing=True,
         )
@@ -202,7 +202,9 @@ class TestDirectoryManagement:
 
     def test_clean_temp_folder_permission_error(self):
         """Test cleaning temp folder with permission error."""
-        with patch("utils.utils.shutil.rmtree", side_effect=OSError("Permission denied")):
+        with patch(
+            "utils.utils.shutil.rmtree", side_effect=OSError("Permission denied")
+        ):
             with pytest.raises(UtilsError, match="Failed to clean temp folder"):
                 clean_temp_folder("/restricted/path")
 

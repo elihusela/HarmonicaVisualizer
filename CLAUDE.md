@@ -35,7 +35,7 @@ Generates animated harmonica tablature videos from input videos, tab files, and 
 ### `feature/stem-splitting`
 **Purpose:** Separate harmonica from guitar/background using Demucs AI
 
-**Status:** Integration complete - ready for testing
+**Status:** Complete - ready to merge
 
 **How it works:**
 When running `python cli.py interactive MySong_KeyC_Stem.mp4`:
@@ -43,6 +43,13 @@ When running `python cli.py interactive MySong_KeyC_Stem.mp4`:
 2. If Yes → Runs Demucs 6-stem model → Auto-uses "other.mp3" (where harmonica ends up)
 3. If No → Manual file selection from video-files/
 4. Continues with MIDI generation from the selected audio
+
+**CLI Command:** `python cli.py split-stems` - Standalone stem separation
+```bash
+python cli.py split-stems MySong.mp4                    # Separate into 6 stems
+python cli.py split-stems MySong.mp4 --output-dir my_stems  # Custom output dir
+python cli.py split-stems MySong.mp4 --stem vocals      # Highlight vocals instead of other
+```
 
 **Test Script:** `scripts/test_demucs.py` - Standalone script to test Demucs
 ```bash
@@ -57,8 +64,8 @@ python scripts/test_demucs.py video-files/MySong.mp4  # Run 6-stem separation
 - [x] Handle GPU/CPU fallback (CUDA > MPS > CPU)
 - [x] Integrate with interactive workflow
 - [x] Add 21 tests for stem separator
-- [ ] Add Demucs dependency to pyproject.toml (currently manual install)
-- [ ] Add standalone CLI command `split-stems` (optional)
+- [x] Add Demucs dependency to pyproject.toml
+- [x] Add standalone CLI command `split-stems`
 
 **Technical details:**
 - Model: `htdemucs_6s` (6 stems: vocals, drums, bass, guitar, piano, other)
@@ -158,7 +165,7 @@ python cli.py create-video MySong.m4v MySong.txt --key Bb --only-full-tab-video
 ### Interactive Workflow (NEW)
 ```bash
 # Full guided workflow - tab file auto-inferred from video name
-python cli.py interactive trillseng_KeyC_Stem.m4v
+python cli.py interactive theriver_KeyG_Stem.MP4
 
 # Explicit tab file (if different name)
 python cli.py interactive MySong_KeyG.mp4 CustomTabs.txt

@@ -114,7 +114,9 @@ class TestAdjustConsecutiveIdenticalNotes:
         """Test that distant notes (page boundaries) are not adjusted."""
         entries = [
             TabEntry(tab=4, time=7.5, duration=1.5, confidence=0.8),  # End of page 1
-            TabEntry(tab=4, time=13.4, duration=0.2, confidence=0.8),  # Start of page 2 (5.9s gap)
+            TabEntry(
+                tab=4, time=13.4, duration=0.2, confidence=0.8
+            ),  # Start of page 2 (5.9s gap)
         ]
 
         result = adjust_consecutive_identical_notes(entries, gap=0.15, max_gap=2.0)

@@ -104,7 +104,7 @@ class MidiValidator:
         total_expected_notes = self._count_expected_notes(parsed_pages)
 
         # Convert MIDI to tabs to check if notes are mappable
-        tabs = self.tab_mapper.note_events_to_tabs(midi_events)
+        _ = self.tab_mapper.note_events_to_tabs(midi_events)
 
         # Detect issues
         issues = []
@@ -134,7 +134,13 @@ class MidiValidator:
 
         # Check for unmappable notes (notes not in harmonica key mapping)
         unmappable_notes = self._find_unmappable_notes(midi_events)
-        for idx, (start_time, end_time, pitch, velocity, confidence) in unmappable_notes:
+        for idx, (
+            start_time,
+            end_time,
+            pitch,
+            velocity,
+            confidence,
+        ) in unmappable_notes:
             time_ms = int(start_time * 1000)  # Convert to milliseconds
             issues.append(
                 ValidationIssue(
@@ -143,7 +149,10 @@ class MidiValidator:
                     description=f"Position {idx}: Unmappable note (MIDI {pitch}) at time {time_ms}ms",
                     midi_note=pitch,
                     time_ms=time_ms,
-                    suggestion=f"Change MIDI note {pitch} at position {idx} to a note playable on {self.harmonica_key} harmonica",
+                    suggestion=(
+                        f"Change MIDI note {pitch} at position {idx} "
+                        f"to a note playable on {self.harmonica_key} harmonica"
+                    ),
                 )
             )
 
@@ -157,9 +166,7 @@ class MidiValidator:
             issues=issues,
         )
 
-    def _count_expected_notes(
-        self, parsed_pages: Dict[str, List[List[List]]]
-    ) -> int:
+    def _count_expected_notes(self, parsed_pages: Dict[str, List[List[List]]]) -> int:
         """
         Count expected number of notes from parsed tab pages.
 

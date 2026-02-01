@@ -52,6 +52,10 @@ Examples:
   # Interactive workflow - explicit tab file
   python cli.py interactive MySong_KeyG_Stem.mp4 CustomTabs.txt
 
+  # Stem separation - isolate harmonica from background
+  python cli.py split-stems MySong.mp4
+  python cli.py split-stems MySong.mp4 --output-dir my_stems
+
   # Phase 1: Generate MIDI from video or audio
   python cli.py generate-midi song.mp4
   python cli.py generate-midi song.wav
@@ -269,6 +273,26 @@ Examples:
         type=str,
         default="C",
         help="Harmonica key (C, G, BB, etc.). Default: C",
+    )
+
+    # Stem separation
+    stem_parser = subparsers.add_parser(
+        "split-stems",
+        help="Separate audio into stems using Demucs AI (harmonica ends up in 'other')",
+    )
+    stem_parser.add_argument(
+        "input", help="Input video or audio file (in video-files/ or current directory)"
+    )
+    stem_parser.add_argument(
+        "--output-dir",
+        default="stems",
+        help="Output directory for separated stems. Default: stems/",
+    )
+    stem_parser.add_argument(
+        "--stem",
+        default="other",
+        choices=["vocals", "drums", "bass", "guitar", "piano", "other"],
+        help="Which stem to highlight/return path for. Default: other (where harmonica typically ends up)",
     )
 
     # Interactive workflow
@@ -620,6 +644,75 @@ def validate_midi_phase(midi: str, tabs: str, harmonica_key: str = "C") -> None:
         sys.exit(1)
 
 
+def split_stems_phase(
+    input_file: str,
+    output_dir: str = "stems",
+    stem: str = "other",
+) -> str:
+    """Separate audio into stems using Demucs AI.
+
+    Args:
+        input_file: Input video or audio file
+        output_dir: Directory for separated stems
+        stem: Which stem to highlight (default: 'other' for harmonica)
+
+    Returns:
+        Path to the specified stem file
+    """
+    from utils.stem_separator import StemSeparator, StemSeparatorError
+
+    # Resolve file path
+    if os.path.exists(input_file):
+        input_path = input_file
+    else:
+        input_path = os.path.join(VIDEO_FILES_DIR, input_file)
+
+    validate_file_exists(input_path, "Input file")
+
+    print("🎵 Starting Stem Separation")
+    print(f"📹 Input: {input_path}")
+    print(f"📂 Output: {output_dir}/")
+    print(f"🎯 Target stem: {stem}")
+    print()
+
+    try:
+        separator = StemSeparator(output_dir=output_dir)
+
+        # Check device
+        device = separator._detect_device()
+        device_emoji = {"cuda": "🚀 GPU (CUDA)", "mps": "🍎 GPU (MPS)", "cpu": "🐢 CPU"}
+        print(f"🖥️  Device: {device_emoji.get(device, device)}")
+        print()
+
+        print("⏳ Running Demucs 6-stem separation (this may take a while)...")
+        stem_path = separator.separate(input_path, stem=stem)
+
+        print()
+        print("✅ Stem separation complete!")
+        print()
+        print("📂 Generated stems:")
+        # List all stems in output directory
+        from pathlib import Path
+
+        stem_dir = Path(stem_path).parent
+        for stem_file in sorted(stem_dir.glob("*.mp3")):
+            marker = "👉" if stem_file.stem == stem else "  "
+            print(f"   {marker} {stem_file}")
+
+        print()
+        print(f"🎯 Recommended stem for harmonica: {stem_path}")
+        print()
+        print("📝 Next steps:")
+        print(f"   1. Listen to {stem_path} to verify harmonica isolation")
+        print(f"   2. Generate MIDI: python cli.py generate-midi {stem_path}")
+
+        return stem_path
+
+    except StemSeparatorError as e:
+        print(f"❌ Stem separation failed: {e}")
+        sys.exit(1)
+
+
 def interactive_workflow(
     video: str,
     tabs: Optional[str] = None,
@@ -756,6 +849,9 @@ def main():
 
         elif args.command == "validate-midi":
             validate_midi_phase(args.midi, args.tabs, args.key)
+
+        elif args.command == "split-stems":
+            split_stems_phase(args.input, args.output_dir, args.stem)
 
         elif args.command == "interactive":
             # tabs is optional, will be None if not provided
