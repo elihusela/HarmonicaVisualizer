@@ -164,7 +164,10 @@ python cli.py create-video MySong.m4v MySong.txt --key Bb --only-full-tab-video
 
 ### Interactive Workflow (NEW)
 ```bash
-# Full guided workflow - tab file auto-inferred from video name
+# Full guided workflow - select file from menu
+python cli.py interactive
+
+# Full guided workflow - specify file directly
 python cli.py interactive theriver_KeyG_Stem.MP4
 
 # Explicit tab file (if different name)

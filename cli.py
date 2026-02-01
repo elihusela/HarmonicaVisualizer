@@ -46,7 +46,10 @@ def setup_parser() -> argparse.ArgumentParser:
         formatter_class=argparse.RawDescriptionHelpFormatter,
         epilog="""
 Examples:
-  # Interactive workflow (recommended) - tab file auto-inferred
+  # Interactive workflow (recommended) - select file from menu
+  python cli.py interactive
+
+  # Interactive workflow - specify file directly
   python cli.py interactive MySong_KeyG_Stem.mp4
 
   # Interactive workflow - explicit tab file
@@ -300,7 +303,11 @@ Examples:
         "interactive",
         help="Run interactive workflow with approval gates and state persistence",
     )
-    interactive_parser.add_argument("video", help="Input video/audio file")
+    interactive_parser.add_argument(
+        "video",
+        nargs="?",
+        help="Input video/audio file (optional - will prompt for selection if not provided)",
+    )
     interactive_parser.add_argument(
         "tabs",
         nargs="?",
@@ -713,8 +720,48 @@ def split_stems_phase(
         sys.exit(1)
 
 
+def _select_video_file() -> Optional[str]:
+    """Prompt user to select a video/audio file from video-files/ directory.
+
+    Returns:
+        Selected filename or None if cancelled
+    """
+    import questionary
+
+    # Get list of video/audio files
+    video_extensions = {".mp4", ".mov", ".avi", ".mkv", ".m4v", ".webm", ".wav", ".mp3"}
+    files = []
+
+    if os.path.exists(VIDEO_FILES_DIR):
+        for f in os.listdir(VIDEO_FILES_DIR):
+            if any(f.lower().endswith(ext) for ext in video_extensions):
+                files.append(f)
+
+    if not files:
+        print(f"❌ No video/audio files found in {VIDEO_FILES_DIR}/")
+        print("   Supported formats: .mp4, .mov, .avi, .mkv, .m4v, .webm, .wav, .mp3")
+        return None
+
+    # Sort files alphabetically
+    files.sort()
+
+    print("🎵 Select a video/audio file to process:")
+    print()
+
+    # Use questionary to select a file
+    selected = questionary.select(
+        "Choose file:",
+        choices=files + ["[Cancel]"],
+    ).ask()
+
+    if selected == "[Cancel]" or selected is None:
+        return None
+
+    return selected
+
+
 def interactive_workflow(
-    video: str,
+    video: Optional[str] = None,
     tabs: Optional[str] = None,
     session_dir: str = "sessions",
     auto_approve: bool = False,
@@ -731,7 +778,8 @@ def interactive_workflow(
     - Supports crash recovery
 
     Args:
-        video: Input video/audio file (filename encodes configuration)
+        video: Input video/audio file (filename encodes configuration).
+               If not provided, prompts for file selection from video-files/
         tabs: Tab file (.txt) - optional, defaults to same name as video
         session_dir: Directory for session files
         auto_approve: Skip all approval prompts (for testing)
@@ -740,6 +788,13 @@ def interactive_workflow(
     """
     from interactive_workflow.orchestrator import WorkflowOrchestrator
     from utils.filename_parser import parse_filename
+
+    # If no video provided, prompt for file selection
+    if video is None:
+        video = _select_video_file()
+        if video is None:
+            print("❌ No file selected. Exiting.")
+            sys.exit(0)
 
     # Parse filename to get song name (needed for session file path)
     filename_config = parse_filename(video)
