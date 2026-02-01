@@ -1,7 +1,30 @@
 NOTE_ON_MSG = "note_on"
 NOTE_OFF_MSG = "note_off"
 SET_TEMPO_MSG = "set_tempo"
-C_HARMONICA_MAPPING = {
+
+
+def _expand_octaves(base_mapping: dict) -> dict:
+    """Expand a harmonica mapping to include notes one octave above and below.
+
+    This allows MIDI notes that are an octave off to still map to the correct holes.
+    Only adds octave variants if they don't conflict with existing base mappings.
+    """
+    expanded = dict(base_mapping)  # Start with base mappings (these take priority)
+
+    for pitch, hole in base_mapping.items():
+        # Add lower octave (-12 semitones) if valid MIDI and not already mapped
+        lower = pitch - 12
+        if lower >= 0 and lower not in expanded:
+            expanded[lower] = hole
+        # Add higher octave (+12 semitones) if valid MIDI and not already mapped
+        higher = pitch + 12
+        if higher <= 127 and higher not in expanded:
+            expanded[higher] = hole
+
+    return expanded
+
+
+_C_HARMONICA_BASE = {
     60: 1,  # Blow 1
     62: -1,  # Draw 1
     64: 2,  # Blow 2
@@ -23,8 +46,9 @@ C_HARMONICA_MAPPING = {
     96: 10,  # Blow 10
     93: -10,  # Draw 10
 }
+C_HARMONICA_MAPPING = _expand_octaves(_C_HARMONICA_BASE)
 
-G_HARMONICA_MAPPING = {
+_G_HARMONICA_BASE = {
     55: 1,  # Blow 1 (G3)
     57: -1,  # Draw 1 (A3)
     59: 2,  # Blow 2 (B3)
@@ -46,8 +70,9 @@ G_HARMONICA_MAPPING = {
     91: 10,  # Blow 10 (G6)
     88: -10,  # Draw 10 (E6)
 }
+G_HARMONICA_MAPPING = _expand_octaves(_G_HARMONICA_BASE)
 
-BB_HARMONICA_MAPPING = {
+_BB_HARMONICA_BASE = {
     58: 1,  # Blow 1 (Bb3)
     60: -1,  # Draw 1 (C4)
     62: 2,  # Blow 2 (D4)
@@ -69,8 +94,9 @@ BB_HARMONICA_MAPPING = {
     94: 10,  # Blow 10 (Bb6)
     91: -10,  # Draw 10 (G6)
 }
+BB_HARMONICA_MAPPING = _expand_octaves(_BB_HARMONICA_BASE)
 
-A_HARMONICA_MAPPING = {
+_A_HARMONICA_BASE = {
     57: 1,  # Blow 1 (A3)
     59: -1,  # Draw 1 (B3)
     61: 2,  # Blow 2 (C#4)
@@ -91,8 +117,9 @@ A_HARMONICA_MAPPING = {
     90: -10,  # Draw 10 (F#6)
     93: 10,  # Blow 10 (A6)
 }
+A_HARMONICA_MAPPING = _expand_octaves(_A_HARMONICA_BASE)
 
-AB_HARMONICA_MAPPING = {
+_AB_HARMONICA_BASE = {
     56: 1,  # Blow 1 (Ab3)
     58: -1,  # Draw 1 (Bb3)
     60: 2,  # Blow 2 (C4)
@@ -113,8 +140,9 @@ AB_HARMONICA_MAPPING = {
     89: -10,  # Draw 10 (F6)
     92: 10,  # Blow 10 (Ab6)
 }
+AB_HARMONICA_MAPPING = _expand_octaves(_AB_HARMONICA_BASE)
 
-B_HARMONICA_MAPPING = {
+_B_HARMONICA_BASE = {
     59: 1,  # Blow 1 (B3)
     61: -1,  # Draw 1 (C#4)
     63: 2,  # Blow 2 (Eb4)
@@ -135,8 +163,9 @@ B_HARMONICA_MAPPING = {
     92: -10,  # Draw 10 (Ab6)
     95: 10,  # Blow 10 (B6)
 }
+B_HARMONICA_MAPPING = _expand_octaves(_B_HARMONICA_BASE)
 
-CS_HARMONICA_MAPPING = {
+_CS_HARMONICA_BASE = {
     49: 1,  # Blow 1 (C#3)
     51: -1,  # Draw 1 (Eb3)
     53: 2,  # Blow 2 (F3)
@@ -157,8 +186,9 @@ CS_HARMONICA_MAPPING = {
     82: -10,  # Draw 10 (Bb5)
     85: 10,  # Blow 10 (C#6)
 }
+CS_HARMONICA_MAPPING = _expand_octaves(_CS_HARMONICA_BASE)
 
-D_HARMONICA_MAPPING = {
+_D_HARMONICA_BASE = {
     50: 1,  # Blow 1 (D3)
     52: -1,  # Draw 1 (E3)
     54: 2,  # Blow 2 (F#3)
@@ -179,8 +209,9 @@ D_HARMONICA_MAPPING = {
     83: -10,  # Draw 10 (B5)
     86: 10,  # Blow 10 (D6)
 }
+D_HARMONICA_MAPPING = _expand_octaves(_D_HARMONICA_BASE)
 
-E_HARMONICA_MAPPING = {
+_E_HARMONICA_BASE = {
     52: 1,  # Blow 1 (E3)
     54: -1,  # Draw 1 (F#3)
     56: 2,  # Blow 2 (Ab3)
@@ -201,8 +232,9 @@ E_HARMONICA_MAPPING = {
     85: -10,  # Draw 10 (C#6)
     88: 10,  # Blow 10 (E6)
 }
+E_HARMONICA_MAPPING = _expand_octaves(_E_HARMONICA_BASE)
 
-EB_HARMONICA_MAPPING = {
+_EB_HARMONICA_BASE = {
     51: 1,  # Blow 1 (Eb3)
     53: -1,  # Draw 1 (F3)
     55: 2,  # Blow 2 (G3)
@@ -223,8 +255,9 @@ EB_HARMONICA_MAPPING = {
     84: -10,  # Draw 10 (C6)
     87: 10,  # Blow 10 (Eb6)
 }
+EB_HARMONICA_MAPPING = _expand_octaves(_EB_HARMONICA_BASE)
 
-F_HARMONICA_MAPPING = {
+_F_HARMONICA_BASE = {
     53: 1,  # Blow 1 (F3)
     55: -1,  # Draw 1 (G3)
     57: 2,  # Blow 2 (A3)
@@ -245,8 +278,9 @@ F_HARMONICA_MAPPING = {
     86: -10,  # Draw 10 (D6)
     89: 10,  # Blow 10 (F6)
 }
+F_HARMONICA_MAPPING = _expand_octaves(_F_HARMONICA_BASE)
 
-FS_HARMONICA_MAPPING = {
+_FS_HARMONICA_BASE = {
     54: 1,  # Blow 1 (F#3)
     56: -1,  # Draw 1 (Ab3)
     58: 2,  # Blow 2 (Bb3)
@@ -267,3 +301,4 @@ FS_HARMONICA_MAPPING = {
     87: -10,  # Draw 10 (Eb6)
     90: 10,  # Blow 10 (F#6)
 }
+FS_HARMONICA_MAPPING = _expand_octaves(_FS_HARMONICA_BASE)

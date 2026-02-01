@@ -383,9 +383,10 @@ class TestMappingInfo:
         info = mapper.get_mapping_info()
 
         # C_HARMONICA_MAPPING should have specific characteristics
+        # Note: Mapping now includes octave expansions (+/- 12 semitones)
         assert info["total_mapped_pitches"] == len(C_HARMONICA_MAPPING)
-        assert info["pitch_range_min"] == 60  # C4
-        assert info["pitch_range_max"] == 96  # C7
+        assert info["pitch_range_min"] == 48  # C3 (octave below C4)
+        assert info["pitch_range_max"] == 108  # C8 (octave above C7)
 
         # Count blow vs draw from actual mapping
         expected_blow = len([v for v in C_HARMONICA_MAPPING.values() if v > 0])
