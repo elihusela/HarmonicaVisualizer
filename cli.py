@@ -278,6 +278,38 @@ Examples:
         help="Harmonica key (C, G, BB, etc.). Default: C",
     )
 
+    # Tab generation from MIDI
+    tabs_parser = subparsers.add_parser(
+        "generate-tabs",
+        help="Generate .txt tab file from MIDI (starting point for manual editing)",
+    )
+    tabs_parser.add_argument(
+        "midi", help="MIDI file (in fixed_midis/ or absolute path)"
+    )
+    tabs_parser.add_argument(
+        "--key",
+        type=str,
+        default="C",
+        help="Harmonica key (C, G, BB, etc.). Default: C",
+    )
+    tabs_parser.add_argument(
+        "--output",
+        type=str,
+        help="Output tab file name. Default: <midi_name>.txt in tab-files/",
+    )
+    tabs_parser.add_argument(
+        "--notes-per-line",
+        type=int,
+        default=6,
+        help="Maximum notes/chords per line. Default: 6",
+    )
+    tabs_parser.add_argument(
+        "--notes-per-page",
+        type=int,
+        default=24,
+        help="Maximum notes/chords per page. Default: 24",
+    )
+
     # Stem separation
     stem_parser = subparsers.add_parser(
         "split-stems",
@@ -651,6 +683,100 @@ def validate_midi_phase(midi: str, tabs: str, harmonica_key: str = "C") -> None:
         sys.exit(1)
 
 
+def generate_tabs_phase(
+    midi: str,
+    harmonica_key: str = "C",
+    output: Optional[str] = None,
+    notes_per_line: int = 6,
+    notes_per_page: int = 24,
+) -> str:
+    """Generate .txt tab file from MIDI.
+
+    Args:
+        midi: MIDI file path
+        harmonica_key: Harmonica key (C, G, Bb, etc.)
+        output: Output tab file name (optional)
+        notes_per_line: Max notes per line
+        notes_per_page: Max notes per page
+
+    Returns:
+        Path to the generated tab file
+    """
+    from harmonica_pipeline.harmonica_key_registry import get_harmonica_config
+    from harmonica_pipeline.midi_processor import MidiProcessor
+    from tab_converter.tab_generator import TabGenerator, TabGeneratorConfig
+    from tab_converter.tab_mapper import TabMapper
+
+    # Resolve MIDI path
+    if os.path.isabs(midi):
+        midi_path = midi
+    elif midi.startswith("fixed_midis/"):
+        midi_path = midi
+    else:
+        midi_path = os.path.join(MIDI_DIR, midi)
+
+    validate_file_exists(midi_path, "MIDI")
+
+    # Determine output path
+    if output:
+        if os.path.isabs(output):
+            output_path = output
+        else:
+            output_path = os.path.join(TAB_FILES_DIR, output)
+    else:
+        # Default: same name as MIDI, in tab-files/
+        base_name = get_video_base_name(midi_path)
+        # Remove _fixed suffix if present
+        if base_name.endswith("_fixed"):
+            base_name = base_name[:-6]
+        output_path = os.path.join(TAB_FILES_DIR, f"{base_name}.txt")
+
+    print("📝 Starting Tab Generation")
+    print(f"🎼 MIDI: {midi_path}")
+    print(f"🎹 Key: {harmonica_key}")
+    print(f"📄 Output: {output_path}")
+    print(f"📊 Format: {notes_per_line} notes/line, {notes_per_page} notes/page")
+    print()
+
+    # Get harmonica mapping for the key
+    key_config = get_harmonica_config(harmonica_key)
+    mapping = key_config.midi_mapping
+
+    # Load MIDI and convert to note events
+    processor = MidiProcessor(midi_path)
+    note_events = processor.load_note_events()
+
+    # Convert to tabs
+    mapper = TabMapper(mapping, "temp")
+    tabs = mapper.note_events_to_tabs(note_events)
+
+    # Generate tab file
+    config = TabGeneratorConfig(
+        notes_per_line=notes_per_line,
+        notes_per_page=notes_per_page,
+    )
+    generator = TabGenerator(config)
+    content = generator.generate(tabs)
+
+    # Write to file
+    os.makedirs(os.path.dirname(output_path), exist_ok=True)
+    with open(output_path, "w") as f:
+        f.write(content)
+
+    print()
+    print("✅ Tab generation complete!")
+    print(f"📄 Generated: {output_path}")
+    print()
+    print("📝 Next steps:")
+    print(f"   1. Open {output_path} and review/edit the tabs")
+    tab_name = os.path.basename(output_path)
+    print(
+        f"   2. Run validation: python cli.py validate-midi {midi} {tab_name} --key {harmonica_key}"
+    )
+
+    return output_path
+
+
 def split_stems_phase(
     input_file: str,
     output_dir: str = "stems",
@@ -904,6 +1030,15 @@ def main():
 
         elif args.command == "validate-midi":
             validate_midi_phase(args.midi, args.tabs, args.key)
+
+        elif args.command == "generate-tabs":
+            generate_tabs_phase(
+                args.midi,
+                args.key,
+                args.output,
+                args.notes_per_line,
+                args.notes_per_page,
+            )
 
         elif args.command == "split-stems":
             split_stems_phase(args.input, args.output_dir, args.stem)
