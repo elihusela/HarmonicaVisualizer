@@ -390,9 +390,189 @@ _A_HARMONICA_BENDS_BASE = {
 A_HARMONICA_BENDS = _expand_octaves_bends(_A_HARMONICA_BENDS_BASE)
 
 
-# Dictionary mapping harmonica key to bend mappings (for keys that have them)
+# Bb Harmonica Bends
+_BB_HARMONICA_BENDS_BASE = {
+    # -1' = B3 (1 semitone below C4 draw)
+    59: (-1, "'"),
+    # -2' = E4, -2'' = Eb4 (2 semitones available)
+    64: (-2, "'"),
+    63: (-2, "''"),
+    # -3' = Ab4, -3'' = G4, -3''' = Gb4 (3 semitones available)
+    68: (-3, "'"),
+    67: (-3, "''"),
+    66: (-3, "'''"),
+    # -4' = B4 (1 semitone below C5 draw)
+    71: (-4, "'"),
+    # -6' = Gb5 (1 semitone below G5 draw)
+    78: (-6, "'"),
+}
+BB_HARMONICA_BENDS = _expand_octaves_bends(_BB_HARMONICA_BENDS_BASE)
+
+
+# B Harmonica Bends
+_B_HARMONICA_BENDS_BASE = {
+    # -1' = C4 (1 semitone below C#4 draw)
+    60: (-1, "'"),
+    # -2' = F4, -2'' = E4 (2 semitones available)
+    65: (-2, "'"),
+    64: (-2, "''"),
+    # -3' = A4, -3'' = Ab4, -3''' = G4 (3 semitones available)
+    69: (-3, "'"),
+    68: (-3, "''"),
+    67: (-3, "'''"),
+    # -4' = C5 (1 semitone below C#5 draw)
+    72: (-4, "'"),
+    # -6' = G5 (1 semitone below Ab5 draw)
+    79: (-6, "'"),
+}
+B_HARMONICA_BENDS = _expand_octaves_bends(_B_HARMONICA_BENDS_BASE)
+
+
+# C# Harmonica Bends
+_CS_HARMONICA_BENDS_BASE = {
+    # -1' = D3 (1 semitone below Eb3 draw)
+    50: (-1, "'"),
+    # -2' = G3, -2'' = Gb3 (2 semitones available)
+    55: (-2, "'"),
+    54: (-2, "''"),
+    # -3' = B3, -3'' = Bb3, -3''' = A3 (3 semitones available)
+    59: (-3, "'"),
+    58: (-3, "''"),
+    57: (-3, "'''"),
+    # -4' = D4 (1 semitone below Eb4 draw)
+    62: (-4, "'"),
+    # -6' = A4 (1 semitone below Bb4 draw)
+    69: (-6, "'"),
+}
+CS_HARMONICA_BENDS = _expand_octaves_bends(_CS_HARMONICA_BENDS_BASE)
+
+
+# D Harmonica Bends
+_D_HARMONICA_BENDS_BASE = {
+    # -1' = Eb3 (1 semitone below E3 draw)
+    51: (-1, "'"),
+    # -2' = Ab3, -2'' = G3 (2 semitones available)
+    56: (-2, "'"),
+    55: (-2, "''"),
+    # -3' = C4, -3'' = B3, -3''' = Bb3 (3 semitones available)
+    60: (-3, "'"),
+    59: (-3, "''"),
+    58: (-3, "'''"),
+    # -4' = Eb4 (1 semitone below E4 draw)
+    63: (-4, "'"),
+    # -6' = Bb4 (1 semitone below B4 draw)
+    70: (-6, "'"),
+}
+D_HARMONICA_BENDS = _expand_octaves_bends(_D_HARMONICA_BENDS_BASE)
+
+
+# E Harmonica Bends
+_E_HARMONICA_BENDS_BASE = {
+    # -1' = F3 (1 semitone below F#3 draw)
+    53: (-1, "'"),
+    # -2' = Bb3, -2'' = A3 (2 semitones available)
+    58: (-2, "'"),
+    57: (-2, "''"),
+    # -3' = D4, -3'' = C#4, -3''' = C4 (3 semitones available)
+    62: (-3, "'"),
+    61: (-3, "''"),
+    60: (-3, "'''"),
+    # -4' = F4 (1 semitone below F#4 draw)
+    65: (-4, "'"),
+    # -6' = C5 (1 semitone below C#5 draw)
+    72: (-6, "'"),
+}
+E_HARMONICA_BENDS = _expand_octaves_bends(_E_HARMONICA_BENDS_BASE)
+
+
+# Eb Harmonica Bends
+_EB_HARMONICA_BENDS_BASE = {
+    # -1' = E3 (1 semitone below F3 draw)
+    52: (-1, "'"),
+    # -2' = A3, -2'' = Ab3 (2 semitones available)
+    57: (-2, "'"),
+    56: (-2, "''"),
+    # -3' = C#4, -3'' = C4, -3''' = B3 (3 semitones available)
+    61: (-3, "'"),
+    60: (-3, "''"),
+    59: (-3, "'''"),
+    # -4' = E4 (1 semitone below F4 draw)
+    64: (-4, "'"),
+    # -6' = B4 (1 semitone below C5 draw)
+    71: (-6, "'"),
+}
+EB_HARMONICA_BENDS = _expand_octaves_bends(_EB_HARMONICA_BENDS_BASE)
+
+
+# F Harmonica Bends
+_F_HARMONICA_BENDS_BASE = {
+    # -1' = Gb3 (1 semitone below G3 draw)
+    54: (-1, "'"),
+    # -2' = B3, -2'' = Bb3 (2 semitones available)
+    59: (-2, "'"),
+    58: (-2, "''"),
+    # -3' = Eb4, -3'' = D4, -3''' = C#4 (3 semitones available)
+    63: (-3, "'"),
+    62: (-3, "''"),
+    61: (-3, "'''"),
+    # -4' = Gb4 (1 semitone below G4 draw)
+    66: (-4, "'"),
+    # -6' = C#5 (1 semitone below D5 draw)
+    73: (-6, "'"),
+}
+F_HARMONICA_BENDS = _expand_octaves_bends(_F_HARMONICA_BENDS_BASE)
+
+
+# F# Harmonica Bends
+_FS_HARMONICA_BENDS_BASE = {
+    # -1' = G3 (1 semitone below Ab3 draw)
+    55: (-1, "'"),
+    # -2' = C4, -2'' = B3 (2 semitones available)
+    60: (-2, "'"),
+    59: (-2, "''"),
+    # -3' = E4, -3'' = Eb4, -3''' = D4 (3 semitones available)
+    64: (-3, "'"),
+    63: (-3, "''"),
+    62: (-3, "'''"),
+    # -4' = G4 (1 semitone below Ab4 draw)
+    67: (-4, "'"),
+    # -6' = D5 (1 semitone below Eb5 draw)
+    74: (-6, "'"),
+}
+FS_HARMONICA_BENDS = _expand_octaves_bends(_FS_HARMONICA_BENDS_BASE)
+
+
+# Ab Harmonica Bends
+_AB_HARMONICA_BENDS_BASE = {
+    # -1' = A3 (1 semitone below Bb3 draw)
+    57: (-1, "'"),
+    # -2' = D4, -2'' = C#4 (2 semitones available)
+    62: (-2, "'"),
+    61: (-2, "''"),
+    # -3' = Gb4, -3'' = F4, -3''' = E4 (3 semitones available)
+    66: (-3, "'"),
+    65: (-3, "''"),
+    64: (-3, "'''"),
+    # -4' = A4 (1 semitone below Bb4 draw)
+    69: (-4, "'"),
+    # -6' = E5 (1 semitone below F5 draw)
+    76: (-6, "'"),
+}
+AB_HARMONICA_BENDS = _expand_octaves_bends(_AB_HARMONICA_BENDS_BASE)
+
+
+# Dictionary mapping harmonica key to bend mappings
 HARMONICA_BEND_MAPPINGS = {
     "C": C_HARMONICA_BENDS,
     "G": G_HARMONICA_BENDS,
     "A": A_HARMONICA_BENDS,
+    "BB": BB_HARMONICA_BENDS,
+    "B": B_HARMONICA_BENDS,
+    "C#": CS_HARMONICA_BENDS,
+    "D": D_HARMONICA_BENDS,
+    "E": E_HARMONICA_BENDS,
+    "EB": EB_HARMONICA_BENDS,
+    "F": F_HARMONICA_BENDS,
+    "F#": FS_HARMONICA_BENDS,
+    "AB": AB_HARMONICA_BENDS,
 }
