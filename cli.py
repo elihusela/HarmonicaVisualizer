@@ -704,8 +704,10 @@ def generate_tabs_phase(
     """
     from harmonica_pipeline.harmonica_key_registry import get_harmonica_config
     from harmonica_pipeline.midi_processor import MidiProcessor
+    from tab_converter.consts import HARMONICA_BEND_MAPPINGS
     from tab_converter.tab_generator import TabGenerator, TabGeneratorConfig
     from tab_converter.tab_mapper import TabMapper
+    from utils.midi_validator import validate_midi
 
     # Resolve MIDI path
     if os.path.isabs(midi):
@@ -742,12 +744,17 @@ def generate_tabs_phase(
     key_config = get_harmonica_config(harmonica_key)
     mapping = key_config.midi_mapping
 
+    # Get bend mapping for the key (if available)
+    bend_mapping = HARMONICA_BEND_MAPPINGS.get(harmonica_key.upper())
+    if bend_mapping:
+        print(f"🎵 Bend detection enabled for key {harmonica_key}")
+
     # Load MIDI and convert to note events
     processor = MidiProcessor(midi_path)
     note_events = processor.load_note_events()
 
     # Convert to tabs
-    mapper = TabMapper(mapping, "temp")
+    mapper = TabMapper(mapping, "temp", bend_mapping=bend_mapping)
     tabs = mapper.note_events_to_tabs(note_events)
 
     # Generate tab file
@@ -766,13 +773,21 @@ def generate_tabs_phase(
     print()
     print("✅ Tab generation complete!")
     print(f"📄 Generated: {output_path}")
+
+    # Run validation
     print()
-    print("📝 Next steps:")
-    print(f"   1. Open {output_path} and review/edit the tabs")
-    tab_name = os.path.basename(output_path)
-    print(
-        f"   2. Run validation: python cli.py validate-midi {midi} {tab_name} --key {harmonica_key}"
-    )
+    print("🔍 Running validation...")
+    result = validate_midi(midi_path, output_path, harmonica_key)
+    print(result.get_summary())
+
+    if not result.passed:
+        print()
+        print("📝 Next steps:")
+        print(f"   1. Open {output_path} and fix the tabs")
+        tab_name = os.path.basename(output_path)
+        print(
+            f"   2. Re-run validation: python cli.py validate-midi {midi} {tab_name} --key {harmonica_key}"
+        )
 
     return output_path
 

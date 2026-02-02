@@ -453,3 +453,172 @@ class TestTabMapperIntegration:
         assert len(tabs.tabs) == 2
         assert tabs.tabs[0].time == 0.0  # First valid event
         assert tabs.tabs[1].time == 4.0  # Second valid event
+
+
+class TestBendMapping:
+    """Test bend note mapping functionality."""
+
+    def test_bend_mapping_single_bend(self, temp_test_dir):
+        """Test that bend notes are properly detected and marked."""
+        from tab_converter.consts import C_HARMONICA_BENDS
+
+        # Use C harmonica mapping with bends
+        harmonica_mapping = {60: 1, 62: -1, 64: 2, 67: 3}  # Simple mapping
+        bend_mapping = C_HARMONICA_BENDS
+
+        mapper = TabMapper(harmonica_mapping, str(temp_test_dir), bend_mapping)
+
+        # MIDI 61 is -1' (draw 1 half-step bend) in C harmonica
+        events = [
+            (0.0, 1.0, 61, 0.9, [0.5]),  # Db4 -> -1' bend
+        ]
+
+        with patch("builtins.print"):
+            tabs = mapper.note_events_to_tabs(events)
+
+        assert len(tabs.tabs) == 1
+        assert tabs.tabs[0].tab == -1  # Draw hole 1
+        assert tabs.tabs[0].is_bend is True
+        assert tabs.tabs[0].bend_notation == "'"
+
+    def test_bend_mapping_double_bend(self, temp_test_dir):
+        """Test double bend notation."""
+        from tab_converter.consts import C_HARMONICA_BENDS
+
+        harmonica_mapping = {60: 1, 62: -1, 64: 2, 67: 3}
+        bend_mapping = C_HARMONICA_BENDS
+
+        mapper = TabMapper(harmonica_mapping, str(temp_test_dir), bend_mapping)
+
+        # MIDI 65 is -2'' (draw 2 full-step bend) in C harmonica
+        events = [
+            (0.0, 1.0, 65, 0.9, [0.5]),  # F4 -> -2'' bend
+        ]
+
+        with patch("builtins.print"):
+            tabs = mapper.note_events_to_tabs(events)
+
+        assert len(tabs.tabs) == 1
+        assert tabs.tabs[0].tab == -2
+        assert tabs.tabs[0].is_bend is True
+        assert tabs.tabs[0].bend_notation == "''"
+
+    def test_bend_mapping_triple_bend(self, temp_test_dir):
+        """Test triple bend notation on hole 3."""
+        from tab_converter.consts import C_HARMONICA_BENDS
+
+        harmonica_mapping = {60: 1, 62: -1, 64: 2, 67: 3, 71: -3}
+        bend_mapping = C_HARMONICA_BENDS
+
+        mapper = TabMapper(harmonica_mapping, str(temp_test_dir), bend_mapping)
+
+        # MIDI 68 is -3''' (draw 3 triple bend) in C harmonica
+        events = [
+            (0.0, 1.0, 68, 0.9, [0.5]),  # Ab4 -> -3''' bend
+        ]
+
+        with patch("builtins.print"):
+            tabs = mapper.note_events_to_tabs(events)
+
+        assert len(tabs.tabs) == 1
+        assert tabs.tabs[0].tab == -3
+        assert tabs.tabs[0].is_bend is True
+        assert tabs.tabs[0].bend_notation == "'''"
+
+    def test_pure_note_priority_over_bend(self, temp_test_dir):
+        """Test that pure notes take priority over bend mappings."""
+        # Create overlapping mappings to test priority
+        harmonica_mapping = {61: 99}  # Pure note mapping for pitch 61
+        bend_mapping = {61: (-1, "'")}  # Bend mapping for same pitch
+
+        mapper = TabMapper(harmonica_mapping, str(temp_test_dir), bend_mapping)
+
+        events = [
+            (0.0, 1.0, 61, 0.9, [0.5]),
+        ]
+
+        with patch("builtins.print"):
+            tabs = mapper.note_events_to_tabs(events)
+
+        # Pure note should take priority over bend
+        assert tabs.tabs[0].tab == 99
+        assert tabs.tabs[0].is_bend is False
+        assert tabs.tabs[0].bend_notation == ""
+
+    def test_bend_mapping_with_regular_notes(self, temp_test_dir):
+        """Test mixing bend and regular notes."""
+        from tab_converter.consts import C_HARMONICA_BENDS
+
+        harmonica_mapping = {60: 1, 62: -1, 64: 2, 67: 3}
+        bend_mapping = C_HARMONICA_BENDS
+
+        mapper = TabMapper(harmonica_mapping, str(temp_test_dir), bend_mapping)
+
+        events = [
+            (0.0, 1.0, 60, 0.9, [0.5]),  # Regular: C4 -> Blow 1
+            (1.0, 2.0, 61, 0.9, [0.5]),  # Bend: Db4 -> -1'
+            (2.0, 3.0, 62, 0.9, [0.5]),  # Regular: D4 -> Draw 1
+        ]
+
+        with patch("builtins.print"):
+            tabs = mapper.note_events_to_tabs(events)
+
+        assert len(tabs.tabs) == 3
+
+        # First note: regular blow 1
+        assert tabs.tabs[0].tab == 1
+        assert tabs.tabs[0].is_bend is False
+        assert tabs.tabs[0].bend_notation == ""
+
+        # Second note: bend -1'
+        assert tabs.tabs[1].tab == -1
+        assert tabs.tabs[1].is_bend is True
+        assert tabs.tabs[1].bend_notation == "'"
+
+        # Third note: regular draw 1
+        assert tabs.tabs[2].tab == -1
+        assert tabs.tabs[2].is_bend is False
+        assert tabs.tabs[2].bend_notation == ""
+
+    def test_g_harmonica_bends(self, temp_test_dir):
+        """Test G harmonica bend mappings."""
+        from tab_converter.consts import G_HARMONICA_BENDS
+
+        harmonica_mapping = {55: 1, 57: -1}
+        bend_mapping = G_HARMONICA_BENDS
+
+        mapper = TabMapper(harmonica_mapping, str(temp_test_dir), bend_mapping)
+
+        # MIDI 56 is -1' (Ab3) in G harmonica
+        events = [
+            (0.0, 1.0, 56, 0.9, [0.5]),
+        ]
+
+        with patch("builtins.print"):
+            tabs = mapper.note_events_to_tabs(events)
+
+        assert len(tabs.tabs) == 1
+        assert tabs.tabs[0].tab == -1
+        assert tabs.tabs[0].is_bend is True
+        assert tabs.tabs[0].bend_notation == "'"
+
+    def test_bend_mapping_octave_expansion(self, temp_test_dir):
+        """Test that bend mappings include octave expansions."""
+        from tab_converter.consts import C_HARMONICA_BENDS
+
+        harmonica_mapping = {60: 1, 62: -1}
+
+        mapper = TabMapper(harmonica_mapping, str(temp_test_dir), C_HARMONICA_BENDS)
+
+        # MIDI 61 is the base -1' bend, MIDI 73 is one octave up
+        # (but 73 is also -4' in C harmonica, so test with 49 which is 61-12)
+        events = [
+            (0.0, 1.0, 49, 0.9, [0.5]),  # One octave below -1' bend
+        ]
+
+        with patch("builtins.print"):
+            tabs = mapper.note_events_to_tabs(events)
+
+        assert len(tabs.tabs) == 1
+        assert tabs.tabs[0].is_bend is True
+        assert tabs.tabs[0].bend_notation == "'"
