@@ -13,6 +13,7 @@ from harmonica_pipeline.video_creator_config import VideoCreatorConfig
 from image_converter.animator import Animator
 from image_converter.figure_factory import FigureFactory
 from image_converter.harmonica_layout import HarmonicaLayout
+from tab_converter.consts import HARMONICA_BEND_MAPPINGS
 from tab_converter.models import Tabs, TabEntry
 from tab_converter.tab_mapper import TabMapper
 from tab_phrase_animator.full_tab_video_compositor import (
@@ -108,8 +109,13 @@ class VideoCreator:
 
             # MIDI and tab processing setup
             self.midi_processor = MidiProcessor(config.midi_path)
-            # Use key-specific MIDI mapping from config
-            self.tab_mapper = TabMapper(config._key_config.midi_mapping, self.temp_dir)
+            # Use key-specific MIDI mapping from config, with bend mapping if available
+            bend_mapping = HARMONICA_BEND_MAPPINGS.get(config.harmonica_key.upper(), {})
+            self.tab_mapper = TabMapper(
+                config._key_config.midi_mapping,
+                self.temp_dir,
+                bend_mapping=bend_mapping,
+            )
 
             # Tab text parsing setup (always load to preserve bend notation)
             # The harmonica animation also needs bend info from the .txt file

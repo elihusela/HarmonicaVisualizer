@@ -253,6 +253,32 @@ class TabTextParser:
 
         return pages
 
+    def _parse_digits_to_holes(self, digits_str: str) -> List[int]:
+        """
+        Parse a string of digits into a list of hole numbers.
+
+        Handles both single-digit holes (1-9) and the two-digit hole 10.
+        For chords like "56", returns [5, 6]. For "10", returns [10].
+        For "910", returns [9, 10].
+
+        Args:
+            digits_str: String of digits to parse
+
+        Returns:
+            List of hole numbers (positive integers)
+        """
+        holes: List[int] = []
+        i = 0
+        while i < len(digits_str):
+            # Check if we have "10" at this position
+            if i + 1 < len(digits_str) and digits_str[i : i + 2] == "10":
+                holes.append(10)
+                i += 2
+            else:
+                holes.append(int(digits_str[i]))
+                i += 1
+        return holes
+
     def _parse_tab_line(self, line: str, line_number: int) -> List[List[ParsedNote]]:
         """
         Parse a single tab line into chords with bend notation support.
@@ -305,13 +331,14 @@ class TabTextParser:
                         bend_notation = line[i]
                         i += 1  # consume the bend marker
 
-                # Parse each digit as a separate hole number in the chord
-                for idx, digit_char in enumerate(digits_str):
-                    hole_number = -int(digit_char)
+                # Parse digits into hole numbers (handles "10" correctly)
+                hole_numbers = self._parse_digits_to_holes(digits_str)
+                for idx, hole_num in enumerate(hole_numbers):
+                    hole_number = -hole_num  # Make negative for draw notes
                     self._validate_hole_number(hole_number, line_number)
 
-                    # Only the last digit in the sequence can have a bend
-                    is_bend = has_bend_marker and (idx == len(digits_str) - 1)
+                    # Only the last hole in the sequence can have a bend
+                    is_bend = has_bend_marker and (idx == len(hole_numbers) - 1)
                     note_bend_notation = bend_notation if is_bend else ""
 
                     current_chord.append(
@@ -343,13 +370,13 @@ class TabTextParser:
                         bend_notation = line[i]
                         i += 1  # consume the bend marker
 
-                # Parse each digit as a separate hole number in the chord
-                for idx, digit_char in enumerate(digits_str):
-                    hole_number = int(digit_char)
+                # Parse digits into hole numbers (handles "10" correctly)
+                hole_numbers = self._parse_digits_to_holes(digits_str)
+                for idx, hole_number in enumerate(hole_numbers):
                     self._validate_hole_number(hole_number, line_number)
 
-                    # Only the last digit in the sequence can have a bend
-                    is_bend = has_bend_marker and (idx == len(digits_str) - 1)
+                    # Only the last hole in the sequence can have a bend
+                    is_bend = has_bend_marker and (idx == len(hole_numbers) - 1)
                     note_bend_notation = bend_notation if is_bend else ""
 
                     current_chord.append(

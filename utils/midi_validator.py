@@ -9,6 +9,7 @@ from dataclasses import dataclass
 
 from harmonica_pipeline.midi_processor import MidiProcessor
 from harmonica_pipeline.harmonica_key_registry import get_harmonica_config
+from tab_converter.consts import HARMONICA_BEND_MAPPINGS
 from tab_converter.tab_mapper import TabMapper
 from tab_phrase_animator.tab_text_parser import TabTextParser
 from utils.utils import TEMP_DIR
@@ -83,9 +84,14 @@ class MidiValidator:
         # Store the MIDI mapping for unmappable note detection
         self.midi_mapping = key_config.midi_mapping
 
+        # Get bend mapping for this key (if available)
+        self.bend_mapping = HARMONICA_BEND_MAPPINGS.get(harmonica_key.upper(), {})
+
         # Initialize processors
         self.midi_processor = MidiProcessor(midi_path)
-        self.tab_mapper = TabMapper(key_config.midi_mapping, TEMP_DIR)
+        self.tab_mapper = TabMapper(
+            key_config.midi_mapping, TEMP_DIR, bend_mapping=self.bend_mapping
+        )
         self.tab_text_parser = TabTextParser(tab_path)
 
     def validate(self) -> ValidationResult:
@@ -204,8 +210,8 @@ class MidiValidator:
         for idx, event in enumerate(midi_events):
             start_time, end_time, pitch, velocity, confidence = event
 
-            # Check if pitch exists in the harmonica key mapping
-            if pitch not in self.midi_mapping:
+            # Check if pitch exists in the harmonica key mapping or bend mapping
+            if pitch not in self.midi_mapping and pitch not in self.bend_mapping:
                 unmappable.append((idx, event))
 
         return unmappable
