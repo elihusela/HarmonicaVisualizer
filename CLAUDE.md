@@ -16,7 +16,7 @@ Generates animated harmonica tablature videos from input videos, tab files, and 
 ### `feature/auto-tab-generation`
 **Purpose:** Generate .txt tab files from MIDI automatically
 
-**Command:** `python cli.py generate-tabs MySong_fixed.mid --key G`
+**Command:** `python cli.py generate-tabs TimeofYourLife_fixed.mid --key G`
 
 **Status:** Complete - ready to merge
 
@@ -194,14 +194,16 @@ python cli.py interactive MySong_KeyBb_Stem_FPS10.mp4
 python cli.py interactive MySong_KeyG.mp4 --clean
 
 # Skip to specific stage (when you already have MIDI/videos ready)
-python cli.py interactive MySong_KeyG.mp4 --skip-to tabs        # Regenerate tab video only
-python cli.py interactive MySong_KeyG.mp4 --skip-to harmonica   # Regenerate harmonica video
-python cli.py interactive MySong_KeyG.mp4 --skip-to midi-fixing # Have MIDI, need to fix/validate
-python cli.py interactive MySong_KeyG.mp4 --skip-to finalize    # Just create ZIP/archive
+python cli.py interactive MySong_KeyG.mp4 --skip-to tabs           # Regenerate tab video only
+python cli.py interactive MySong_KeyG.mp4 --skip-to harmonica      # Regenerate harmonica video
+python cli.py interactive MySong_KeyG.mp4 --skip-to midi-fixing    # Have MIDI, need to fix/validate
+python cli.py interactive MySong_KeyG.mp4 --skip-to tab-generation # Generate tabs from MIDI
+python cli.py interactive MySong_KeyG.mp4 --skip-to finalize       # Just create ZIP/archive
 ```
 
 **Skip-to Options:**
 - `midi-fixing` - Already have MIDI, skip to fixing/validation step
+- `tab-generation` - Generate tabs from MIDI (if no tab file exists)
 - `harmonica` - Regenerate harmonica video (needs MIDI)
 - `tabs` - Regenerate tab video only (needs MIDI)
 - `finalize` - Just create ZIP and archive (needs existing videos)
@@ -216,11 +218,12 @@ python cli.py interactive MySong_KeyG.mp4 --skip-to finalize    # Just create ZI
 **Workflow Steps:**
 1. Parse config from filename (key, stem flag, FPS)
 2. Generate MIDI → pause for DAW editing → opens `fixed_midis/` folder
-3. **Validate MIDI** (auto-runs, shows mismatches)
-4. Select FPS (5-30, lower = faster render)
-5. Generate harmonica video → opens `outputs/` → approval gate
-6. Generate tab video → opens `outputs/` → approval gate
-7. Finalize (ZIP outputs, archive to legacy/)
+3. **Tab Generation** (optional) - If no tab file exists, offers to generate from MIDI
+4. **Validate MIDI** (auto-runs, shows mismatches)
+5. Select FPS (5-30, lower = faster render)
+6. Generate harmonica video → opens `outputs/` → approval gate
+7. Generate tab video → opens `outputs/` → approval gate
+8. Finalize (ZIP outputs, archive to legacy/)
 
 **Session Resume:** If interrupted, re-run same command to resume from last step.
 
@@ -286,6 +289,11 @@ Split video into segments for 70-90% render time reduction:
 3. **Performance Optimization**
    - Video generation speed, MIDI parallelization, caching
 
+4. **Handle Overlapping MIDI Notes**
+   - Detect and handle overlapping notes in MIDI files
+   - Options: merge into chords, truncate earlier note, or warn user
+   - Affects: `harmonica_pipeline/midi_processor.py`, `tab_converter/tab_mapper.py`
+
 ## Implemented Features
 
 ### MIDI Validation Tool ✅
@@ -316,7 +324,7 @@ Split video into segments for 70-90% render time reduction:
    - Keeps only full video, deletes page1.mov, page2.mov, etc.
 
 5. **Auto-Tab Generation** - Generate .txt files from MIDI automatically
-   - Command: `python cli.py generate-tabs MySong.mid --output MySong.txt`
+   - Command: `python cli.py generate-tabs isntshelovelytwins_fixed.mid`
    - User edits .txt → `create-video MySong.wav MySong.txt`
    - Quick fix workflow for tab mistakes
 

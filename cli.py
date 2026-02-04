@@ -683,6 +683,48 @@ def validate_midi_phase(midi: str, tabs: str, harmonica_key: str = "C") -> None:
         sys.exit(1)
 
 
+def _check_octave_warning(tabs) -> None:
+    """Check if generated tabs suggest MIDI is in wrong octave.
+
+    If most notes are in holes 7-10, the MIDI might be an octave too high.
+    Shows a warning to help user identify pitch detection issues.
+    """
+    if not tabs or not tabs.tabs:
+        return
+
+    # Count notes in upper register (holes 7-10, including draws)
+    upper_register = 0
+    middle_register = 0
+    lower_register = 0
+
+    for tab_entry in tabs.tabs:
+        hole = abs(tab_entry.tab)
+        if hole >= 7:
+            upper_register += 1
+        elif hole >= 4:
+            middle_register += 1
+        else:
+            lower_register += 1
+
+    total = len(tabs.tabs)
+    upper_percent = (upper_register / total) * 100 if total > 0 else 0
+
+    # If more than 60% of notes are in upper register, warn user
+    if upper_percent > 60:
+        print()
+        print("⚠️  OCTAVE WARNING")
+        print(f"   Most notes ({upper_percent:.0f}%) are in holes 7-10")
+        print()
+        print(f"   Upper register (7-10): {upper_register} notes")
+        print(f"   Middle register (4-6): {middle_register} notes")
+        print(f"   Lower register (1-3):  {lower_register} notes")
+        print()
+        print("   This often means the MIDI is ONE OCTAVE TOO HIGH.")
+        print()
+        print("   Fix: Transpose the MIDI down 12 semitones in your DAW,")
+        print("        then regenerate tabs.")
+
+
 def generate_tabs_phase(
     midi: str,
     harmonica_key: str = "C",
@@ -702,11 +744,9 @@ def generate_tabs_phase(
     Returns:
         Path to the generated tab file
     """
-    from harmonica_pipeline.harmonica_key_registry import get_harmonica_config
     from harmonica_pipeline.midi_processor import MidiProcessor
-    from tab_converter.consts import HARMONICA_BEND_MAPPINGS
     from tab_converter.tab_generator import TabGenerator, TabGeneratorConfig
-    from tab_converter.tab_mapper import TabMapper
+    from tab_converter.tab_mapper import create_tab_mapper
     from utils.midi_validator import validate_midi
 
     # Resolve MIDI path
@@ -740,21 +780,12 @@ def generate_tabs_phase(
     print(f"📊 Format: {notes_per_line} notes/line, {notes_per_page} notes/page")
     print()
 
-    # Get harmonica mapping for the key
-    key_config = get_harmonica_config(harmonica_key)
-    mapping = key_config.midi_mapping
-
-    # Get bend mapping for the key (if available)
-    bend_mapping = HARMONICA_BEND_MAPPINGS.get(harmonica_key.upper())
-    if bend_mapping:
-        print(f"🎵 Bend detection enabled for key {harmonica_key}")
-
     # Load MIDI and convert to note events
     processor = MidiProcessor(midi_path)
     note_events = processor.load_note_events()
 
-    # Convert to tabs
-    mapper = TabMapper(mapping, "temp", bend_mapping=bend_mapping)
+    # Convert to tabs using the factory function (ensures consistent mapping)
+    mapper = create_tab_mapper(harmonica_key, output_path="temp")
     tabs = mapper.note_events_to_tabs(note_events)
 
     # Generate tab file
@@ -773,6 +804,9 @@ def generate_tabs_phase(
     print()
     print("✅ Tab generation complete!")
     print(f"📄 Generated: {output_path}")
+
+    # Check for octave warning
+    _check_octave_warning(tabs)
 
     # Run validation
     print()

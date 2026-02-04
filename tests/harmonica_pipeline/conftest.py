@@ -15,7 +15,7 @@ def mock_video_creator_dependencies():
         "harmonica_pipeline.video_creator",
         AudioExtractor=MagicMock(),
         MidiProcessor=MagicMock(),
-        TabMapper=MagicMock(),
+        create_tab_mapper=MagicMock(return_value=MagicMock()),
         TabTextParser=MagicMock(),
         TabMatcher=MagicMock(),
         HarmonicaLayout=MagicMock(),

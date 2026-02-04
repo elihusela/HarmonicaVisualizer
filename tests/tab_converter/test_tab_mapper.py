@@ -622,3 +622,70 @@ class TestBendMapping:
         assert len(tabs.tabs) == 1
         assert tabs.tabs[0].is_bend is True
         assert tabs.tabs[0].bend_notation == "'"
+
+
+class TestCreateTabMapperFactory:
+    """Test the create_tab_mapper factory function."""
+
+    def test_factory_creates_valid_mapper_for_c(self, temp_test_dir):
+        """Test factory creates valid TabMapper for C key."""
+        from tab_converter.tab_mapper import create_tab_mapper
+
+        mapper = create_tab_mapper("C", output_path=str(temp_test_dir))
+
+        assert isinstance(mapper, TabMapper)
+        # C harmonica should have MIDI 60 -> hole 1
+        assert 60 in mapper._mapping
+        assert mapper._mapping[60] == 1
+
+    def test_factory_creates_valid_mapper_for_g(self, temp_test_dir):
+        """Test factory creates valid TabMapper for G key."""
+        from tab_converter.tab_mapper import create_tab_mapper
+
+        mapper = create_tab_mapper("G", output_path=str(temp_test_dir))
+
+        assert isinstance(mapper, TabMapper)
+        # G harmonica should have MIDI 55 -> hole 1 (G3)
+        assert 55 in mapper._mapping
+        assert mapper._mapping[55] == 1
+
+    def test_factory_includes_bend_mapping(self, temp_test_dir):
+        """Test factory includes bend mappings."""
+        from tab_converter.tab_mapper import create_tab_mapper
+
+        mapper = create_tab_mapper("C", output_path=str(temp_test_dir))
+
+        # C harmonica should have bend for MIDI 61 (-1')
+        assert 61 in mapper._bend_mapping
+        assert mapper._bend_mapping[61] == (-1, "'")
+
+    def test_factory_invalid_key_raises_error(self, temp_test_dir):
+        """Test factory raises error for invalid key."""
+        from tab_converter.tab_mapper import create_tab_mapper
+
+        with pytest.raises(ValueError):
+            create_tab_mapper("X", output_path=str(temp_test_dir))
+
+    def test_factory_case_insensitive_key(self, temp_test_dir):
+        """Test factory accepts lowercase key names."""
+        from tab_converter.tab_mapper import create_tab_mapper
+
+        # Should work with lowercase
+        mapper = create_tab_mapper("c", output_path=str(temp_test_dir))
+        assert isinstance(mapper, TabMapper)
+
+        # Should work with mixed case
+        mapper = create_tab_mapper("Bb", output_path=str(temp_test_dir))
+        assert isinstance(mapper, TabMapper)
+
+    def test_factory_all_keys_work(self, temp_test_dir):
+        """Test factory works for all 12 harmonica keys."""
+        from tab_converter.tab_mapper import create_tab_mapper
+
+        keys = ["C", "C#", "D", "Eb", "E", "F", "F#", "G", "Ab", "A", "Bb", "B"]
+
+        for key in keys:
+            mapper = create_tab_mapper(key, output_path=str(temp_test_dir))
+            assert isinstance(mapper, TabMapper), f"Failed for key {key}"
+            # Each key should have at least some mappings
+            assert len(mapper._mapping) > 0, f"No mappings for key {key}"

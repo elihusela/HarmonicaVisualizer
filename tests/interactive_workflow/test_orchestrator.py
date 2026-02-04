@@ -252,7 +252,8 @@ class TestWorkflowSteps:
         orchestrator.session.transition_to(WorkflowState.MIDI_FIXING)
 
         orchestrator._step_midi_fixing()
-        assert orchestrator.session.state == WorkflowState.HARMONICA_REVIEW
+        # MIDI_FIXING now transitions to TAB_GENERATION
+        assert orchestrator.session.state == WorkflowState.TAB_GENERATION
 
     def test_midi_fixing_step_not_approved(self, tmp_path):
         """Test MIDI fixing step stays in same state when not approved."""
@@ -293,7 +294,8 @@ class TestWorkflowSteps:
             )
             orchestrator._step_midi_fixing()
 
-        assert orchestrator.session.state == WorkflowState.HARMONICA_REVIEW
+        # MIDI_FIXING now transitions to TAB_GENERATION (validation/FPS moved there)
+        assert orchestrator.session.state == WorkflowState.TAB_GENERATION
         mock_validate.assert_called_once()
 
     def test_midi_fixing_with_validation_fail_proceed(self, tmp_path):
@@ -329,13 +331,10 @@ class TestWorkflowSteps:
             with patch("questionary.confirm") as mock_confirm:
                 # First call: "finished fixing?", Second call: "proceed anyway?"
                 mock_confirm.return_value.ask.side_effect = [True, True]
-                with patch("questionary.text") as mock_text:
-                    # FPS selection - "3" = 15 FPS
-                    mock_text.return_value.ask.return_value = "3"
-                    orchestrator._step_midi_fixing()
+                orchestrator._step_midi_fixing()
 
-        # Should proceed despite validation failure
-        assert orchestrator.session.state == WorkflowState.HARMONICA_REVIEW
+        # MIDI_FIXING now transitions to TAB_GENERATION
+        assert orchestrator.session.state == WorkflowState.TAB_GENERATION
 
     def test_midi_fixing_with_validation_fail_stay(self, tmp_path):
         """Test MIDI fixing step when validation fails and user chooses to fix."""
@@ -394,8 +393,8 @@ class TestWorkflowSteps:
             mock_validate.side_effect = Exception("Validation failed unexpectedly")
             orchestrator._step_midi_fixing()
 
-        # Should still proceed (don't block on validation errors)
-        assert orchestrator.session.state == WorkflowState.HARMONICA_REVIEW
+        # MIDI_FIXING now transitions to TAB_GENERATION
+        assert orchestrator.session.state == WorkflowState.TAB_GENERATION
 
     def test_midi_fixing_no_midi_file_skips_validation(self, tmp_path):
         """Test MIDI fixing step skips validation when MIDI file doesn't exist."""
@@ -411,26 +410,42 @@ class TestWorkflowSteps:
         with patch("utils.midi_validator.validate_midi") as mock_validate:
             orchestrator._step_midi_fixing()
 
-        # Should proceed without calling validation
-        assert orchestrator.session.state == WorkflowState.HARMONICA_REVIEW
+        # MIDI_FIXING now transitions to TAB_GENERATION (validation moved there)
+        assert orchestrator.session.state == WorkflowState.TAB_GENERATION
         mock_validate.assert_not_called()
 
     def test_fps_selection_stored_in_session(self, tmp_path):
-        """Test FPS selection is stored in session data."""
+        """Test FPS selection is stored in session data during TAB_GENERATION step."""
         orchestrator = WorkflowOrchestrator(
             input_video="MySong_KeyC.mp4",
             input_tabs="MySong.txt",
             session_dir=str(tmp_path / "sessions"),
             auto_approve=False,
         )
-        orchestrator.session.transition_to(WorkflowState.MIDI_FIXING)
+        orchestrator.session.transition_to(WorkflowState.TAB_GENERATION)
+        orchestrator.session.set_data("generated_midi", str(tmp_path / "test.mid"))
+
+        # Create dummy files
+        (tmp_path / "test.mid").touch()
+        tabs_path = tmp_path / "MySong.txt"
+        tabs_path.write_text("page 1:\n1 2 3")
+        orchestrator.session.input_tabs = str(tabs_path)
 
         with patch("questionary.confirm") as mock_confirm:
             mock_confirm.return_value.ask.return_value = True
             with patch("questionary.text") as mock_text:
                 # "1" = 5 FPS
                 mock_text.return_value.ask.return_value = "1"
-                orchestrator._step_midi_fixing()
+                with patch("utils.midi_validator.validate_midi") as mock_validate:
+                    from utils.midi_validator import ValidationResult
+
+                    mock_validate.return_value = ValidationResult(
+                        passed=True,
+                        total_midi_notes=3,
+                        total_expected_notes=3,
+                        issues=[],
+                    )
+                    orchestrator._step_tab_generation()
 
         # FPS should be stored in session
         assert orchestrator.session.get_data("fps") == 5
@@ -444,12 +459,97 @@ class TestWorkflowSteps:
             session_dir=str(tmp_path / "sessions"),
             auto_approve=True,
         )
-        orchestrator.session.transition_to(WorkflowState.MIDI_FIXING)
+        orchestrator.session.transition_to(WorkflowState.TAB_GENERATION)
+        orchestrator.session.set_data("generated_midi", str(tmp_path / "test.mid"))
 
-        orchestrator._step_midi_fixing()
+        # Create dummy files
+        (tmp_path / "test.mid").touch()
+        tabs_path = tmp_path / "MySong.txt"
+        tabs_path.write_text("page 1:\n1 2 3")
+        orchestrator.session.input_tabs = str(tabs_path)
+
+        with patch("utils.midi_validator.validate_midi") as mock_validate:
+            from utils.midi_validator import ValidationResult
+
+            mock_validate.return_value = ValidationResult(
+                passed=True, total_midi_notes=3, total_expected_notes=3, issues=[]
+            )
+            orchestrator._step_tab_generation()
 
         # Should use FPS from filename (20)
         assert orchestrator.session.get_data("fps") == 20
+        assert orchestrator.session.state == WorkflowState.HARMONICA_REVIEW
+
+    def test_tab_generation_offers_generation_when_file_missing(self, tmp_path):
+        """Test tab generation step offers to generate tabs when file doesn't exist."""
+        orchestrator = WorkflowOrchestrator(
+            input_video="MySong_KeyC.mp4",
+            input_tabs=str(tmp_path / "nonexistent.txt"),  # File doesn't exist
+            session_dir=str(tmp_path / "sessions"),
+            auto_approve=True,  # Will auto-generate tabs
+        )
+        orchestrator.session.transition_to(WorkflowState.TAB_GENERATION)
+        orchestrator.session.set_data("generated_midi", str(tmp_path / "test.mid"))
+
+        # Create dummy MIDI file
+        (tmp_path / "test.mid").touch()
+
+        with (
+            patch(
+                "interactive_workflow.orchestrator.WorkflowOrchestrator._generate_tabs_from_midi"
+            ) as mock_generate,
+            patch("utils.midi_validator.validate_midi") as mock_validate,
+        ):
+            from utils.midi_validator import ValidationResult
+
+            mock_validate.return_value = ValidationResult(
+                passed=True, total_midi_notes=3, total_expected_notes=3, issues=[]
+            )
+            # Mock the file to exist after generation
+            with patch(
+                "os.path.exists",
+                side_effect=lambda p: p == str(tmp_path / "test.mid")
+                or "_generate" in str(mock_generate.call_count),
+            ):
+                orchestrator._step_tab_generation()
+
+        # Should have called generate_tabs_from_midi
+        mock_generate.assert_called_once()
+        assert orchestrator.session.state == WorkflowState.HARMONICA_REVIEW
+
+    def test_tab_generation_skips_when_file_exists(self, tmp_path):
+        """Test tab generation step skips generation when tab file exists."""
+        # Create existing tab file
+        tabs_path = tmp_path / "MySong.txt"
+        tabs_path.write_text("page 1:\n1 2 3")
+
+        orchestrator = WorkflowOrchestrator(
+            input_video="MySong_KeyC.mp4",
+            input_tabs=str(tabs_path),
+            session_dir=str(tmp_path / "sessions"),
+            auto_approve=True,
+        )
+        orchestrator.session.transition_to(WorkflowState.TAB_GENERATION)
+        orchestrator.session.set_data("generated_midi", str(tmp_path / "test.mid"))
+
+        # Create dummy MIDI file
+        (tmp_path / "test.mid").touch()
+
+        with (
+            patch(
+                "interactive_workflow.orchestrator.WorkflowOrchestrator._generate_tabs_from_midi"
+            ) as mock_generate,
+            patch("utils.midi_validator.validate_midi") as mock_validate,
+        ):
+            from utils.midi_validator import ValidationResult
+
+            mock_validate.return_value = ValidationResult(
+                passed=True, total_midi_notes=3, total_expected_notes=3, issues=[]
+            )
+            orchestrator._step_tab_generation()
+
+        # Should NOT have called generate_tabs_from_midi (file exists)
+        mock_generate.assert_not_called()
         assert orchestrator.session.state == WorkflowState.HARMONICA_REVIEW
 
     def test_harmonica_review_step_approved(self, tmp_path):

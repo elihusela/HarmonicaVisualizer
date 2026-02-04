@@ -182,3 +182,37 @@ class TabMapper:
             "blow_holes": len([v for v in self._mapping.values() if v > 0]),
             "draw_holes": len([v for v in self._mapping.values() if v < 0]),
         }
+
+
+def create_tab_mapper(harmonica_key: str, output_path: str = "temp") -> TabMapper:
+    """
+    Factory function to create a properly configured TabMapper for a harmonica key.
+
+    This is the SINGLE source of truth for TabMapper configuration.
+    All consumers (cli.py, midi_validator.py, video_creator.py) should use this
+    function to ensure consistent MIDI-to-tab mapping behavior.
+
+    Args:
+        harmonica_key: Harmonica key (C, G, A, Bb, etc.)
+        output_path: Directory path for JSON debug output (default: "temp")
+
+    Returns:
+        Configured TabMapper instance
+
+    Raises:
+        ValueError: If harmonica_key is invalid
+    """
+    from harmonica_pipeline.harmonica_key_registry import get_harmonica_config
+    from tab_converter.consts import HARMONICA_BEND_MAPPINGS
+
+    # Get key configuration (raises ValueError if invalid)
+    key_config = get_harmonica_config(harmonica_key)
+
+    # Get bend mapping for this key (empty dict if not available)
+    bend_mapping = HARMONICA_BEND_MAPPINGS.get(harmonica_key.upper(), {})
+
+    return TabMapper(
+        harmonica_mapping=key_config.midi_mapping,
+        json_outputs_path=output_path,
+        bend_mapping=bend_mapping,
+    )

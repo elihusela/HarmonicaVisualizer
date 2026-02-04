@@ -38,6 +38,7 @@ class WorkflowOrchestrator:
     # Map CLI skip-to values to WorkflowState
     SKIP_TO_STATE_MAP = {
         "midi-fixing": WorkflowState.MIDI_FIXING,
+        "tab-generation": WorkflowState.TAB_GENERATION,
         "harmonica": WorkflowState.HARMONICA_REVIEW,
         "tabs": WorkflowState.TAB_VIDEO_REVIEW,
         "finalize": WorkflowState.FINALIZATION,
@@ -345,6 +346,8 @@ class WorkflowOrchestrator:
             self._step_midi_generation()
         elif state == WorkflowState.MIDI_FIXING:
             self._step_midi_fixing()
+        elif state == WorkflowState.TAB_GENERATION:
+            self._step_tab_generation()
         elif state == WorkflowState.HARMONICA_REVIEW:
             self._step_harmonica_review()
         elif state == WorkflowState.TAB_VIDEO_REVIEW:
@@ -642,9 +645,7 @@ class WorkflowOrchestrator:
             # else: stay in MIDI_FIXING state
 
         if proceed:
-            # Ask for FPS selection before video generation
-            self._select_fps()
-            self.session.transition_to(WorkflowState.HARMONICA_REVIEW)
+            self.session.transition_to(WorkflowState.TAB_GENERATION)
 
     def _validate_midi(self) -> bool:
         """Validate MIDI file against tab file.
@@ -751,6 +752,207 @@ class WorkflowOrchestrator:
         self.session.set_data("fps", fps)
         self.console.print(f"[green]✓ Using {fps} FPS for video generation[/green]")
 
+    def _step_tab_generation(self) -> None:
+        """Offer to generate tabs from MIDI, then validate.
+
+        Always offers to generate tabs from MIDI (will overwrite if file exists).
+        If user declines, returns to MIDI fixing step.
+        """
+        tabs_path = self.session.input_tabs
+        tab_file_exists = os.path.exists(tabs_path)
+
+        # Always offer to generate tabs
+        if tab_file_exists:
+            self.console.print(
+                Panel(
+                    f"[cyan]Tab file found[/cyan]\n\n"
+                    f"Path: {tabs_path}\n\n"
+                    "You can regenerate tabs from MIDI if needed.\n"
+                    "[dim]This will overwrite the existing file.[/dim]\n\n"
+                    "[dim]Press N to go back and fix MIDI first.[/dim]",
+                    title="📝 Tab Generation",
+                )
+            )
+            prompt = "Generate new tabs from MIDI?"
+            default = True
+        else:
+            self.console.print(
+                Panel(
+                    f"[yellow]Tab file not found[/yellow]\n\n"
+                    f"Expected: {tabs_path}\n\n"
+                    "You can generate tabs automatically from the MIDI file.\n"
+                    "The generated tabs may need manual editing.\n\n"
+                    "[dim]Press N to go back and fix MIDI first.[/dim]",
+                    title="📝 Tab Generation",
+                )
+            )
+            prompt = "Generate tabs from MIDI?"
+            default = True
+
+        # Ask about generation
+        if self.auto_approve:
+            # Auto-approve: generate only if file missing, otherwise continue with existing
+            if not tab_file_exists:
+                self._generate_tabs_from_midi()
+            # Always continue forward in auto-approve mode
+            if os.path.exists(tabs_path):
+                self._validate_midi()
+            else:
+                self.session.set_data("skip_tab_video", True)
+            self._select_fps()
+            self.session.transition_to(WorkflowState.HARMONICA_REVIEW)
+        else:
+            # Manual mode: ask user
+            generate_tabs = questionary.confirm(prompt, default=default).ask()
+
+            if generate_tabs:
+                self._generate_tabs_from_midi()
+
+                # Run validation after generation
+                if os.path.exists(tabs_path):
+                    self._validate_midi()
+
+                # Select FPS before video generation
+                self._select_fps()
+
+                self.session.transition_to(WorkflowState.HARMONICA_REVIEW)
+            else:
+                # User declined - offer to continue without tabs or go back
+                if tab_file_exists:
+                    # File exists, use it and continue
+                    self.console.print("[green]✓ Using existing tab file[/green]")
+                    self._validate_midi()
+                    self._select_fps()
+                    self.session.transition_to(WorkflowState.HARMONICA_REVIEW)
+                else:
+                    # No file - ask what to do
+                    continue_without = questionary.confirm(
+                        "Continue without tabs? (tab video will be skipped)",
+                        default=False,
+                    ).ask()
+
+                    if continue_without:
+                        self.console.print(
+                            "[yellow]⏭️  Skipping tab video generation[/yellow]"
+                        )
+                        self.session.set_data("skip_tab_video", True)
+                        self._select_fps()
+                        self.session.transition_to(WorkflowState.HARMONICA_REVIEW)
+                    else:
+                        self.console.print(
+                            "[yellow]⮌ Returning to MIDI fixing step.[/yellow]"
+                        )
+                        self.session.transition_to(WorkflowState.MIDI_FIXING)
+
+    def _generate_tabs_from_midi(self) -> None:
+        """Generate tab file from MIDI using the tab generator.
+
+        Uses the same logic as cli.py generate-tabs command.
+        """
+        from tab_converter.tab_generator import TabGenerator, TabGeneratorConfig
+        from tab_converter.tab_mapper import create_tab_mapper
+        from harmonica_pipeline.midi_processor import MidiProcessor
+        from utils.utils import TAB_FILES_DIR
+
+        midi_path = self.session.get_data("generated_midi")
+        harmonica_key = self.session.config.get("key", "C")
+        output_path = self.session.input_tabs
+
+        if not midi_path or not os.path.exists(midi_path):
+            self.console.print("[red]✗ Cannot generate tabs: MIDI file not found[/red]")
+            return
+
+        self.console.print(
+            Panel(
+                f"[cyan]Generating tabs from MIDI[/cyan]\n\n"
+                f"MIDI: {midi_path}\n"
+                f"Key: {harmonica_key}\n"
+                f"Output: {output_path}",
+                title="📝 Tab Generation",
+            )
+        )
+
+        try:
+            # Load MIDI and convert to note events
+            processor = MidiProcessor(midi_path)
+            note_events = processor.load_note_events()
+
+            # Convert to tabs using factory function
+            mapper = create_tab_mapper(harmonica_key, output_path="temp")
+            tabs = mapper.note_events_to_tabs(note_events)
+
+            # Generate tab file with default formatting
+            config = TabGeneratorConfig(
+                notes_per_line=6,
+                notes_per_page=24,
+            )
+            generator = TabGenerator(config)
+            content = generator.generate(tabs)
+
+            # Write to file
+            os.makedirs(os.path.dirname(output_path), exist_ok=True)
+            with open(output_path, "w") as f:
+                f.write(content)
+
+            self.console.print(f"[green]✓ Generated tabs: {output_path}[/green]")
+
+            # Check if notes seem too high (wrong octave detection)
+            self._check_octave_warning(tabs)
+
+            # Open the tab file folder for user to review/edit
+            self._open_folder(TAB_FILES_DIR)
+
+            # Pause for user to review the generated tabs
+            if not self.auto_approve:
+                questionary.confirm(
+                    "Review/edit the generated tabs, then press Enter to continue",
+                    default=True,
+                ).ask()
+
+        except Exception as e:
+            self.console.print(f"[red]✗ Tab generation failed: {e}[/red]")
+
+    def _check_octave_warning(self, tabs) -> None:
+        """Check if generated tabs suggest MIDI is in wrong octave.
+
+        If most notes are in holes 7-10, the MIDI might be an octave too high.
+        Shows a warning to help user identify pitch detection issues.
+        """
+        if not tabs or not tabs.tabs:
+            return
+
+        # Count notes in upper register (holes 7-10, including draws)
+        upper_register = 0
+        middle_register = 0
+        lower_register = 0
+
+        for tab_entry in tabs.tabs:
+            hole = abs(tab_entry.tab)
+            if hole >= 7:
+                upper_register += 1
+            elif hole >= 4:
+                middle_register += 1
+            else:
+                lower_register += 1
+
+        total = len(tabs.tabs)
+        upper_percent = (upper_register / total) * 100 if total > 0 else 0
+
+        # If more than 60% of notes are in upper register, warn user
+        if upper_percent > 60:
+            self.console.print(
+                Panel(
+                    f"[yellow]⚠️  Most notes ({upper_percent:.0f}%) are in holes 7-10[/yellow]\n\n"
+                    f"Upper register (7-10): {upper_register} notes\n"
+                    f"Middle register (4-6): {middle_register} notes\n"
+                    f"Lower register (1-3): {lower_register} notes\n\n"
+                    "This often means the MIDI is [bold]one octave too high[/bold].\n\n"
+                    "[cyan]Fix:[/cyan] Transpose the MIDI down 12 semitones in your DAW,\n"
+                    "then regenerate tabs.",
+                    title="🎵 Octave Warning",
+                )
+            )
+
     def _step_harmonica_review(self) -> None:
         """Generate harmonica animation and wait for user approval.
 
@@ -851,6 +1053,14 @@ class WorkflowOrchestrator:
         Generates the full tab page animation video (compositor) and allows
         user to review it. If not approved, user can go back to MIDI fixing.
         """
+        # Check if tab video should be skipped (no tab file)
+        if self.session.get_data("skip_tab_video"):
+            self.console.print(
+                "[yellow]⏭️  Skipping tab video generation (no tab file)[/yellow]"
+            )
+            self.session.transition_to(WorkflowState.FINALIZATION)
+            return
+
         from harmonica_pipeline.video_creator import VideoCreator
         from harmonica_pipeline.video_creator_config import VideoCreatorConfig
         from harmonica_pipeline.harmonica_key_registry import get_harmonica_config

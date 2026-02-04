@@ -10,7 +10,7 @@ from dataclasses import dataclass
 from harmonica_pipeline.midi_processor import MidiProcessor
 from harmonica_pipeline.harmonica_key_registry import get_harmonica_config
 from tab_converter.consts import HARMONICA_BEND_MAPPINGS
-from tab_converter.tab_mapper import TabMapper
+from tab_converter.tab_mapper import create_tab_mapper
 from tab_phrase_animator.tab_text_parser import TabTextParser
 from utils.utils import TEMP_DIR
 
@@ -75,23 +75,19 @@ class MidiValidator:
         self.tab_path = tab_path
         self.harmonica_key = harmonica_key
 
-        # Get key configuration
+        # Get key configuration for unmappable note detection
         try:
             key_config = get_harmonica_config(harmonica_key)
         except ValueError as e:
             raise ValueError(f"Invalid harmonica key '{harmonica_key}': {e}")
 
-        # Store the MIDI mapping for unmappable note detection
+        # Store mappings for unmappable note detection
         self.midi_mapping = key_config.midi_mapping
-
-        # Get bend mapping for this key (if available)
         self.bend_mapping = HARMONICA_BEND_MAPPINGS.get(harmonica_key.upper(), {})
 
-        # Initialize processors
+        # Initialize processors using factory function (ensures consistent mapping)
         self.midi_processor = MidiProcessor(midi_path)
-        self.tab_mapper = TabMapper(
-            key_config.midi_mapping, TEMP_DIR, bend_mapping=self.bend_mapping
-        )
+        self.tab_mapper = create_tab_mapper(harmonica_key, output_path=TEMP_DIR)
         self.tab_text_parser = TabTextParser(tab_path)
 
     def validate(self) -> ValidationResult:

@@ -155,7 +155,7 @@ class TestVideoCreatorValidation:
         (temp_test_dir / "harmonica.png").write_text("dummy")
         (temp_test_dir / "test.mid").write_text("dummy")
 
-        with pytest.raises(VideoCreatorError, match="Tab file not found"):
+        with pytest.raises(VideoCreatorError, match="Tabs file not found"):
             VideoCreator(config)
 
     @pytest.mark.parametrize(
@@ -650,6 +650,41 @@ class TestVideoCreatorSelectiveCreation:
         mock_animator.create_animation.assert_called_once()
         mock_tab_animator.create_animations.assert_not_called()
 
+    def test_create_harmonica_only_without_tab_file(
+        self, basic_config, create_video_creator_with_mocks, mock_empty_tabs
+    ):
+        """Test harmonica-only creation uses direct MIDI structure when no tab file."""
+        # Set up for harmonica-only mode
+        basic_config.produce_tabs = False
+        basic_config.produce_full_tab_video = False
+        creator = create_video_creator_with_mocks(basic_config)
+
+        # Simulate no tabs file
+        creator.tabs_text_parser = None
+
+        mock_animator = MagicMock()
+        mock_tab_animator = MagicMock()
+        creator.animator = mock_animator
+        creator.tab_phrase_animator = mock_tab_animator
+
+        # Mock internal methods
+        creator._extract_audio = MagicMock()
+        creator._load_midi_note_events = MagicMock(return_value=[])
+        creator._note_events_to_tabs = MagicMock(return_value=mock_empty_tabs)
+        creator._create_direct_tabs_structure = MagicMock(return_value={"page_1": [[]]})
+        creator._create_text_based_structure = MagicMock()
+        creator._get_audio_duration = MagicMock(return_value=10.0)
+
+        # Create harmonica video only
+        creator.create(create_harmonica=True, create_tabs=False)
+
+        # Should use direct MIDI structure (not text-based)
+        creator._create_direct_tabs_structure.assert_called_once()
+        creator._create_text_based_structure.assert_not_called()
+
+        # Should create harmonica animation
+        mock_animator.create_animation.assert_called_once()
+
 
 class TestVideoCreatorIntegration:
     """Test integration with other components."""
@@ -759,7 +794,7 @@ class TestVideoCreatorCoverageGaps:
         from unittest.mock import patch
 
         with patch(
-            "harmonica_pipeline.video_creator.TabMapper",
+            "harmonica_pipeline.video_creator.create_tab_mapper",
             side_effect=RuntimeError("General error"),
         ):
             with pytest.raises(
