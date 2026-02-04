@@ -7,87 +7,15 @@ Generates animated harmonica tablature videos from input videos, tab files, and 
 - Uses Poetry for dependency management
 - Has pre-commit hooks configured
 - MIDI files stored in `fixed_midis/` directory
-- **Test Coverage**: 99% (738 tests passing)
+- **Test Coverage**: 99% (759 tests passing)
 
 ---
 
-## Active Development Branches
-
-### `feature/auto-tab-generation`
-**Purpose:** Generate .txt tab files from MIDI automatically
-
-**Command:** `python cli.py generate-tabs TimeofYourLife_fixed.mid --key G`
-
-**Status:** Complete - ready to merge
-
-**Progress:**
-- [x] Design tab file output format (pages, lines, chords)
-- [x] Implement MIDI → hole number mapping using existing TabMapper
-- [x] Add CLI command `generate-tabs`
-- [x] Handle page breaks (auto or configurable notes per page)
-- [x] Add 20 tests for TabGenerator
-- [x] Chord detection (simultaneous notes → 56, -4-5)
-
-**CLI Options:**
-```bash
-python cli.py generate-tabs MySong_fixed.mid --key G
-python cli.py generate-tabs MySong_fixed.mid --key G --output CustomName.txt
-python cli.py generate-tabs MySong_fixed.mid --key G --notes-per-line 5
-python cli.py generate-tabs MySong_fixed.mid --key G --notes-per-page 20
-```
-
-**Use case:** Quick starting point - generates structure from MIDI, user fixes mistakes
-
----
-
-### `feature/stem-splitting`
-**Purpose:** Separate harmonica from guitar/background using Demucs AI
-
-**Status:** Complete - ready to merge
-
-**How it works:**
-When running `python cli.py interactive MySong_KeyC_Stem.mp4`:
-1. Workflow detects `_Stem` flag and asks "Run Demucs stem separation?"
-2. If Yes → Runs Demucs 6-stem model → Auto-uses "other.mp3" (where harmonica ends up)
-3. If No → Manual file selection from video-files/
-4. Continues with MIDI generation from the selected audio
-
-**CLI Command:** `python cli.py split-stems` - Standalone stem separation
-```bash
-python cli.py split-stems MySong.mp4                    # Separate into 6 stems
-python cli.py split-stems MySong.mp4 --output-dir my_stems  # Custom output dir
-python cli.py split-stems MySong.mp4 --stem vocals      # Highlight vocals instead of other
-```
-
-**Test Script:** `scripts/test_demucs.py` - Standalone script to test Demucs
-```bash
-python scripts/test_demucs.py --check-gpu           # Check GPU availability
-python scripts/test_demucs.py video-files/MySong.mp4  # Run 6-stem separation
-```
-
-**Progress:**
-- [x] Create standalone Demucs test script (scripts/test_demucs.py)
-- [x] Test Demucs on sample files (pianoman worked well)
-- [x] Implement StemSeparator class (utils/stem_separator.py)
-- [x] Handle GPU/CPU fallback (CUDA > MPS > CPU)
-- [x] Integrate with interactive workflow
-- [x] Add 21 tests for stem separator
-- [x] Add Demucs dependency to pyproject.toml
-- [x] Add standalone CLI command `split-stems`
-
-**Technical details:**
-- Model: `htdemucs_6s` (6 stems: vocals, drums, bass, guitar, piano, other)
-- Output: MP3 format (workaround for torchcodec compatibility)
-- GPU: Auto-detects CUDA/MPS, falls back to CPU
-- Harmonica typically ends up in "other" stem
-
-**Use case:** One-stop workflow - no external tools needed for stem separation
-
----
-
-### Archived Branches
+## Archived Branches
 | Branch | Merged To | Date | Summary |
 |--------|-----------|------|---------|
+| `feature/auto-tab-generation` | `main` | 2026-02-04 | Tab generation from MIDI, optional tabs, octave warning, bend mappings |
+| `feature/stem-splitting` | `main` | 2026-02-04 | Demucs AI stem separation, split-stems CLI, workflow integration |
 | `feature/interactive-workflow` | `main` | 2026-01-21 | Interactive workflow, MIDI validation, parallel support, 3-note chords |
 
 **Archived brainstorm files:** `archive/brainstorm_interactive-workflow.md`
@@ -306,36 +234,18 @@ Split video into segments for 70-90% render time reduction:
 
 ### Lower Priority
 
-1. **Stem Splitting** - Separate harmonica from guitar/background using Demucs AI
-   - Command: `python cli.py split-stems MySong.mp4 --output stems/`
-   - Outputs: vocals.wav, drums.wav, bass.wav, other.wav
-   - User picks best stem → `generate-midi stems/vocals.wav`
-
-2. **Visual Gap Bug Fix** - Force gap between consecutive identical notes
+1. **Visual Gap Bug Fix** - Force gap between consecutive identical notes
    - Fix: `image_converter/animator.py:19-30` - remove overlap check, always create gap
    - Increase gap: 0.1s → 0.15s
 
-3. **FPS Optimization** - Configurable FPS for tab/harmonica animations
-   - CLI: `--tabs-fps 15 --harmonica-fps 15`
-   - Default 15fps saves ~50% render time/file size
-
-4. **Cleanup Individual Pages** - Optional deletion of page videos after compositor
-   - CLI: `--no-keep-individual-pages`
-   - Keeps only full video, deletes page1.mov, page2.mov, etc.
-
-5. **Auto-Tab Generation** - Generate .txt files from MIDI automatically
-   - Command: `python cli.py generate-tabs isntshelovelytwins_fixed.mid`
-   - User edits .txt → `create-video MySong.wav MySong.txt`
-   - Quick fix workflow for tab mistakes
-
-6. **Better MIDI Libraries** - Benchmark alternatives to basic_pitch (experimental)
+2. **Better MIDI Libraries** - Benchmark alternatives to basic_pitch (experimental)
    - Test: Magenta mt3, crepe, pyin
    - Implement if >10% improvement found
 
 ## Quick Reference
 
 **When implementing next feature:**
-1. Check planned features list (order: Stem Split → Visual Gap → FPS → Cleanup → Auto-tabs → MIDI benchmark)
+1. Check planned features list
 2. Follow implementation steps
 3. Run tests
 4. Commit with descriptive message
