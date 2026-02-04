@@ -21,6 +21,7 @@ class WorkflowState(Enum):
     - STEM_SELECTION: Waiting for user to select stem (if enabled)
     - MIDI_GENERATION: Generating MIDI from audio
     - MIDI_FIXING: Waiting for user to fix MIDI in DAW
+    - TAB_GENERATION: Generate tabs from MIDI (optional, if no tab file exists)
     - HARMONICA_REVIEW: Waiting for user to approve harmonica video
     - TAB_VIDEO_REVIEW: Waiting for user to approve tab video
     - FINALIZATION: Creating final package, cleanup
@@ -32,6 +33,7 @@ class WorkflowState(Enum):
     STEM_SELECTION = "stem_selection"
     MIDI_GENERATION = "midi_generation"
     MIDI_FIXING = "midi_fixing"
+    TAB_GENERATION = "tab_generation"
     HARMONICA_REVIEW = "harmonica_review"
     TAB_VIDEO_REVIEW = "tab_video_review"
     FINALIZATION = "finalization"
@@ -246,7 +248,8 @@ class WorkflowSession:
             WorkflowState.INIT: 0,
             WorkflowState.STEM_SELECTION: 10,
             WorkflowState.MIDI_GENERATION: 25,
-            WorkflowState.MIDI_FIXING: 40,
+            WorkflowState.MIDI_FIXING: 35,
+            WorkflowState.TAB_GENERATION: 45,
             WorkflowState.HARMONICA_REVIEW: 55,
             WorkflowState.TAB_VIDEO_REVIEW: 75,
             WorkflowState.FINALIZATION: 90,

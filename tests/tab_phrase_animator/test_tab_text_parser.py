@@ -922,3 +922,99 @@ class TestTabTextParserBendNotation:
         assert line[4][0].is_bend is False
         assert line[5][0].hole_number == -2
         assert line[5][0].is_bend is False
+
+
+class TestTabTextParserHole10:
+    """Test parsing of hole 10 (two-digit hole number)."""
+
+    def test_parse_blow_10(self, temp_test_dir):
+        """Test parsing blow 10 note."""
+        test_file = temp_test_dir / "blow_10.txt"
+        test_file.write_text("Page 1:\n8 9 10")
+
+        parser = TabTextParser(str(test_file))
+        pages = parser.get_pages()
+
+        line = pages["Page 1"][0]
+        assert len(line) == 3
+        assert line[0][0].hole_number == 8
+        assert line[1][0].hole_number == 9
+        assert line[2][0].hole_number == 10
+
+    def test_parse_draw_10(self, temp_test_dir):
+        """Test parsing draw 10 note."""
+        test_file = temp_test_dir / "draw_10.txt"
+        test_file.write_text("Page 1:\n-8 -9 -10")
+
+        parser = TabTextParser(str(test_file))
+        pages = parser.get_pages()
+
+        line = pages["Page 1"][0]
+        assert len(line) == 3
+        assert line[0][0].hole_number == -8
+        assert line[1][0].hole_number == -9
+        assert line[2][0].hole_number == -10
+
+    def test_parse_chord_with_910(self, temp_test_dir):
+        """Test parsing chord 910 (holes 9 and 10 together)."""
+        test_file = temp_test_dir / "chord_910.txt"
+        test_file.write_text("Page 1:\n910 -910")
+
+        parser = TabTextParser(str(test_file))
+        pages = parser.get_pages()
+
+        line = pages["Page 1"][0]
+        assert len(line) == 2
+
+        # Blow chord 9+10
+        assert len(line[0]) == 2
+        assert line[0][0].hole_number == 9
+        assert line[0][1].hole_number == 10
+
+        # Draw chord -9-10
+        assert len(line[1]) == 2
+        assert line[1][0].hole_number == -9
+        assert line[1][1].hole_number == -10
+
+    def test_parse_10_with_bend(self, temp_test_dir):
+        """Test parsing hole 10 with bend notation."""
+        test_file = temp_test_dir / "bend_10.txt"
+        test_file.write_text("Page 1:\n10' -10'")
+
+        parser = TabTextParser(str(test_file))
+        pages = parser.get_pages()
+
+        line = pages["Page 1"][0]
+        assert len(line) == 2
+
+        assert line[0][0].hole_number == 10
+        assert line[0][0].is_bend is True
+        assert line[1][0].hole_number == -10
+        assert line[1][0].is_bend is True
+
+    def test_parse_mixed_with_10(self, temp_test_dir):
+        """Test parsing mixed notes including hole 10."""
+        test_file = temp_test_dir / "mixed_10.txt"
+        test_file.write_text("Page 1:\n-10 -10 -10 9 9\n9 -10 -10 -10 9 -10")
+
+        parser = TabTextParser(str(test_file))
+        pages = parser.get_pages()
+
+        # First line
+        line1 = pages["Page 1"][0]
+        assert len(line1) == 5
+        assert line1[0][0].hole_number == -10
+        assert line1[1][0].hole_number == -10
+        assert line1[2][0].hole_number == -10
+        assert line1[3][0].hole_number == 9
+        assert line1[4][0].hole_number == 9
+
+        # Second line
+        line2 = pages["Page 1"][1]
+        assert len(line2) == 6
+        assert line2[0][0].hole_number == 9
+        assert line2[1][0].hole_number == -10
+        assert line2[2][0].hole_number == -10
+        assert line2[3][0].hole_number == -10
+        assert line2[4][0].hole_number == 9
+        assert line2[5][0].hole_number == -10

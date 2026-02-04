@@ -14,7 +14,7 @@ from image_converter.animator import Animator
 from image_converter.figure_factory import FigureFactory
 from image_converter.harmonica_layout import HarmonicaLayout
 from tab_converter.models import Tabs, TabEntry
-from tab_converter.tab_mapper import TabMapper
+from tab_converter.tab_mapper import create_tab_mapper
 from tab_phrase_animator.full_tab_video_compositor import (
     FullTabVideoCompositor,
     CompositorConfig,
@@ -82,9 +82,16 @@ class VideoCreator:
                 produce_tabs=produce_tabs,
             )
 
+        # Determine if tabs are required (only if producing tab videos)
+        tabs_required = config.produce_tabs or config.produce_full_tab_video
+
         # Validate input files
         self._validate_input_files(
-            config.video_path, config.tabs_path, config.harmonica_path, config.midi_path
+            config.video_path,
+            config.tabs_path,
+            config.harmonica_path,
+            config.midi_path,
+            tabs_required=tabs_required,
         )
 
         # Store configuration
@@ -108,20 +115,23 @@ class VideoCreator:
 
             # MIDI and tab processing setup
             self.midi_processor = MidiProcessor(config.midi_path)
-            # Use key-specific MIDI mapping from config
-            self.tab_mapper = TabMapper(config._key_config.midi_mapping, self.temp_dir)
+            # Use factory function for consistent MIDI mapping across all consumers
+            self.tab_mapper = create_tab_mapper(
+                config.harmonica_key, output_path=self.temp_dir
+            )
 
-            # Tab text parsing setup (always load to preserve bend notation)
-            # The harmonica animation also needs bend info from the .txt file
+            # Tab text parsing setup (only if tabs file exists)
             self.tabs_text_parser: Optional[TabTextParser]
-            self.tabs_text_parser = TabTextParser(config.tabs_path)
-            print(f"📖 Loaded tab text file: {config.tabs_path}")
+            if os.path.exists(config.tabs_path):
+                self.tabs_text_parser = TabTextParser(config.tabs_path)
+                print(f"📖 Loaded tab text file: {config.tabs_path}")
+            else:
+                self.tabs_text_parser = None
+                print("📝 No tab file - harmonica-only mode")
 
-            # Tab matching setup (optional)
+            # Tab matching setup (optional, requires tabs file)
             self.tab_matcher: Optional[TabMatcher]
-            if config.enable_tab_matching:
-                if not self.tabs_text_parser:
-                    self.tabs_text_parser = TabTextParser(config.tabs_path)
+            if config.enable_tab_matching and self.tabs_text_parser:
                 self.tab_matcher = TabMatcher(enable_debug=False)
                 print("🔍 Tab matching enabled (experimental)")
             else:
@@ -176,20 +186,31 @@ class VideoCreator:
         return cls(config)
 
     def _validate_input_files(
-        self, video_path: str, tabs_path: str, harmonica_path: str, midi_path: str
+        self,
+        video_path: str,
+        tabs_path: str,
+        harmonica_path: str,
+        midi_path: str,
+        tabs_required: bool = True,
     ) -> None:
         """
         Validate that all required input files exist.
+
+        Args:
+            tabs_required: If False, skip validation of tabs_path (for harmonica-only mode)
 
         Raises:
             VideoCreatorError: If any required files are missing
         """
         files_to_check = [
             (video_path, "Video file"),
-            (tabs_path, "Tab file"),
             (harmonica_path, "Harmonica model image"),
             (midi_path, "MIDI file"),
         ]
+
+        # Only require tabs file if tabs_required is True
+        if tabs_required:
+            files_to_check.append((tabs_path, "Tabs file"))
 
         for file_path, file_type in files_to_check:
             if not os.path.exists(file_path):
@@ -199,7 +220,7 @@ class VideoCreator:
         if not video_path.lower().endswith((".mp4", ".mov", ".avi", ".m4v", ".wav")):
             raise VideoCreatorError(f"Unsupported video format: {video_path}")
 
-        if not tabs_path.lower().endswith(".txt"):
+        if tabs_required and not tabs_path.lower().endswith(".txt"):
             raise VideoCreatorError(f"Tab file must be .txt format: {tabs_path}")
 
         if not harmonica_path.lower().endswith((".png", ".jpg", ".jpeg")):
@@ -228,10 +249,14 @@ class VideoCreator:
         note_events = self._load_midi_note_events()
         tabs = self._note_events_to_tabs(note_events)
 
-        # Always use .txt file structure to preserve bend notation
-        # This applies to both tab phrase animations AND harmonica animations
-        print("🎯 Using .txt file structure (preserves bend notation)...")
-        matched_tabs = self._create_text_based_structure(tabs)
+        # Use .txt file structure if available (preserves bend notation)
+        # Otherwise use direct MIDI structure for harmonica-only mode
+        if self.tabs_text_parser:
+            print("🎯 Using .txt file structure (preserves bend notation)...")
+            matched_tabs = self._create_text_based_structure(tabs)
+        else:
+            print("🎯 Using direct MIDI structure (harmonica-only mode)...")
+            matched_tabs = self._create_direct_tabs_structure(tabs)
 
         if create_harmonica:
             print("🎬 Creating harmonica animation...")

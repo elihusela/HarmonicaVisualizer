@@ -26,18 +26,25 @@ class TabMapper:
     and creates properly timed TabEntry objects.
     """
 
-    def __init__(self, harmonica_mapping: Dict[int, int], json_outputs_path: str):
+    def __init__(
+        self,
+        harmonica_mapping: Dict[int, int],
+        json_outputs_path: str,
+        bend_mapping: Dict[int, Tuple[int, str]] | None = None,
+    ):
         """
         Initialize tab mapper.
 
         Args:
             harmonica_mapping: Dict mapping MIDI pitch (60-96) to harmonica holes
             json_outputs_path: Directory path for saving JSON debug files
+            bend_mapping: Optional dict mapping MIDI pitch to (hole, bend_notation)
         """
         if not harmonica_mapping:
             raise TabMapperError("Harmonica mapping cannot be empty")
 
         self._mapping = harmonica_mapping
+        self._bend_mapping = bend_mapping or {}
         self._json_outputs_path = Path(json_outputs_path)
         self._json_outputs_path.mkdir(parents=True, exist_ok=True)
 
@@ -95,8 +102,21 @@ class TabMapper:
         """
         event = NoteEvent(*event_tuple)
 
-        # Check if pitch is in harmonica mapping
-        if event.pitch not in self._mapping:
+        # Check regular mapping first (pure notes take priority over bends)
+        # Only use bend if the pitch is NOT available as a pure note
+        is_bend = False
+        bend_notation = ""
+        tab_hole = None
+
+        if event.pitch in self._mapping:
+            # Pure note available - use it
+            tab_hole = self._mapping[event.pitch]
+        elif event.pitch in self._bend_mapping:
+            # No pure note, but bend is available
+            tab_hole, bend_notation = self._bend_mapping[event.pitch]
+            is_bend = True
+        else:
+            # Pitch not mappable
             return None
 
         # Validate timing
@@ -105,18 +125,9 @@ class TabMapper:
             return None
 
         # Create tab entry with rounded values for precision
-        tab_hole = self._mapping[event.pitch]
         start_time = round(event.start_time, 5)
         duration = round(event.end_time - event.start_time, 5)
         confidence = round(event.confidence, 5)
-
-        # TODO: Add MIDI bend detection
-        # Currently, bend notation is only supported in .txt files.
-        # Future enhancement: Detect pitch bends from MIDI pitch bend events
-        # and automatically set is_bend=True for bent notes.
-        # This would require analyzing MIDI pitch bend messages and correlating
-        # them with note events.
-        is_bend = False
 
         return TabEntry(
             tab=tab_hole,
@@ -124,6 +135,7 @@ class TabMapper:
             duration=duration,
             confidence=confidence,
             is_bend=is_bend,
+            bend_notation=bend_notation,
         )
 
     def save_tabs_to_json(self, tabs: Tabs, filename: str) -> None:
@@ -170,3 +182,37 @@ class TabMapper:
             "blow_holes": len([v for v in self._mapping.values() if v > 0]),
             "draw_holes": len([v for v in self._mapping.values() if v < 0]),
         }
+
+
+def create_tab_mapper(harmonica_key: str, output_path: str = "temp") -> TabMapper:
+    """
+    Factory function to create a properly configured TabMapper for a harmonica key.
+
+    This is the SINGLE source of truth for TabMapper configuration.
+    All consumers (cli.py, midi_validator.py, video_creator.py) should use this
+    function to ensure consistent MIDI-to-tab mapping behavior.
+
+    Args:
+        harmonica_key: Harmonica key (C, G, A, Bb, etc.)
+        output_path: Directory path for JSON debug output (default: "temp")
+
+    Returns:
+        Configured TabMapper instance
+
+    Raises:
+        ValueError: If harmonica_key is invalid
+    """
+    from harmonica_pipeline.harmonica_key_registry import get_harmonica_config
+    from tab_converter.consts import HARMONICA_BEND_MAPPINGS
+
+    # Get key configuration (raises ValueError if invalid)
+    key_config = get_harmonica_config(harmonica_key)
+
+    # Get bend mapping for this key (empty dict if not available)
+    bend_mapping = HARMONICA_BEND_MAPPINGS.get(harmonica_key.upper(), {})
+
+    return TabMapper(
+        harmonica_mapping=key_config.midi_mapping,
+        json_outputs_path=output_path,
+        bend_mapping=bend_mapping,
+    )

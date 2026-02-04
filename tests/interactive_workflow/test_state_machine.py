@@ -361,7 +361,10 @@ class TestWorkflowSessionUtilities:
         assert session.get_progress_percentage() == 25
 
         session.transition_to(WorkflowState.MIDI_FIXING)
-        assert session.get_progress_percentage() == 40
+        assert session.get_progress_percentage() == 35
+
+        session.transition_to(WorkflowState.TAB_GENERATION)
+        assert session.get_progress_percentage() == 45
 
         session.transition_to(WorkflowState.HARMONICA_REVIEW)
         assert session.get_progress_percentage() == 55
