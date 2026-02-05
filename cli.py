@@ -213,6 +213,17 @@ Examples:
         help="Buffer time (seconds) before/after notes on each tab page. "
         "Increase if pages overlap or vanish early. Default: 0.1",
     )
+    video_parser.add_argument(
+        "--fix-overlaps",
+        action="store_true",
+        help="Auto-fix overlapping MIDI notes (truncates slight overlaps, preserves chords)",
+    )
+    video_parser.add_argument(
+        "--chord-threshold",
+        type=float,
+        default=50.0,
+        help="Notes starting within this threshold (ms) are treated as chords. Default: 50",
+    )
 
     # Full pipeline (for testing)
     full_parser = subparsers.add_parser(
@@ -504,6 +515,8 @@ def create_video_phase(
     no_full_tab_video: bool = False,
     only_full_tab_video: bool = False,
     tab_page_buffer: float = 0.1,
+    fix_overlaps: bool = False,
+    chord_threshold: float = 50.0,
 ) -> None:
     """Phase 2: Create video from fixed MIDI."""
     from harmonica_pipeline.video_creator import VideoCreator
@@ -586,6 +599,8 @@ def create_video_phase(
         only_full_tab_video=only_full_tab_video,
         harmonica_key=harmonica_key,
         tab_page_buffer=tab_page_buffer,
+        fix_overlaps=fix_overlaps,
+        chord_threshold_ms=chord_threshold,
     )
 
     creator = VideoCreator(config)
@@ -609,6 +624,8 @@ def full_pipeline(
     no_full_tab_video: bool = False,
     only_full_tab_video: bool = False,
     tab_page_buffer: float = 0.1,
+    fix_overlaps: bool = False,
+    chord_threshold: float = 50.0,
 ) -> None:
     """Run complete pipeline for testing (no manual MIDI editing)."""
     print("🎬 Starting Full Pipeline (Testing Mode)")
@@ -632,6 +649,8 @@ def full_pipeline(
         no_full_tab_video,
         only_full_tab_video,
         tab_page_buffer,
+        fix_overlaps,
+        chord_threshold,
     )
 
 
@@ -1061,6 +1080,8 @@ def main():
                 args.no_full_tab_video,
                 args.only_full_tab_video,
                 args.tab_page_buffer,
+                args.fix_overlaps,
+                args.chord_threshold,
             )
 
         elif args.command == "full":

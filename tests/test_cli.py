@@ -480,6 +480,8 @@ class TestFullPipeline:
             False,
             False,
             0.1,  # Default tab_page_buffer
+            False,  # fix_overlaps
+            50.0,  # chord_threshold
         )
 
         captured = capsys.readouterr()
@@ -514,6 +516,8 @@ class TestFullPipeline:
             False,
             False,
             0.1,
+            False,  # fix_overlaps
+            50.0,  # chord_threshold
         )
 
 
@@ -557,6 +561,8 @@ class TestMain:
             False,
             False,
             0.1,  # Default tab_page_buffer
+            False,  # fix_overlaps
+            50.0,  # chord_threshold
         )
 
     @patch("cli.full_pipeline")
@@ -641,6 +647,8 @@ class TestMain:
             False,
             False,
             0.1,  # Default tab_page_buffer
+            False,  # fix_overlaps
+            50.0,  # chord_threshold
         )
 
     @patch("cli.create_video_phase")
@@ -662,6 +670,8 @@ class TestMain:
             False,
             False,
             0.1,  # Default tab_page_buffer
+            False,  # fix_overlaps
+            50.0,  # chord_threshold
         )
 
     @patch("cli.create_video_phase")
@@ -683,6 +693,8 @@ class TestMain:
             False,
             False,
             0.1,  # Default tab_page_buffer
+            False,  # fix_overlaps
+            50.0,  # chord_threshold
         )
 
 

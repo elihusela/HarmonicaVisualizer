@@ -278,6 +278,10 @@ class VideoCreator:
 
     def _load_midi_note_events(self) -> List[Tuple[float, float, int, float, float]]:
         """Load note events from the fixed MIDI file."""
+        if self.config.fix_overlaps:
+            return self.midi_processor.load_note_events_fixed(
+                chord_threshold_ms=self.config.chord_threshold_ms
+            )
         return self.midi_processor.load_note_events()
 
     def _note_events_to_tabs(self, note_events: List[Tuple]) -> Tabs:

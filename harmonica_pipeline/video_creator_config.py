@@ -40,6 +40,10 @@ class VideoCreatorConfig:
     temp_dir: Optional[str] = (
         None  # Project-specific temp directory (defaults to global TEMP_DIR)
     )
+    fix_overlaps: bool = False  # Auto-fix overlapping MIDI notes (preserves chords)
+    chord_threshold_ms: float = (
+        50.0  # Notes within this threshold are treated as chords
+    )
 
     def __post_init__(self) -> None:
         """Validate configuration after initialization."""
@@ -111,6 +115,8 @@ class VideoCreatorConfig:
         tab_page_buffer: float = 0.1,
         fps: int = 15,
         temp_dir: Optional[str] = None,
+        fix_overlaps: bool = False,
+        chord_threshold_ms: float = 50.0,
     ) -> "VideoCreatorConfig":
         """
         Create configuration from CLI arguments.
@@ -129,6 +135,8 @@ class VideoCreatorConfig:
             tab_page_buffer: Buffer time (seconds) before/after notes on each tab page
             fps: Frames per second for video generation
             temp_dir: Project-specific temp directory (defaults to global TEMP_DIR)
+            fix_overlaps: Auto-fix overlapping MIDI notes (preserves chords)
+            chord_threshold_ms: Notes within this threshold are treated as chords
 
         Returns:
             VideoCreatorConfig instance
@@ -147,4 +155,6 @@ class VideoCreatorConfig:
             tab_page_buffer=tab_page_buffer,
             fps=fps,
             temp_dir=temp_dir,
+            fix_overlaps=fix_overlaps,
+            chord_threshold_ms=chord_threshold_ms,
         )
