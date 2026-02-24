@@ -139,7 +139,7 @@ class TestWorkflowSteps:
     def test_initialize_step_without_stem(self, tmp_path):
         """Test initialize step transitions correctly without stem."""
         orchestrator = WorkflowOrchestrator(
-            input_video="MySong_KeyC.mp4",  # No Stem flag
+            input_video="MySong_KeyC_NoStem.mp4",  # Explicit NoStem flag
             input_tabs="MySong.txt",
             session_dir=str(tmp_path / "sessions"),
             auto_approve=True,
@@ -629,7 +629,7 @@ class TestWorkflowExecution:
     def test_execute_current_step_dispatch(self, tmp_path):
         """Test execute_current_step dispatches to correct handler."""
         orchestrator = WorkflowOrchestrator(
-            input_video="MySong_KeyC.mp4",
+            input_video="MySong_KeyC_NoStem.mp4",
             input_tabs="MySong.txt",
             session_dir=str(tmp_path / "sessions"),
             auto_approve=True,
@@ -688,7 +688,7 @@ class TestWorkflowExecution:
         """Test session is saved after each step."""
         session_dir = tmp_path / "sessions"
         orchestrator = WorkflowOrchestrator(
-            input_video="MySong_KeyC.mp4",
+            input_video="MySong_KeyC_NoStem.mp4",
             input_tabs="MySong.txt",
             session_dir=str(session_dir),
             auto_approve=True,

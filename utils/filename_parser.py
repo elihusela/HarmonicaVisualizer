@@ -28,7 +28,7 @@ class FilenameConfig:
 
     song_name: str
     key: str = "C"
-    enable_stem: bool = False
+    enable_stem: bool = True
     fps: int = 15
     tab_buffer: float = 0.1
     original_filename: str = ""

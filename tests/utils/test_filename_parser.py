@@ -14,7 +14,7 @@ class TestFilenameConfig:
 
         assert config.song_name == "TestSong"
         assert config.key == "C"  # Default
-        assert config.enable_stem is False  # Default
+        assert config.enable_stem is True  # Default
         assert config.fps == 15  # Default
         assert config.tab_buffer == 0.1  # Default
         assert config.original_filename == ""
@@ -48,7 +48,7 @@ class TestParseFilename:
 
         assert config.song_name == "MySong"
         assert config.key == "C"
-        assert config.enable_stem is False
+        assert config.enable_stem is True
         assert config.fps == 15
         assert config.tab_buffer == 0.1
 
@@ -245,7 +245,7 @@ class TestParseFilename:
         assert config.song_name == "Song"
         assert config.key == "C"
         # Unknown params don't affect default values
-        assert config.enable_stem is False
+        assert config.enable_stem is True
         assert config.fps == 15
 
 
@@ -283,7 +283,7 @@ class TestRealWorldExamples:
 
         assert config.song_name == "AMEDI"
         assert config.key == "Bb"
-        assert config.enable_stem is False  # Default
+        assert config.enable_stem is True  # Default
 
     def test_hog_example(self):
         """Test HOG example from docs."""
