@@ -274,7 +274,7 @@ class VideoCreator:
 
     def _extract_audio(self) -> None:
         """Extract audio from the video file."""
-        self.audio_extractor.extract_audio_from_video()
+        self.extracted_audio_path = self.audio_extractor.extract_audio_from_video()
 
     def _load_midi_note_events(self) -> List[Tuple[float, float, int, float, float]]:
         """Load note events from the fixed MIDI file."""
