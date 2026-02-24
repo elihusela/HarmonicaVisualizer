@@ -1144,14 +1144,22 @@ class WorkflowOrchestrator:
         ):
             self.session.transition_to(WorkflowState.FINALIZATION)
         else:
-            # User declined - go back to MIDI fixing
-            self.console.print(
-                "[yellow]⮌ Returning to MIDI fixing step. "
-                "Fix your MIDI/tabs and we'll regenerate the tab video.[/yellow]"
-            )
-            # Clear FPS so user can choose again
-            self.session.set_data("fps", None)
-            self.session.transition_to(WorkflowState.MIDI_FIXING)
+            # User declined - ask what they want to do
+            action = questionary.select(
+                "What would you like to do?",
+                choices=[
+                    "Regenerate tab video (keeps harmonica video)",
+                    "Go back to MIDI fixing (regenerates both videos)",
+                ],
+            ).ask()
+
+            if action and "MIDI fixing" in action:
+                self.console.print("[yellow]⮌ Returning to MIDI fixing step.[/yellow]")
+                self.session.set_data("fps", None)
+                self.session.transition_to(WorkflowState.MIDI_FIXING)
+            else:
+                self.console.print("[yellow]⮌ Regenerating tab video...[/yellow]")
+                self.session.transition_to(WorkflowState.TAB_VIDEO_REVIEW)
 
     def _step_finalization(self) -> None:
         """Finalize workflow - cleanup, ZIP, archive.
