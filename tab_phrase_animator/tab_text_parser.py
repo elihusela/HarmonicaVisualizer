@@ -476,8 +476,16 @@ class TabTextParser:
                 f"All notes in a chord must be same type."
             )
 
+        # Notes must be written in ascending order (smallest hole first, e.g. 56 not 65)
+        abs_holes_as_written = [abs(note.hole_number) for note in chord]
+        if abs_holes_as_written != sorted(abs_holes_as_written):
+            raise TabTextParserError(
+                f"Chord notes must be written in ascending order (smallest hole first) at line {line_number}. "
+                f"Got holes {abs_holes_as_written}, expected {sorted(abs_holes_as_written)}."
+            )
+
         # Notes must be consecutive holes (e.g., 1,2 or -4,-5 but not 1,4 or -2,-6)
-        abs_holes = sorted([abs(note.hole_number) for note in chord])
+        abs_holes = abs_holes_as_written
         for i in range(1, len(abs_holes)):
             if abs_holes[i] - abs_holes[i - 1] != 1:
                 raise TabTextParserError(

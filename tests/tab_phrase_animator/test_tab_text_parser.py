@@ -393,6 +393,37 @@ class TestTabTextParserChordValidation:
         ):
             TabTextParser(str(test_file), config)
 
+    def test_invalid_descending_chord_order_rejected(self, temp_test_dir):
+        """Test that chords written in descending order are rejected (e.g. 65 instead of 56)."""
+        test_file = temp_test_dir / "descending_chord.txt"
+        test_file.write_text("Page 1:\n65")  # Should be 56
+
+        config = ParseConfig(validate_hole_numbers=True, allow_empty_chords=False)
+
+        with pytest.raises(TabTextParserError, match="ascending order"):
+            TabTextParser(str(test_file), config)
+
+    def test_invalid_descending_draw_chord_order_rejected(self, temp_test_dir):
+        """Test that draw chords written in descending order are rejected (e.g. -65 instead of -56)."""
+        test_file = temp_test_dir / "descending_draw_chord.txt"
+        test_file.write_text("Page 1:\n-65")  # Should be -56
+
+        config = ParseConfig(validate_hole_numbers=True, allow_empty_chords=False)
+
+        with pytest.raises(TabTextParserError, match="ascending order"):
+            TabTextParser(str(test_file), config)
+
+    def test_ascending_chord_order_accepted(self, temp_test_dir):
+        """Test that chords written in ascending order are accepted (e.g. 56)."""
+        test_file = temp_test_dir / "ascending_chord.txt"
+        test_file.write_text("Page 1:\n56")
+
+        config = ParseConfig(validate_hole_numbers=True, allow_empty_chords=False)
+        parser = TabTextParser(str(test_file), config)
+
+        pages = parser.get_pages_as_int()
+        assert pages["Page 1"][0][0] == [5, 6]
+
     def test_chord_validation_disabled_allows_anything(self, temp_test_dir):
         """Test that all inputs are allowed when validation is disabled."""
         test_file = temp_test_dir / "validation_disabled.txt"
