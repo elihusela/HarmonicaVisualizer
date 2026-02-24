@@ -1020,7 +1020,21 @@ def interactive_workflow(
     # Validate inputs exist
     file_type = "Audio file" if video.endswith(".wav") else "Video"
     validate_file_exists(video_path, file_type)
-    validate_file_exists(tabs_path, "Tabs")
+
+    if not os.path.exists(tabs_path):
+        import questionary
+
+        create_empty = questionary.confirm(
+            f"Tab file not found: {tabs_path}\nCreate an empty tab file and continue?",
+            default=False,
+        ).ask()
+        if create_empty:
+            with open(tabs_path, "w") as f:
+                f.write("Page 1:\n1\n")
+            print(f"📝 Created empty tab file: {tabs_path}")
+        else:
+            print("❌ Tabs file required. Exiting.")
+            sys.exit(1)
 
     print("🎭 Starting Interactive Workflow")
     print(f"📹 Input: {video_path}")
