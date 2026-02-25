@@ -147,8 +147,8 @@ class TestChordDetection:
         )
         result = gen.generate(tabs)
 
-        # Draw chord should be "-4-5"
-        assert "-4-5" in result
+        # Draw chord should be "-45"
+        assert "-45" in result
 
     def test_notes_just_outside_tolerance_not_grouped(self):
         """Test that notes just outside tolerance are separate."""
@@ -272,4 +272,4 @@ class TestChordFormatting:
             ]
         )
         result = gen.generate(tabs)
-        assert "-5-6" in result
+        assert "-56" in result

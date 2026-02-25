@@ -208,7 +208,7 @@ class TabGenerator:
             chord: List of TabEntry objects in the chord
 
         Returns:
-            Formatted chord string (e.g., "6", "-5", "56", "-4-5")
+            Formatted chord string (e.g., "6", "-5", "56", "-45")
         """
         if not chord:
             return ""
@@ -230,14 +230,14 @@ class TabGenerator:
 
         # For chords, join without spaces
         # e.g., blow chord: "56" (holes 5 and 6)
-        # e.g., draw chord: "-4-5" (draw 4 and 5)
+        # e.g., draw chord: "-45" (draw 4 and 5)
         if len(parts) == 1:
             result = parts[0]
         else:
             # Multi-note chord
             if is_draw:
-                # Draw chord: -4-5-6
-                result = "".join(parts)
+                # Draw chord: single minus prefix + all hole numbers: -456
+                result = "-" + "".join(str(abs(n.tab)) for n in sorted_notes)
             else:
                 # Blow chord: 456 (just concatenate digits)
                 result = "".join(str(abs(n.tab)) for n in sorted_notes)
