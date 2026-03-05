@@ -269,12 +269,13 @@ class FullTabVideoCompositor:
                 f"   ✂️  Video ends at {current_time:.3f}s (audio: {audio_duration:.3f}s)"
             )
 
-            # Create concat file
+            # Create concat file with explicit durations to prevent
+            # frame-quantization drift accumulating across many pages
             with open(concat_file_path, "w") as f:
-                for segment in video_segments:
-                    # Escape single quotes in path
+                for segment, duration in zip(video_segments, video_durations):
                     escaped_path = segment.replace("'", "'\\''")
                     f.write(f"file '{escaped_path}'\n")
+                    f.write(f"duration {duration:.6f}\n")
             temp_files.append(concat_file_path)
 
             # Concatenate videos using ffmpeg
@@ -373,6 +374,7 @@ class FullTabVideoCompositor:
                 "4",
                 "-pix_fmt",
                 "yuva444p10le",
+                "-an",
                 trimmed_path,
             ]
 
@@ -424,6 +426,7 @@ class FullTabVideoCompositor:
                 "4",  # ProRes 4444 (preserves alpha)
                 "-pix_fmt",
                 "yuva444p10le",
+                "-an",
                 extended_path,
             ]
 
@@ -517,6 +520,7 @@ class FullTabVideoCompositor:
                 "yuva444p10le",  # Preserve alpha channel
                 "-fps_mode",
                 "cfr",  # Constant frame rate mode for precise timing
+                "-an",  # Strip audio; added back via _add_audio_track
                 output_path,
             ]
 

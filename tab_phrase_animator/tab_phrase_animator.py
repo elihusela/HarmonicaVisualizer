@@ -350,6 +350,7 @@ class TabPhraseAnimator:
             extracted_audio_path,
             output_path_base,
         )
+        plt.close(fig)
 
         # Create and return statistics
         return PageStatistics(
