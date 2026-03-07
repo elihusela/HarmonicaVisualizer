@@ -10,6 +10,10 @@ from dataclasses import dataclass
 from typing import Dict, List, Optional, NamedTuple
 
 
+# Single-quote-like characters accepted as bend markers (ASCII and common curly quotes)
+_SINGLE_QUOTE_CHARS = frozenset(("'", "\u2019", "\u2018", "\u02BC"))
+
+
 class ParsedNote(NamedTuple):
     """Represents a parsed note with bend information."""
 
@@ -320,13 +324,17 @@ class TabTextParser:
                 has_bend_marker = False
                 bend_notation = ""
                 if i < len(line):
-                    # Check for '' (two single quotes)
-                    if i + 1 < len(line) and line[i : i + 2] == "''":
+                    # Check for double bend (any two adjacent single-quote-like chars)
+                    if (
+                        i + 1 < len(line)
+                        and line[i] in _SINGLE_QUOTE_CHARS
+                        and line[i + 1] in _SINGLE_QUOTE_CHARS
+                    ):
                         has_bend_marker = True
                         bend_notation = "''"
                         i += 2  # consume both quotes
                     # Check for single character bend markers
-                    elif line[i] in ("'", "*", "\u2019"):
+                    elif line[i] in _SINGLE_QUOTE_CHARS or line[i] == "*":
                         has_bend_marker = True
                         bend_notation = line[i]
                         i += 1  # consume the bend marker
@@ -359,13 +367,17 @@ class TabTextParser:
                 has_bend_marker = False
                 bend_notation = ""
                 if i < len(line):
-                    # Check for '' (two single quotes)
-                    if i + 1 < len(line) and line[i : i + 2] == "''":
+                    # Check for double bend (any two adjacent single-quote-like chars)
+                    if (
+                        i + 1 < len(line)
+                        and line[i] in _SINGLE_QUOTE_CHARS
+                        and line[i + 1] in _SINGLE_QUOTE_CHARS
+                    ):
                         has_bend_marker = True
                         bend_notation = "''"
                         i += 2  # consume both quotes
                     # Check for single character bend markers
-                    elif line[i] in ("'", "*", "\u2019"):
+                    elif line[i] in _SINGLE_QUOTE_CHARS or line[i] == "*":
                         has_bend_marker = True
                         bend_notation = line[i]
                         i += 1  # consume the bend marker
@@ -393,15 +405,17 @@ class TabTextParser:
                     current_chord = []
                 i += 1
 
-            elif char in ("'", "*", "\u2019"):
-                # Check if it's a '' (double single quote) pattern
-                if char == "'" and i + 1 < len(line) and line[i + 1] == "'":
-                    # Bend marker '' without adjacent digit - invalid
+            elif char in _SINGLE_QUOTE_CHARS or char == "*":
+                # Bend marker without adjacent digit - invalid
+                if (
+                    char in _SINGLE_QUOTE_CHARS
+                    and i + 1 < len(line)
+                    and line[i + 1] in _SINGLE_QUOTE_CHARS
+                ):
                     raise TabTextParserError(
                         f"Bend notation ('') must be directly adjacent to a note at position {i}"
                     )
                 else:
-                    # Single bend marker without adjacent digit - invalid
                     raise TabTextParserError(
                         f"Bend notation ({char}) must be directly adjacent to a note at position {i}"
                     )

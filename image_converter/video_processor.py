@@ -41,7 +41,9 @@ class VideoProcessor:
         cleanup_temp: bool = True,
     ) -> None:
         """
-        Convert raw animation video to final transparent video with audio.
+        Convert raw animation video to final video with audio.
+
+        Outputs ProRes 4444 with alpha channel for use in video editing software.
 
         Args:
             raw_video_path: Path to raw matplotlib animation video

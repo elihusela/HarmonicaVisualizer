@@ -314,7 +314,7 @@ class TestVideoProcessorCompleteWorkflow:
         with patch.object(processor, "_cleanup_temp_files") as mock_cleanup:
             processor.process_animation_to_video("input.mp4", "audio.wav", "output.mov")
 
-            # Check cleanup was called with expected temp file
+            # Check cleanup was called with expected temp files
             cleanup_args = mock_cleanup.call_args[0][0]
             assert "input.mp4" in cleanup_args
             assert any("temp_transparent.mov" in path for path in cleanup_args)
