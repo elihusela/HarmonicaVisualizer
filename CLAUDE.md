@@ -49,9 +49,18 @@ sessions/         # Workflow state + logs
    - Approach: Split into [static clip] → [animated segment] → [static clip]
    - Files: `image_converter/animator.py`, `tab_phrase_animator/tab_phrase_animator.py`
 
+2. **Precise Fix / Partial Re-render**
+   - Current: Fixing any note requires full video regeneration
+   - Goal: Re-render only the affected time window and splice it back in-place
+   - Approach: Add `time_range` param to animator + tab_phrase_animator; use ffmpeg concat to splice [original_start → fix_start] + [new_segment] + [fix_end → original_end]
+   - Works cleanly because ProRes is intra-frame (no keyframe dependencies)
+   - Simple case: visual-only fix (wrong hole, bend notation) — exact frame replacement
+   - Complex case: timing change — need to determine how far the ripple extends
+   - Files: `image_converter/animator.py`, `tab_phrase_animator/tab_phrase_animator.py`, `interactive_workflow/orchestrator.py`
+
 ### Low Priority
 
-2. **TabMatcher Improvements** (experimental feature)
+3. **TabMatcher Improvements** (experimental feature)
    - Better chord matching, timing alignment
    - File: `tab_phrase_animator/tab_matcher.py`
 

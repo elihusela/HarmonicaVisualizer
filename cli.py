@@ -341,6 +341,26 @@ Examples:
         help="Which stem to highlight/return path for. Default: other (where harmonica typically ends up)",
     )
 
+    # Chroma key export
+    chroma_parser = subparsers.add_parser(
+        "chroma-key-export",
+        help="Convert ProRes-with-alpha video to H.265 MP4 with green chroma key background (~99% smaller)",
+    )
+    chroma_parser.add_argument(
+        "input",
+        help="Input ProRes video with alpha (e.g. outputs/stairwayvert_harmonica.mov)",
+    )
+    chroma_parser.add_argument(
+        "--output",
+        help="Output MP4 path (default: same dir as input, with _chromakey.mp4 suffix)",
+    )
+    chroma_parser.add_argument(
+        "--crf",
+        type=int,
+        default=23,
+        help="H.265 quality: 0=lossless, 51=worst (default: 23)",
+    )
+
     # Interactive workflow
     interactive_parser = subparsers.add_parser(
         "interactive",
@@ -1056,6 +1076,37 @@ def interactive_workflow(
     orchestrator.run()
 
 
+def chroma_key_export_phase(
+    input_video: str, output: Optional[str] = None, crf: int = 23
+) -> None:
+    """Convert a ProRes-with-alpha video to H.265 MP4 with green chroma key background."""
+    from image_converter.video_processor import VideoProcessor, VideoProcessorError
+
+    if not os.path.exists(input_video):
+        candidate = os.path.join("outputs", input_video)
+        if os.path.exists(candidate):
+            input_video = candidate
+        else:
+            print(f"❌ File not found: {input_video}")
+            sys.exit(1)
+
+    if output is None:
+        stem = Path(input_video).stem
+        output = str(Path(input_video).parent / f"{stem}_chromakey.mp4")
+
+    print("🟢 Chroma Key Export")
+    print(f"   Input:  {input_video}")
+    print(f"   Output: {output}")
+    print()
+
+    try:
+        vp = VideoProcessor()
+        vp.export_chroma_key(input_video, output, crf=crf)
+    except VideoProcessorError as e:
+        print(f"❌ {e}")
+        sys.exit(1)
+
+
 def main():
     parser = setup_parser()
     args = parser.parse_args()
@@ -1126,6 +1177,9 @@ def main():
 
         elif args.command == "split-stems":
             split_stems_phase(args.input, args.output_dir, args.stem)
+
+        elif args.command == "chroma-key-export":
+            chroma_key_export_phase(args.input, args.output, args.crf)
 
         elif args.command == "interactive":
             # tabs is optional, will be None if not provided

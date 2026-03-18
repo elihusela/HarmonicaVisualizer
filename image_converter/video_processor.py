@@ -163,6 +163,93 @@ class VideoProcessor:
             except Exception as e:
                 print(f"⚠️  Warning: Could not remove {file_path}: {e}")
 
+    def export_chroma_key(
+        self,
+        input_path: str,
+        output_path: str,
+        crf: int = 23,
+    ) -> None:
+        """
+        Convert a ProRes video with alpha to H.265 MP4 with a green chroma key background.
+
+        The green background (0x00FF00) can be keyed out in Final Cut Pro, DaVinci Resolve,
+        or any NLE using a chroma key / luma key effect. Results in ~99% smaller file than ProRes.
+
+        Args:
+            input_path: Input video with alpha channel (ProRes 4444)
+            output_path: Output H.265 MP4 path
+            crf: H.265 quality (0=lossless, 51=worst). Default 23 is visually transparent.
+
+        Raises:
+            VideoProcessorError: If conversion fails
+        """
+        # Get dimensions to create correctly-sized green background
+        probe_cmd = [
+            "ffprobe",
+            "-v",
+            "quiet",
+            "-print_format",
+            "json",
+            "-show_streams",
+            input_path,
+        ]
+        probe = subprocess.run(probe_cmd, capture_output=True, text=True)
+        if probe.returncode != 0:
+            raise VideoProcessorError(f"Could not probe input video: {probe.stderr}")
+
+        import json
+
+        streams = json.loads(probe.stdout).get("streams", [])
+        video_stream: dict = next(
+            (s for s in streams if s.get("codec_type") == "video"), {}
+        )
+        width = video_stream.get("width", 1920)
+        height = video_stream.get("height", 1080)
+        fps = eval(video_stream.get("r_frame_rate", "15/1"))
+
+        cmd = [
+            "ffmpeg",
+            "-y",
+            "-f",
+            "lavfi",
+            "-i",
+            f"color=color=0x00FF00:size={width}x{height}:rate={fps}",
+            "-i",
+            input_path,
+            "-filter_complex",
+            "[0:v][1:v]overlay=shortest=1[out]",
+            "-map",
+            "[out]",
+            "-map",
+            "1:a?",
+            "-c:v",
+            "libx265",
+            "-crf",
+            str(crf),
+            "-preset",
+            "fast",
+            "-tag:v",
+            "hvc1",
+            "-c:a",
+            "aac",
+            "-b:a",
+            "128k",
+            output_path,
+        ]
+
+        print(f"🟢 Exporting chroma key video (H.265, CRF {crf})...")
+        result = subprocess.run(cmd, capture_output=True, text=True)
+
+        if result.returncode != 0:
+            raise VideoProcessorError(f"Chroma key export failed: {result.stderr}")
+
+        input_size = os.path.getsize(input_path) / (1024 * 1024)
+        output_size = os.path.getsize(output_path) / (1024 * 1024)
+        print(f"✅ Chroma key export done: {output_path}")
+        print(
+            f"   {input_size:.0f} MB → {output_size:.1f} MB ({output_size/input_size*100:.1f}% of original)"
+        )
+
     def check_ffmpeg_available(self) -> bool:
         """
         Check if FFmpeg is available on the system.
