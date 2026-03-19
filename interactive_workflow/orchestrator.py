@@ -1223,8 +1223,19 @@ class WorkflowOrchestrator:
             with zipfile.ZipFile(f"{zip_path}.zip", "w", zipfile.ZIP_DEFLATED) as zf:
                 if harmonica_video and os.path.exists(harmonica_video):
                     zf.write(harmonica_video, os.path.basename(harmonica_video))
+                    chroma_harmonica = str(
+                        Path(harmonica_video).parent
+                        / f"{Path(harmonica_video).stem}_chromakey.mp4"
+                    )
+                    if os.path.exists(chroma_harmonica):
+                        zf.write(chroma_harmonica, os.path.basename(chroma_harmonica))
                 if tab_video and os.path.exists(tab_video):
                     zf.write(tab_video, os.path.basename(tab_video))
+                    chroma_tab = str(
+                        Path(tab_video).parent / f"{Path(tab_video).stem}_chromakey.mp4"
+                    )
+                    if os.path.exists(chroma_tab):
+                        zf.write(chroma_tab, os.path.basename(chroma_tab))
 
             self.console.print(f"[green]✓ Created ZIP: {zip_path}.zip[/green]")
 

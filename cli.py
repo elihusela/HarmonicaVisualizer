@@ -361,6 +361,22 @@ Examples:
         help="H.265 quality: 0=lossless, 51=worst (default: 23)",
     )
 
+    # Rename video files to standard format
+    rename_parser = subparsers.add_parser(
+        "rename-files",
+        help="Interactively rename video-files/ to standard SongName_KeyX[_Stem].ext format",
+    )
+    rename_parser.add_argument(
+        "--dir",
+        default="video-files",
+        help="Directory to rename files in (default: video-files/)",
+    )
+    rename_parser.add_argument(
+        "--dry-run",
+        action="store_true",
+        help="Show suggested renames without actually renaming",
+    )
+
     # Interactive workflow
     interactive_parser = subparsers.add_parser(
         "interactive",
@@ -1107,6 +1123,146 @@ def chroma_key_export_phase(
         sys.exit(1)
 
 
+def rename_files_phase(directory: str = "video-files", dry_run: bool = False) -> None:
+    """Interactively rename messy video filenames to SongName_KeyX[_Stem].ext format."""
+    import re
+    import questionary
+    from pathlib import Path
+
+    VIDEO_EXTS = {".mp4", ".mov", ".m4v", ".wav", ".mp3", ".aac", ".flac"}
+    VALID_KEYS = {
+        "C",
+        "C#",
+        "Db",
+        "D",
+        "D#",
+        "Eb",
+        "E",
+        "F",
+        "F#",
+        "Gb",
+        "G",
+        "G#",
+        "Ab",
+        "A",
+        "A#",
+        "Bb",
+        "B",
+    }
+
+    def detect_key(name: str) -> Optional[str]:
+        """Try to extract harmonica key from a messy filename."""
+        # Already in standard format: _KeyX
+        m = re.search(r"[_\s]Key([A-G][b#Bs]?)", name, re.IGNORECASE)
+        if m:
+            from utils.filename_parser import _normalize_key
+
+            return _normalize_key(m.group(1).upper())
+        # Trailing " - X" or "- X" pattern (e.g. "What a wonderful world - C")
+        m = re.search(r"[-–]\s*([A-G][b#]?)\s*$", name, re.IGNORECASE)
+        if m:
+            key = m.group(1).upper()
+            if key in VALID_KEYS:
+                return key
+        return None
+
+    def suggest_name(original: str, key: Optional[str]) -> str:
+        """Generate a CamelCase song name from a messy filename (no extension)."""
+        name = original
+        # Remove key indicators
+        name = re.sub(r"[_\s]Key[A-G][b#Bs]?", "", name, flags=re.IGNORECASE)
+        name = re.sub(r"[-–]\s*[A-G][b#]?\s*$", "", name, flags=re.IGNORECASE)
+        # Remove common junk suffixes
+        name = re.sub(
+            r"\b(ver\s*\d+|v\d+|vert|hori|hovert|for\s+\w+\+?\w*)\b",
+            "",
+            name,
+            flags=re.IGNORECASE,
+        )
+        name = re.sub(
+            r"\bbeeri\b|\bgolan\b|\bneeds\s+\w+\s+\w+\b", "", name, flags=re.IGNORECASE
+        )
+        name = re.sub(r"[_\s]*Stem\b", "", name, flags=re.IGNORECASE)
+        # Replace separators with spaces, strip extra spaces
+        name = re.sub(r"[-–_+]+", " ", name)
+        name = re.sub(r"\s+", " ", name).strip()
+        # CamelCase
+        slug = "".join(word.capitalize() for word in name.split() if word)
+        if not slug:
+            slug = "Song"
+        if key:
+            return f"{slug}_Key{key}"
+        return slug
+
+    dir_path = Path(directory)
+    if not dir_path.exists():
+        print(f"❌ Directory not found: {directory}")
+        sys.exit(1)
+
+    files = sorted(
+        f for f in dir_path.iterdir() if f.is_file() and f.suffix.lower() in VIDEO_EXTS
+    )
+
+    if not files:
+        print(f"No video/audio files found in {directory}/")
+        return
+
+    print(f"\n{'DRY RUN — ' if dry_run else ''}Renaming files in {directory}/\n")
+
+    renamed = 0
+    skipped = 0
+    for f in files:
+        stem = f.stem
+        ext = f.suffix.lower()
+
+        # Already valid format?
+        try:
+            from utils.filename_parser import parse_filename
+
+            parse_filename(f.name)
+            print(f"  ✓ {f.name}  [already valid]")
+            skipped += 1
+            continue
+        except ValueError:
+            pass
+
+        key = detect_key(stem)
+        suggestion = suggest_name(stem, key) + ext
+
+        print(f"\n  {f.name}")
+        print(f"  → {suggestion}")
+
+        if dry_run:
+            continue
+
+        answer = questionary.text(
+            "  New name? [Enter=accept, 's'=skip]",
+            default=suggestion,
+        ).ask()
+
+        if answer is None or answer.strip().lower() == "s":
+            print("  ⏭️  Skipped")
+            skipped += 1
+            continue
+
+        new_name = answer.strip()
+        if not Path(new_name).suffix:
+            new_name += ext
+
+        new_path = dir_path / new_name
+        if new_path.exists() and new_path != f:
+            print(f"  ⚠️  Already exists: {new_name} — skipped")
+            skipped += 1
+            continue
+
+        if not dry_run:
+            f.rename(new_path)
+        print(f"  ✅ {f.name} → {new_name}")
+        renamed += 1
+
+    print(f"\nDone. {renamed} renamed, {skipped} skipped.")
+
+
 def main():
     parser = setup_parser()
     args = parser.parse_args()
@@ -1180,6 +1336,9 @@ def main():
 
         elif args.command == "chroma-key-export":
             chroma_key_export_phase(args.input, args.output, args.crf)
+
+        elif args.command == "rename-files":
+            rename_files_phase(args.dir, args.dry_run)
 
         elif args.command == "interactive":
             # tabs is optional, will be None if not provided

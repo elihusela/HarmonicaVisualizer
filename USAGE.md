@@ -67,7 +67,7 @@ python cli.py generate-midi MySong.wav \
   --frame-threshold 0.18
 
 # With preset
-python cli.py generate-midi MySong.wav --preset harmonica_strict
+python cli.py generate-midi other.wav --preset harmonica_strict
 
 # Filter short notes
 python cli.py generate-midi MySong.wav --minimum-note-length 150
