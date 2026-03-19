@@ -950,6 +950,50 @@ def split_stems_phase(
         sys.exit(1)
 
 
+def _offer_rename_files() -> None:
+    """Offer to rename non-standard files in video-files/ before file selection."""
+    import questionary
+    from pathlib import Path
+
+    VIDEO_EXTS = {
+        ".mp4",
+        ".mov",
+        ".m4v",
+        ".wav",
+        ".mp3",
+        ".aac",
+        ".flac",
+        ".avi",
+        ".mkv",
+        ".webm",
+    }
+
+    if not os.path.exists(VIDEO_FILES_DIR):
+        return
+
+    # Check if any files need renaming (can't be parsed by filename_parser)
+    from utils.filename_parser import parse_filename
+
+    needs_rename = []
+    for fname in os.listdir(VIDEO_FILES_DIR):
+        if Path(fname).suffix.lower() not in VIDEO_EXTS:
+            continue
+        try:
+            parse_filename(fname)
+        except ValueError:
+            needs_rename.append(fname)
+
+    if not needs_rename:
+        return
+
+    print(f"\n⚠️  {len(needs_rename)} file(s) in video-files/ have non-standard names.")
+    if not questionary.confirm("Rename them now?", default=True).ask():
+        return
+
+    rename_files_phase(VIDEO_FILES_DIR, dry_run=False)
+    print()
+
+
 def _select_video_file() -> Optional[str]:
     """Prompt user to select a video/audio file from video-files/ directory.
 
@@ -1019,8 +1063,10 @@ def interactive_workflow(
     from interactive_workflow.orchestrator import WorkflowOrchestrator
     from utils.filename_parser import parse_filename
 
-    # If no video provided, prompt for file selection
+    # If no video provided, offer rename flow then prompt for file selection
     if video is None:
+        if not auto_approve:
+            _offer_rename_files()
         video = _select_video_file()
         if video is None:
             print("❌ No file selected. Exiting.")
