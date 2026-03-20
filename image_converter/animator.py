@@ -64,6 +64,8 @@ class Animator:
         harmonica_layout: HarmonicaLayout,
         figure_factory: FigureFactory,
         temp_dir: OptionalType[str] = None,
+        use_alpha: bool = False,
+        chroma_key_config=None,
     ):
         self._frame_timings: List[float] = []
         self._harmonica_layout = harmonica_layout
@@ -77,6 +79,8 @@ class Animator:
         self._flat_entries: List[TabEntry] = []
         self._audio_duration: Optional[float] = None
         self._video_processor = VideoProcessor(self._temp_dir)
+        self._use_alpha = use_alpha
+        self._chroma_key_config = chroma_key_config
 
     def create_animation(
         self,
@@ -85,7 +89,13 @@ class Animator:
         output_path: str,
         fps: int = 15,
         audio_duration: Optional[float] = None,
+        use_alpha: Optional[bool] = None,
+        chroma_key_config=None,
     ) -> None:
+        # Allow per-call override; fall back to instance defaults
+        effective_use_alpha = use_alpha if use_alpha is not None else self._use_alpha
+        effective_chroma_cfg = chroma_key_config or self._chroma_key_config
+
         self._flat_entries = [
             entry
             for page in all_pages.values()
@@ -101,6 +111,16 @@ class Animator:
         total_duration = self._get_total_duration()
         total_frames = self._get_total_frames(fps, total_duration)
 
+        # Set background color based on mode
+        if not effective_use_alpha:
+            from harmonica_pipeline.video_creator_config import ChromaKeyConfig
+
+            cfg = effective_chroma_cfg or ChromaKeyConfig()
+            try:
+                self._figure_factory._config.background_color = cfg.bg_color
+            except AttributeError:
+                pass  # figure_factory may be mocked or not have _config
+
         fig, self._ax = self._figure_factory.create()
 
         ani = animation.FuncAnimation(
@@ -113,28 +133,42 @@ class Animator:
         )
 
         ani.save(self._temp_video_path, fps=fps, writer="ffmpeg")
-        print(f"🎥 Intermediate video saved to {self._temp_video_path}")
+        print(f"Intermediate video saved to {self._temp_video_path}")
 
         if self._frame_timings:
             avg_frame_time = sum(self._frame_timings) / len(self._frame_timings)
             print(
-                f"⏱ Average frame update time: {avg_frame_time:.4f}s over {len(self._frame_timings)} samples"
+                f"Average frame update time: {avg_frame_time:.4f}s over {len(self._frame_timings)} samples"
             )
 
         # Use VideoProcessor for post-processing
         try:
-            self._video_processor.process_animation_to_video(
-                self._temp_video_path,
-                extracted_audio_path,
-                output_path,
-                cleanup_temp=True,
-            )
+            if effective_use_alpha:
+                # ProRes alpha path (archived mode)
+                self._video_processor.process_animation_to_video(
+                    self._temp_video_path,
+                    extracted_audio_path,
+                    output_path,
+                    cleanup_temp=True,
+                )
+            else:
+                # Chroma key H.265 path (default)
+                from harmonica_pipeline.video_creator_config import ChromaKeyConfig
+
+                cfg = effective_chroma_cfg or ChromaKeyConfig()
+                self._video_processor.process_animation_to_chromakey_video(
+                    self._temp_video_path,
+                    extracted_audio_path,
+                    output_path,
+                    chroma_key_config=cfg,
+                    cleanup_temp=True,
+                )
 
             # Log video information
             self._log_video_info(output_path, total_duration, fps, total_frames)
 
         except VideoProcessorError as e:
-            print(f"❌ Video processing failed: {e}")
+            print(f"Video processing failed: {e}")
             raise
 
     def _timed_update_frame(self, frame: int, fps: int) -> List:

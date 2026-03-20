@@ -4,11 +4,26 @@ Video Creator Configuration - Clean configuration object for VideoCreator.
 Organizes VideoCreator parameters to reduce constructor complexity.
 """
 
-from dataclasses import dataclass
+from dataclasses import dataclass, field
 from typing import Optional
 
 from harmonica_pipeline.harmonica_key_registry import get_harmonica_config
 from utils.utils import TEMP_DIR
+
+
+@dataclass
+class ChromaKeyConfig:
+    """Configuration for chroma key video output."""
+
+    bg_color: str = "#00FF00"  # matplotlib background color (hex with #)
+    crf: int = 23  # H.265 quality (0=lossless, 51=worst)
+    preset: str = "fast"  # ffmpeg encode speed
+    audio_bitrate: str = "128k"  # AAC audio bitrate
+
+    @property
+    def ffmpeg_color(self) -> str:
+        """Return bg_color formatted for ffmpeg (no # prefix)."""
+        return self.bg_color.lstrip("#")
 
 
 @dataclass
@@ -44,6 +59,8 @@ class VideoCreatorConfig:
     chord_threshold_ms: float = (
         50.0  # Notes within this threshold are treated as chords
     )
+    use_alpha: bool = False  # True = ProRes with alpha (archived mode)
+    chroma_key: ChromaKeyConfig = field(default_factory=ChromaKeyConfig)
 
     def __post_init__(self) -> None:
         """Validate configuration after initialization."""
@@ -117,6 +134,8 @@ class VideoCreatorConfig:
         temp_dir: Optional[str] = None,
         fix_overlaps: bool = False,
         chord_threshold_ms: float = 50.0,
+        use_alpha: bool = False,
+        chroma_key: Optional[ChromaKeyConfig] = None,
     ) -> "VideoCreatorConfig":
         """
         Create configuration from CLI arguments.
@@ -157,4 +176,6 @@ class VideoCreatorConfig:
             temp_dir=temp_dir,
             fix_overlaps=fix_overlaps,
             chord_threshold_ms=chord_threshold_ms,
+            use_alpha=use_alpha,
+            chroma_key=chroma_key if chroma_key is not None else ChromaKeyConfig(),
         )

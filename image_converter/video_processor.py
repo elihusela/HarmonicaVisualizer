@@ -148,6 +148,61 @@ class VideoProcessor:
         if result.returncode != 0:
             raise VideoProcessorError(f"Failed to add audio to video: {result.stderr}")
 
+    def process_animation_to_chromakey_video(
+        self,
+        raw_video_path: str,
+        audio_path: str,
+        output_path: str,
+        chroma_key_config=None,
+        cleanup_temp: bool = True,
+    ) -> None:
+        """
+        Convert raw animation video (with green background already rendered) to
+        final H.265 MP4. No alpha/ProRes intermediate — direct encode.
+
+        Args:
+            raw_video_path: Temp video from matplotlib (already has green bg)
+            audio_path: Audio file to mux in
+            output_path: Output .mp4 path
+            chroma_key_config: ChromaKeyConfig instance (uses defaults if None)
+            cleanup_temp: Whether to remove raw_video_path after encoding
+        """
+        from harmonica_pipeline.video_creator_config import ChromaKeyConfig
+
+        cfg = chroma_key_config or ChromaKeyConfig()
+
+        cmd = [
+            "ffmpeg",
+            "-y",
+            "-i",
+            raw_video_path,
+            "-i",
+            audio_path,
+            "-c:v",
+            "libx265",
+            "-crf",
+            str(cfg.crf),
+            "-preset",
+            cfg.preset,
+            "-tag:v",
+            "hvc1",
+            "-c:a",
+            "aac",
+            "-b:a",
+            cfg.audio_bitrate,
+            output_path,
+        ]
+
+        print(f"Encoding chroma key video (H.265, CRF {cfg.crf})...")
+        result = subprocess.run(cmd, capture_output=True, text=True)
+        if result.returncode != 0:
+            raise VideoProcessorError(f"Chroma key encoding failed: {result.stderr}")
+
+        if cleanup_temp:
+            self._cleanup_temp_files([raw_video_path])
+
+        print(f"Chroma key video saved to {output_path}")
+
     def _cleanup_temp_files(self, file_paths: list[str]) -> None:
         """
         Clean up temporary files safely.

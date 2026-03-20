@@ -461,7 +461,9 @@ class TestTabPhraseAnimatorMatplotlib:
         # Verify matplotlib setup
         mock_subplots.assert_called_once_with(figsize=(16, 9))  # Default figure size
         mock_ax.axis.assert_called_with("off")
-        mock_fig.patch.set_facecolor.assert_called_with("#FF00FF")  # Background color
+        mock_fig.patch.set_facecolor.assert_called_with(
+            "#00FF00"
+        )  # Green bg (chromakey default)
 
         # Verify animation creation
         mock_animation.assert_called_once()

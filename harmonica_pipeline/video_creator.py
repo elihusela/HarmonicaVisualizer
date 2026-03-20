@@ -144,9 +144,13 @@ class VideoCreator:
             )
             figure_factory = FigureFactory(config.harmonica_path)
 
-            # Pass temp_dir to animator
+            # Pass temp_dir, use_alpha, and chroma_key to animator
             self.animator = Animator(
-                harmonica_layout, figure_factory, temp_dir=self.temp_dir
+                harmonica_layout,
+                figure_factory,
+                temp_dir=self.temp_dir,
+                use_alpha=config.use_alpha,
+                chroma_key_config=config.chroma_key,
             )
 
             # Create AnimationConfig with custom buffer, FPS, and temp_dir
@@ -157,6 +161,8 @@ class VideoCreator:
                 time_buffer=config.tab_page_buffer,
                 fps=config.fps,
                 temp_dir=self.temp_dir,
+                use_alpha=config.use_alpha,
+                chroma_key_config=config.chroma_key,
             )
 
             self.tab_phrase_animator = TabPhraseAnimator(
@@ -555,23 +561,27 @@ class VideoCreator:
             # Get audio duration
             audio_duration = self._get_audio_duration(self.extracted_audio_path)
 
-            # Generate full tab video path
-            full_tab_output = self.tabs_output_path.replace(
+            # Generate full tab video path (.mov for compositor intermediate)
+            full_tab_output_mov = self.tabs_output_path.replace(
                 "_tabs.mov", "_full_tabs.mov"
             )
-            if full_tab_output == self.tabs_output_path:
+            if full_tab_output_mov == self.tabs_output_path:
                 # If replacement didn't work, append _full
-                full_tab_output = self.tabs_output_path.replace(".mov", "_full.mov")
+                full_tab_output_mov = self.tabs_output_path.replace(".mov", "_full.mov")
 
             try:
                 self.full_tab_compositor.generate(
                     page_statistics,
                     audio_duration,
-                    full_tab_output,
+                    full_tab_output_mov,
                     audio_path=self.extracted_audio_path,
                 )
                 full_duration = time.perf_counter() - full_start
                 print(f"⏱ Full tab video completed in {full_duration:.2f}s")
+
+                # In chromakey mode: convert compositor .mov to H.265 .mp4
+                if not self.config.use_alpha:
+                    self._convert_full_tabs_to_chromakey(full_tab_output_mov)
 
                 # Clean up individual page files if only full video requested
                 if self.config.only_full_tab_video:
@@ -585,6 +595,54 @@ class VideoCreator:
 
             except Exception as e:
                 print(f"⚠️  Warning: Failed to create full tab video: {e}")
+
+    def _convert_full_tabs_to_chromakey(self, mov_path: str) -> None:
+        """
+        Convert a compositor .mov to H.265 .mp4 (chromakey mode).
+
+        Replaces the .mov file with a .mp4 and deletes the .mov.
+
+        Args:
+            mov_path: Path to the .mov file produced by the compositor
+        """
+        import subprocess
+
+        mp4_path = mov_path.replace(".mov", ".mp4")
+        cfg = self.config.chroma_key
+
+        cmd = [
+            "ffmpeg",
+            "-y",
+            "-i",
+            mov_path,
+            "-c:v",
+            "libx265",
+            "-crf",
+            str(cfg.crf),
+            "-preset",
+            cfg.preset,
+            "-tag:v",
+            "hvc1",
+            "-c:a",
+            "aac",
+            "-b:a",
+            cfg.audio_bitrate,
+            mp4_path,
+        ]
+
+        print("Encoding full tab video to H.265 MP4...")
+        result = subprocess.run(cmd, capture_output=True, text=True)
+        if result.returncode != 0:
+            print(f"Warning: H.265 encode failed, keeping .mov: {result.stderr}")
+            return
+
+        # Delete the .mov
+        try:
+            os.remove(mov_path)
+        except OSError:
+            pass
+
+        print(f"Full tab H.265 video: {mp4_path}")
 
     def _get_audio_duration(self, audio_path: str) -> float:
         """

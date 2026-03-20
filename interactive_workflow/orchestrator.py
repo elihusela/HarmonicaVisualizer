@@ -204,13 +204,22 @@ class WorkflowOrchestrator:
             )
 
         # For harmonica/tabs/finalize, check for existing videos
+        use_alpha = self.session.config.get("use_alpha", False)
         if target_state in (
             WorkflowState.TAB_VIDEO_REVIEW,
             WorkflowState.FINALIZATION,
         ):
+            harmonica_ext = ".mov" if use_alpha else ".mp4"
             harmonica_video = os.path.join(
-                OUTPUTS_DIR, f"{self.session.song_name}_harmonica.mov"
+                OUTPUTS_DIR, f"{self.session.song_name}_harmonica{harmonica_ext}"
             )
+            # Also check legacy .mov path for backwards compatibility
+            if not os.path.exists(harmonica_video):
+                harmonica_video_legacy = os.path.join(
+                    OUTPUTS_DIR, f"{self.session.song_name}_harmonica.mov"
+                )
+                if os.path.exists(harmonica_video_legacy):
+                    harmonica_video = harmonica_video_legacy
             if os.path.exists(harmonica_video):
                 self.session.set_data("harmonica_video", harmonica_video)
                 self.console.print(
@@ -218,9 +227,17 @@ class WorkflowOrchestrator:
                 )
 
         if target_state == WorkflowState.FINALIZATION:
+            full_tabs_ext = ".mov" if use_alpha else ".mp4"
             tab_video = os.path.join(
-                OUTPUTS_DIR, f"{self.session.song_name}_full_tabs.mov"
+                OUTPUTS_DIR, f"{self.session.song_name}_full_tabs{full_tabs_ext}"
             )
+            # Also check legacy .mov path
+            if not os.path.exists(tab_video):
+                tab_video_legacy = os.path.join(
+                    OUTPUTS_DIR, f"{self.session.song_name}_full_tabs.mov"
+                )
+                if os.path.exists(tab_video_legacy):
+                    tab_video = tab_video_legacy
             if os.path.exists(tab_video):
                 self.session.set_data("tab_video", tab_video)
                 self.console.print(f"[green]✓ Found tab video: {tab_video}[/green]")
@@ -977,8 +994,10 @@ class WorkflowOrchestrator:
         )
         harmonica_path = os.path.join("harmonica-models", harmonica_config.model_image)
 
-        # Output paths
-        output_video = f"{self.session.song_name}_harmonica.mov"
+        # Output paths (.mp4 for chromakey default, .mov for alpha mode)
+        use_alpha = self.session.config.get("use_alpha", False)
+        harmonica_ext = ".mov" if use_alpha else ".mp4"
+        output_video = f"{self.session.song_name}_harmonica{harmonica_ext}"
         output_video_path = os.path.join(OUTPUTS_DIR, output_video)
 
         # Get FPS from session (selected after MIDI fixing)
@@ -998,6 +1017,12 @@ class WorkflowOrchestrator:
         )
 
         # Create configuration (using project-specific temp directory)
+        from harmonica_pipeline.video_creator_config import ChromaKeyConfig
+
+        chroma_key_config = ChromaKeyConfig(
+            bg_color=self.session.config.get("bg_color", "#00FF00"),
+            crf=self.session.config.get("crf", 23),
+        )
         config = VideoCreatorConfig(
             video_path=video_path,
             tabs_path=tabs_path,
@@ -1012,6 +1037,8 @@ class WorkflowOrchestrator:
             tab_page_buffer=self.session.config.get("tab_buffer", 0.1),
             fps=fps,
             temp_dir=self.project_temp_dir,
+            use_alpha=use_alpha,
+            chroma_key=chroma_key_config,
         )
 
         # Generate harmonica video
@@ -1079,12 +1106,14 @@ class WorkflowOrchestrator:
         )
         harmonica_path = os.path.join("harmonica-models", harmonica_config.model_image)
 
-        # Output paths (video_creator will rename _tabs.mov to _full_tabs.mov)
+        # Output paths (video_creator will rename _tabs.mov to _full_tabs.mov or .mp4)
+        use_alpha = self.session.config.get("use_alpha", False)
         output_video = f"{self.session.song_name}_tabs.mov"
         output_video_path = os.path.join(OUTPUTS_DIR, output_video)
-        # The actual output file will be named _full_tabs.mov
+        # In chromakey mode the final output is .mp4; in alpha mode it's .mov
+        full_tabs_ext = ".mov" if use_alpha else ".mp4"
         final_output_path = os.path.join(
-            OUTPUTS_DIR, f"{self.session.song_name}_full_tabs.mov"
+            OUTPUTS_DIR, f"{self.session.song_name}_full_tabs{full_tabs_ext}"
         )
 
         # Get FPS from session (selected after MIDI fixing)
@@ -1104,6 +1133,12 @@ class WorkflowOrchestrator:
 
         # Create configuration (using project-specific temp directory)
         # Note: output_video_path is required by config validation even for tab-only
+        from harmonica_pipeline.video_creator_config import ChromaKeyConfig
+
+        chroma_key_config = ChromaKeyConfig(
+            bg_color=self.session.config.get("bg_color", "#00FF00"),
+            crf=self.session.config.get("crf", 23),
+        )
         dummy_harmonica_path = os.path.join(
             OUTPUTS_DIR, f"{self.session.song_name}_dummy.mov"
         )
@@ -1121,6 +1156,8 @@ class WorkflowOrchestrator:
             tab_page_buffer=self.session.config.get("tab_buffer", 0.1),
             fps=fps,
             temp_dir=self.project_temp_dir,
+            use_alpha=use_alpha,
+            chroma_key=chroma_key_config,
         )
 
         # Generate tab video
@@ -1271,7 +1308,7 @@ class WorkflowOrchestrator:
             Panel(
                 f"[green bold]Workflow Complete![/green bold]\n\n"
                 f"Song: {self.session.song_name}\n"
-                f"Outputs: outputs/{self.session.song_name}_*.mov\n"
+                f"Outputs: outputs/{self.session.song_name}_*\n"
                 f"Session: {self.session_file}",
                 title="Success",
             )

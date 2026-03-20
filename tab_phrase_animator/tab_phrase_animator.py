@@ -29,7 +29,7 @@ class AnimationConfig:
 
     fps: int = 30
     figure_size: tuple[float, float] = (16, 9)
-    background_color: str = "#FF00FF"  # Magenta for chroma key
+    background_color: str = "#FF00FF"  # Magenta for chroma key (alpha mode)
     font_family: str = "Ploni Round AAA"
     font_file: str = "ploni-round-bold-aaa.ttf"
     font_size: int = 32
@@ -47,6 +47,8 @@ class AnimationConfig:
     temp_dir: Optional[str] = (
         None  # Project-specific temp directory (defaults to global TEMP_DIR)
     )
+    use_alpha: bool = False  # True = ProRes with alpha (archived mode)
+    chroma_key_config: Optional[object] = None  # ChromaKeyConfig instance
 
 
 @dataclass
@@ -324,11 +326,26 @@ class TabPhraseAnimator:
                 f"No valid text lines found for page {page_name}"
             )
 
+        # Determine background color based on mode
+        if not self._config.use_alpha and self._config.chroma_key_config is not None:
+            from harmonica_pipeline.video_creator_config import ChromaKeyConfig
+
+            ck_cfg = self._config.chroma_key_config
+            bg_color = (
+                ck_cfg.bg_color if isinstance(ck_cfg, ChromaKeyConfig) else str(ck_cfg)
+            )
+        elif not self._config.use_alpha:
+            from harmonica_pipeline.video_creator_config import ChromaKeyConfig
+
+            bg_color = ChromaKeyConfig().bg_color
+        else:
+            bg_color = self._config.background_color
+
         # Create animation
         fig, ax = plt.subplots(figsize=self._config.figure_size)
         ax.axis("off")
-        fig.patch.set_facecolor(self._config.background_color)
-        ax.set_facecolor(self._config.background_color)
+        fig.patch.set_facecolor(bg_color)
+        ax.set_facecolor(bg_color)
 
         ani = animation.FuncAnimation(
             fig,
@@ -444,12 +461,18 @@ class TabPhraseAnimator:
             temp_files.append(temp_path)
             ani.save(temp_path, fps=fps, writer="ffmpeg")
 
-            # Create transparent video
-            transparent_path = os.path.join(
-                self._temp_dir, f"page_{page_idx}_transparent.mov"
+            # Create intermediate video (transparent alpha or ProRes with green bg)
+            intermediate_path = os.path.join(
+                self._temp_dir, f"page_{page_idx}_intermediate.mov"
             )
-            temp_files.append(transparent_path)
-            self._create_transparent_video(temp_path, transparent_path)
+            temp_files.append(intermediate_path)
+
+            if self._config.use_alpha:
+                # Alpha mode: colorkey magenta -> ProRes 4444 with alpha
+                self._create_transparent_video(temp_path, intermediate_path)
+            else:
+                # Chromakey mode: re-encode to ProRes (no alpha) for compositor
+                self._create_prores_video(temp_path, intermediate_path)
 
             # Extract audio slice
             audio_trimmed = os.path.join(self._temp_dir, f"audio_page_{page_idx}.m4a")
@@ -460,7 +483,7 @@ class TabPhraseAnimator:
 
             # Combine video and audio
             final_output = f"{output_path_base}_page{page_idx}.mov"
-            self._combine_video_audio(transparent_path, audio_trimmed, final_output)
+            self._combine_video_audio(intermediate_path, audio_trimmed, final_output)
 
             return final_output
 
@@ -509,6 +532,39 @@ class TabPhraseAnimator:
             subprocess.run(cmd, capture_output=True, text=True, check=True)
         except subprocess.CalledProcessError as e:
             raise TabPhraseAnimatorError(f"Transparency processing failed: {e.stderr}")
+
+    def _create_prores_video(self, input_path: str, output_path: str) -> None:
+        """
+        Re-encode to ProRes 422 HQ (no alpha) for compositor use in chromakey mode.
+
+        The background is already green (set during rendering), so no colorkey
+        filter is needed. This produces a ProRes file the compositor can work with.
+
+        Args:
+            input_path: Input video file
+            output_path: Output ProRes video file
+
+        Raises:
+            TabPhraseAnimatorError: If FFmpeg processing fails
+        """
+        cmd = [
+            "ffmpeg",
+            "-y",
+            "-i",
+            input_path,
+            "-c:v",
+            "prores_ks",
+            "-profile:v",
+            "3",  # ProRes 422 HQ (no alpha needed)
+            "-pix_fmt",
+            "yuv422p10le",
+            output_path,
+        ]
+
+        try:
+            subprocess.run(cmd, capture_output=True, text=True, check=True)
+        except subprocess.CalledProcessError as e:
+            raise TabPhraseAnimatorError(f"ProRes encoding failed: {e.stderr}")
 
     def _extract_audio_slice(
         self, input_audio: str, output_audio: str, start_time: float, end_time: float
@@ -578,6 +634,22 @@ class TabPhraseAnimator:
         except subprocess.CalledProcessError as e:
             raise TabPhraseAnimatorError(f"Video/audio combination failed: {e.stderr}")
 
+    def _get_bg_color(self) -> str:
+        """Return the effective background color based on the current mode."""
+        if not self._config.use_alpha and self._config.chroma_key_config is not None:
+            from harmonica_pipeline.video_creator_config import ChromaKeyConfig
+
+            ck_cfg = self._config.chroma_key_config
+            return (
+                ck_cfg.bg_color if isinstance(ck_cfg, ChromaKeyConfig) else str(ck_cfg)
+            )
+        elif not self._config.use_alpha:
+            from harmonica_pipeline.video_creator_config import ChromaKeyConfig
+
+            return ChromaKeyConfig().bg_color
+        else:
+            return self._config.background_color
+
     def _update_text_frame(
         self,
         frame: int,
@@ -605,7 +677,7 @@ class TabPhraseAnimator:
         elements = []
         ax.clear()
         ax.axis("off")
-        ax.set_facecolor(self._config.background_color)
+        ax.set_facecolor(self._get_bg_color())
 
         # Calculate layout
         total_height = (len(text_lines) - 1) * self._config.line_spacing

@@ -224,6 +224,82 @@ Examples:
         default=50.0,
         help="Notes starting within this threshold (ms) are treated as chords. Default: 50",
     )
+    video_parser.add_argument(
+        "--alpha",
+        action="store_true",
+        help="Output ProRes with alpha channel instead of H.265 chromakey (archived mode)",
+    )
+    video_parser.add_argument(
+        "--crf",
+        type=int,
+        default=23,
+        help="H.265 CRF quality (0=lossless, 51=worst). Default: 23. Only used in chromakey mode.",
+    )
+    video_parser.add_argument(
+        "--bg-color",
+        type=str,
+        default="#00FF00",
+        help="Chroma key background color (hex). Default: #00FF00 (green). Only used in chromakey mode.",
+    )
+
+    # alpha-export command (archived ProRes alpha path)
+    alpha_parser = subparsers.add_parser(
+        "alpha-export",
+        help="Create harmonica video with ProRes alpha channel (archived mode). Same as create-video --alpha.",
+    )
+    alpha_parser.add_argument("video", help="Input video file (in video-files/)")
+    alpha_parser.add_argument("tabs", help="Tab file (in tab-files/)")
+    alpha_parser.add_argument(
+        "--key",
+        type=str,
+        default="C",
+        help="Harmonica key (C, G, BB, etc.). Default: C",
+    )
+    alpha_parser.add_argument(
+        "--harmonica-model",
+        default=DEFAULT_HARMONICA_MODEL,
+        help="Harmonica image (default: auto-selected based on --key)",
+    )
+    alpha_parser.add_argument(
+        "--no-produce-tabs", action="store_true", help="Skip tab phrase generation"
+    )
+    alpha_parser.add_argument(
+        "--only-tabs",
+        action="store_true",
+        help="Only create tab phrase animations (skip harmonica)",
+    )
+    alpha_parser.add_argument(
+        "--only-harmonica",
+        action="store_true",
+        help="Only create harmonica animation (skip tabs)",
+    )
+    alpha_parser.add_argument(
+        "--no-full-tab-video",
+        action="store_true",
+        help="Skip full tab video generation (only create individual page videos)",
+    )
+    alpha_parser.add_argument(
+        "--only-full-tab-video",
+        action="store_true",
+        help="Only create full tab video (skip individual page videos)",
+    )
+    alpha_parser.add_argument(
+        "--tab-page-buffer",
+        type=float,
+        default=0.1,
+        help="Buffer time (seconds) before/after notes on each tab page. Default: 0.1",
+    )
+    alpha_parser.add_argument(
+        "--fix-overlaps",
+        action="store_true",
+        help="Auto-fix overlapping MIDI notes",
+    )
+    alpha_parser.add_argument(
+        "--chord-threshold",
+        type=float,
+        default=50.0,
+        help="Notes starting within this threshold (ms) are treated as chords. Default: 50",
+    )
 
     # Full pipeline (for testing)
     full_parser = subparsers.add_parser(
@@ -553,10 +629,16 @@ def create_video_phase(
     tab_page_buffer: float = 0.1,
     fix_overlaps: bool = False,
     chord_threshold: float = 50.0,
+    use_alpha: bool = False,
+    crf: int = 23,
+    bg_color: str = "#00FF00",
 ) -> None:
     """Phase 2: Create video from fixed MIDI."""
     from harmonica_pipeline.video_creator import VideoCreator
-    from harmonica_pipeline.video_creator_config import VideoCreatorConfig
+    from harmonica_pipeline.video_creator_config import (
+        VideoCreatorConfig,
+        ChromaKeyConfig,
+    )
 
     # Handle conflicting options
     if only_tabs and only_harmonica:
@@ -588,7 +670,9 @@ def create_video_phase(
     # Generate smart defaults
     base_name = get_video_base_name(video)
     midi_name = f"{base_name}{MIDI_SUFFIX}"
-    output_video = f"{base_name}_harmonica.mov"
+    # Output extension depends on mode: .mp4 for chromakey (default), .mov for alpha
+    harmonica_ext = ".mov" if use_alpha else ".mp4"
+    output_video = f"{base_name}_harmonica{harmonica_ext}"
     tabs_output_video = f"{base_name}_tabs.mov" if create_tabs else None
 
     # Validate all input files exist
@@ -622,6 +706,9 @@ def create_video_phase(
             full_tab_path = tabs_output_path.replace("_tabs.mov", "_full_tabs.mov")
             print(f"🎬 Full tabs: {full_tab_path}")
 
+    # Create chromakey config
+    chroma_key_config = ChromaKeyConfig(bg_color=bg_color, crf=crf)
+
     # Create configuration object
     config = VideoCreatorConfig(
         video_path=video_path,
@@ -637,16 +724,22 @@ def create_video_phase(
         tab_page_buffer=tab_page_buffer,
         fix_overlaps=fix_overlaps,
         chord_threshold_ms=chord_threshold,
+        use_alpha=use_alpha,
+        chroma_key=chroma_key_config,
     )
 
     creator = VideoCreator(config)
     creator.create(create_harmonica=create_harmonica, create_tabs=create_tabs)
 
-    print("✅ Phase 2 Complete!")
-    print(f"🎥 Video saved to: {output_video_path}")
+    print("Phase 2 Complete!")
+    print(f"Video saved to: {output_video_path}")
     if only_full_tab_video and create_tabs and tabs_output_path:
-        full_tab_path = tabs_output_path.replace("_tabs.mov", "_full_tabs.mov")
-        print(f"📄 Full tab video saved to: {full_tab_path}")
+        # In chromakey mode the output is .mp4; in alpha mode .mov
+        if use_alpha:
+            full_tab_path = tabs_output_path.replace("_tabs.mov", "_full_tabs.mov")
+        else:
+            full_tab_path = tabs_output_path.replace("_tabs.mov", "_full_tabs.mp4")
+        print(f"Full tab video saved to: {full_tab_path}")
 
 
 def full_pipeline(
@@ -1349,6 +1442,26 @@ def main():
                 args.tab_page_buffer,
                 args.fix_overlaps,
                 args.chord_threshold,
+                use_alpha=args.alpha,
+                crf=args.crf,
+                bg_color=args.bg_color,
+            )
+
+        elif args.command == "alpha-export":
+            create_video_phase(
+                args.video,
+                args.tabs,
+                args.key,
+                args.harmonica_model,
+                not args.no_produce_tabs,
+                args.only_tabs,
+                args.only_harmonica,
+                args.no_full_tab_video,
+                args.only_full_tab_video,
+                args.tab_page_buffer,
+                args.fix_overlaps,
+                args.chord_threshold,
+                use_alpha=True,
             )
 
         elif args.command == "full":

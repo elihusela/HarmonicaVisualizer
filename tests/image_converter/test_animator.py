@@ -493,10 +493,13 @@ class TestAnimatorVideoCreation:
             assert save_args[1]["fps"] == 15
             assert save_args[1]["writer"] == "ffmpeg"
 
-            # Verify video processing
-            mock_vp.process_animation_to_video.assert_called_once_with(
-                animator._temp_video_path, "audio.wav", "output.mp4", cleanup_temp=True
-            )
+            # Verify video processing (chromakey mode is default)
+            mock_vp.process_animation_to_chromakey_video.assert_called_once()
+            call_args = mock_vp.process_animation_to_chromakey_video.call_args
+            assert call_args[0][0] == animator._temp_video_path
+            assert call_args[0][1] == "audio.wav"
+            assert call_args[0][2] == "output.mp4"
+            assert call_args[1]["cleanup_temp"] is True
 
             # Verify logging
             mock_log.assert_called_once()
@@ -585,8 +588,8 @@ class TestAnimatorVideoCreation:
         from image_converter.video_processor import VideoProcessorError
 
         with patch.object(animator, "_video_processor") as mock_vp:
-            mock_vp.process_animation_to_video.side_effect = VideoProcessorError(
-                "FFmpeg failed"
+            mock_vp.process_animation_to_chromakey_video.side_effect = (
+                VideoProcessorError("FFmpeg failed")
             )
 
             test_pages = {
@@ -759,13 +762,12 @@ class TestAnimatorIntegration:
             consecutive_threes = [e for e in animator._flat_entries if e.tab == 3]
             assert len(consecutive_threes) == 4  # Four "3" notes
 
-            # Verify video processing was called
-            mock_vp.process_animation_to_video.assert_called_once_with(
-                animator._temp_video_path,
-                "mary_audio.wav",
-                "mary_video.mp4",
-                cleanup_temp=True,
-            )
+            # Verify video processing was called (chromakey mode is default)
+            mock_vp.process_animation_to_chromakey_video.assert_called_once()
+            call_args = mock_vp.process_animation_to_chromakey_video.call_args
+            assert call_args[0][0] == animator._temp_video_path
+            assert call_args[0][1] == "mary_audio.wav"
+            assert call_args[0][2] == "mary_video.mp4"
 
     def test_chord_handling(self, mock_harmonica_layout, mock_figure_factory):
         """Test handling of harmonica chords (multiple simultaneous notes)."""

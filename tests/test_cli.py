@@ -563,6 +563,9 @@ class TestMain:
             0.1,  # Default tab_page_buffer
             False,  # fix_overlaps
             50.0,  # chord_threshold
+            use_alpha=False,
+            crf=23,
+            bg_color="#00FF00",
         )
 
     @patch("cli.full_pipeline")
@@ -649,6 +652,9 @@ class TestMain:
             0.1,  # Default tab_page_buffer
             False,  # fix_overlaps
             50.0,  # chord_threshold
+            use_alpha=False,
+            crf=23,
+            bg_color="#00FF00",
         )
 
     @patch("cli.create_video_phase")
@@ -672,6 +678,9 @@ class TestMain:
             0.1,  # Default tab_page_buffer
             False,  # fix_overlaps
             50.0,  # chord_threshold
+            use_alpha=False,
+            crf=23,
+            bg_color="#00FF00",
         )
 
     @patch("cli.create_video_phase")
@@ -695,6 +704,9 @@ class TestMain:
             0.1,  # Default tab_page_buffer
             False,  # fix_overlaps
             50.0,  # chord_threshold
+            use_alpha=False,
+            crf=23,
+            bg_color="#00FF00",
         )
 
 
@@ -728,7 +740,7 @@ class TestCLIIntegration:
         call_args = mock_creator_class.call_args[0]
         config = call_args[0]
         assert "MySong_fixed.mid" in config.midi_path
-        assert "MySong_harmonica.mov" in config.output_video_path
+        assert "MySong_harmonica.mp4" in config.output_video_path  # chromakey default
         assert "MySong_tabs.mov" in config.tabs_output_path
 
     @patch("interactive_workflow.orchestrator.WorkflowOrchestrator")
