@@ -1063,7 +1063,6 @@ class WorkflowOrchestrator:
                 default=True,
             ).ask()
         ):
-            self._offer_chroma_key_export(output_video_path, "harmonica")
             self.session.transition_to(WorkflowState.TAB_VIDEO_REVIEW)
         else:
             # User declined - go back to MIDI fixing to adjust timing
@@ -1180,7 +1179,6 @@ class WorkflowOrchestrator:
                 default=True,
             ).ask()
         ):
-            self._offer_chroma_key_export(final_output_path, "tab")
             self.session.transition_to(WorkflowState.FINALIZATION)
         else:
             # User declined - ask what they want to do
@@ -1199,31 +1197,6 @@ class WorkflowOrchestrator:
             else:
                 self.console.print("[yellow]⮌ Regenerating tab video...[/yellow]")
                 self.session.transition_to(WorkflowState.TAB_VIDEO_REVIEW)
-
-    def _offer_chroma_key_export(self, video_path: str, label: str) -> None:
-        """Offer to export a chroma key (H.265 MP4) version of a ProRes video."""
-        if self.auto_approve or not os.path.exists(video_path):
-            return
-
-        if not questionary.confirm(
-            f"Export chroma key version of {label} video? (H.265 MP4, ~99% smaller)",
-            default=False,
-        ).ask():
-            return
-
-        from image_converter.video_processor import VideoProcessor, VideoProcessorError
-        from pathlib import Path
-
-        stem = Path(video_path).stem
-        output_path = str(Path(video_path).parent / f"{stem}_chromakey.mp4")
-
-        self.console.print(f"[dim]Exporting chroma key: {output_path}[/dim]")
-        try:
-            vp = VideoProcessor()
-            vp.export_chroma_key(video_path, output_path)
-            self.console.print(f"[green]✓ Chroma key export: {output_path}[/green]")
-        except VideoProcessorError as e:
-            self.console.print(f"[yellow]⚠️  Chroma key export failed: {e}[/yellow]")
 
     def _step_finalization(self) -> None:
         """Finalize workflow - cleanup, ZIP, archive.
