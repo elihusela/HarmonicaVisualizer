@@ -147,7 +147,7 @@ class TestHoleMappingCalculations:
         expected_center_y = (hole_1["top_left"]["y"] + hole_1["bottom_right"]["y"]) / 2
 
         # Verify calculation works correctly
-        assert expected_center_x == (243 + 308) / 2
+        assert expected_center_x == (248 + 312) / 2
         assert expected_center_y == (355 + 430) / 2
 
     def test_hole_dimensions_calculation(self):
@@ -157,7 +157,7 @@ class TestHoleMappingCalculations:
         width = hole_1["bottom_right"]["x"] - hole_1["top_left"]["x"]
         height = hole_1["bottom_right"]["y"] - hole_1["top_left"]["y"]
 
-        assert width == 308 - 243
+        assert width == 312 - 248
         assert height == 430 - 355
         assert width > 0
         assert height > 0

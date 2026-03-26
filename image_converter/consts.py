@@ -10,8 +10,8 @@ BEND_COLOR = "#6fd0f7"  # CYAN (Light blue)
 
 # Standard hole mapping used for ALL harmonica models
 STANDARD_MODEL_HOLE_MAPPING = {
-    1: {"top_left": {"x": 243, "y": 355}, "bottom_right": {"x": 308, "y": 430}},
-    2: {"top_left": {"x": 350, "y": 355}, "bottom_right": {"x": 412, "y": 430}},
+    1: {"top_left": {"x": 248, "y": 355}, "bottom_right": {"x": 312, "y": 430}},
+    2: {"top_left": {"x": 353, "y": 355}, "bottom_right": {"x": 415, "y": 430}},
     3: {"top_left": {"x": 454, "y": 355}, "bottom_right": {"x": 516, "y": 430}},
     4: {"top_left": {"x": 558, "y": 355}, "bottom_right": {"x": 623, "y": 430}},
     5: {"top_left": {"x": 661, "y": 355}, "bottom_right": {"x": 728, "y": 430}},

@@ -376,6 +376,19 @@ class WorkflowOrchestrator:
 
     def _step_initialize(self) -> None:
         """Initialize workflow - determine next step."""
+        from utils.utils import MIDI_DIR
+
+        midi_path = os.path.join(MIDI_DIR, f"{self.session.song_name}_fixed.mid")
+        if os.path.exists(midi_path) and not self.auto_approve:
+            skip = questionary.confirm(
+                f"MIDI already exists ({midi_path}). Skip stem separation and MIDI generation?",
+                default=True,
+            ).ask()
+            if skip:
+                self.session.set_data("generated_midi", midi_path)
+                self.session.transition_to(WorkflowState.MIDI_FIXING)
+                return
+
         if self.filename_config.enable_stem:
             self.session.transition_to(WorkflowState.STEM_SELECTION)
         else:
