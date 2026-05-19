@@ -686,6 +686,16 @@ def create_video_phase(
     validate_file_exists(harmonica_path, "Harmonica model")
 
     midi_path = os.path.join(MIDI_DIR, midi_name)
+    if not os.path.exists(midi_path):
+        try:
+            from utils.filename_parser import parse_filename
+
+            song_name = parse_filename(video).song_name
+            fallback = os.path.join(MIDI_DIR, f"{song_name}{MIDI_SUFFIX}")
+            if os.path.exists(fallback):
+                midi_path = fallback
+        except ValueError:
+            pass
     validate_file_exists(midi_path, "MIDI")
 
     output_video_path = os.path.join(OUTPUTS_DIR, output_video)

@@ -63,8 +63,8 @@ python cli.py generate-midi MySong.wav
 
 # With tuning for more notes
 python cli.py generate-midi other.wav \
-  --onset-threshold 0.15 \
-  --frame-threshold 0.13
+  --onset-threshold 0.13 \
+  --frame-threshold 0.11
 
 # With preset
 python cli.py generate-midi other.wav --preset harmonica_strict
@@ -73,7 +73,7 @@ python cli.py generate-midi other.wav --preset harmonica_strict
 python cli.py generate-midi MySong.wav --minimum-note-length 150
 
 # Disable melodia (helps with chords)
-python cli.py generate-midi MySong.wav --no-melodia-trick
+python cli.py generate-midi other.wav --no-melodia-trick
 ```
 
 **Output:** `fixed_midis/MySong_fixed.mid`
