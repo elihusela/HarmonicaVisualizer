@@ -15,7 +15,7 @@ from utils.utils import TEMP_DIR
 class ChromaKeyConfig:
     """Configuration for chroma key video output."""
 
-    bg_color: str = "#00FF00"  # matplotlib background color (hex with #)
+    bg_color: str = "#3bc158"  # matplotlib background color (hex with #)
     crf: int = 23  # H.265 quality (0=lossless, 51=worst)
     preset: str = "fast"  # ffmpeg encode speed
     audio_bitrate: str = "128k"  # AAC audio bitrate
