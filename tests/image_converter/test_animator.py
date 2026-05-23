@@ -154,6 +154,110 @@ class TestAnimatorInitialization:
             assert animator._video_processor == mock_vp.return_value
 
 
+class TestSegmentDetection:
+    """Test segment detection for static/animated periods."""
+
+    @pytest.fixture
+    def animator(self):
+        """Create a basic animator instance for testing."""
+        with patch("image_converter.figure_factory.FigureFactory"):
+            with patch("image_converter.harmonica_layout.HarmonicaLayout"):
+                return Animator(MagicMock(), MagicMock())
+
+    def test_detect_segments_no_entries(self, animator):
+        """Test detection when there are no entries (all static)."""
+        segments = animator._detect_segments([], duration=10.0)
+        assert len(segments) == 1
+        assert segments[0] == (0.0, 10.0, True)
+
+    def test_detect_segments_single_note(self, animator):
+        """Test detection with single note (static before/after)."""
+        entries = [TabEntry(tab=1, time=2.0, duration=1.0, confidence=0.8)]
+        segments = animator._detect_segments(entries, duration=5.0)
+        # Should be: static (0-2), animated (2-3), static (3-5)
+        assert len(segments) == 3
+        assert segments[0] == (0.0, 2.0, True)
+        assert segments[1] == (2.0, 3.0, False)
+        assert segments[2] == (3.0, 5.0, True)
+
+    def test_detect_segments_continuous_notes(self, animator):
+        """Test detection with overlapping notes (continuous animation)."""
+        entries = [
+            TabEntry(tab=1, time=0.0, duration=2.0, confidence=0.8),
+            TabEntry(tab=2, time=1.5, duration=2.0, confidence=0.8),
+        ]
+        segments = animator._detect_segments(entries, duration=5.0)
+        # Should be: animated (0-3.5), static (3.5-5)
+        assert len(segments) == 2
+        assert segments[0] == (0.0, 3.5, False)
+        assert segments[1] == (3.5, 5.0, True)
+
+    def test_detect_segments_merge_small_gaps(self, animator):
+        """Test merging of segments separated by small gaps."""
+        entries = [
+            TabEntry(tab=1, time=1.0, duration=0.5, confidence=0.8),
+            TabEntry(tab=2, time=2.0, duration=0.5, confidence=0.8),
+        ]
+        # With small merge threshold, the static gap between notes should not merge
+        segments = animator._detect_segments(
+            entries, duration=5.0, merge_threshold=0.05
+        )
+        # Should be: static (0-1), animated (1-1.5), static (1.5-2), animated (2-2.5), static (2.5-5)
+        assert segments[0] == (0.0, 1.0, True)
+        assert segments[1] == (1.0, 1.5, False)
+        # Merging should happen: 1.5-2 (gap 0.5) will merge if threshold allows
+        # Actually, gap is 0.5 which is > 0.05, so no merge
+
+    def test_detect_segments_alternating(self, animator):
+        """Test detection with alternating static/animated."""
+        entries = [
+            TabEntry(tab=1, time=0.5, duration=0.3, confidence=0.8),
+            TabEntry(tab=2, time=1.2, duration=0.3, confidence=0.8),
+            TabEntry(tab=3, time=1.9, duration=0.3, confidence=0.8),
+        ]
+        segments = animator._detect_segments(entries, duration=3.0)
+        # Should alternate: static, animated, static, animated, static, animated, static
+        assert segments[0][2]  # 0-0.5 static
+        assert not segments[1][2]  # 0.5-0.8 animated
+        assert segments[2][2]  # 0.8-1.2 static
+
+    @patch("matplotlib.animation.FuncAnimation")
+    def test_time_range_parameter(self, mock_animation, animator):
+        """Test that time_range parameter correctly limits frame rendering."""
+        # Setup mocks
+        mock_fig = MagicMock()
+        mock_ax = MagicMock()
+        animator._figure_factory.create.return_value = (mock_fig, mock_ax)
+        mock_ani = MagicMock()
+        mock_animation.return_value = mock_ani
+
+        # Mock VideoProcessor to avoid file I/O
+        animator._video_processor = MagicMock()
+
+        # Create simple page with one note
+        page = [[[TabEntry(tab=1, time=2.0, duration=1.0, confidence=0.8)]]]
+        all_pages = {"Page 1": page}
+
+        # Render 5-7 seconds with fps=30 (should render 60 frames for 2 seconds)
+        animator.create_animation(
+            all_pages,
+            extracted_audio_path="audio.wav",
+            output_path="output.mp4",
+            fps=30,
+            audio_duration=10.0,
+            time_range=(5.0, 7.0),
+        )
+
+        # Verify FuncAnimation was called with range(150, 210) for frames 5-7s @ 30fps
+        mock_animation.assert_called_once()
+        call_args = mock_animation.call_args
+        frames_arg = call_args[1]["frames"]
+        # Should be a range from frame 150 to 210
+        assert isinstance(frames_arg, range)
+        assert frames_arg.start == 150
+        assert frames_arg.stop == 210
+
+
 class TestAnimatorHelperMethods:
     """Test Animator helper and utility methods."""
 

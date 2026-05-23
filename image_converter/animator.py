@@ -91,6 +91,7 @@ class Animator:
         audio_duration: Optional[float] = None,
         use_alpha: Optional[bool] = None,
         chroma_key_config=None,
+        time_range: Optional[tuple[float, float]] = None,
     ) -> None:
         # Allow per-call override; fall back to instance defaults
         effective_use_alpha = use_alpha if use_alpha is not None else self._use_alpha
@@ -109,7 +110,17 @@ class Animator:
         self._audio_duration = audio_duration
 
         total_duration = self._get_total_duration()
-        total_frames = self._get_total_frames(fps, total_duration)
+
+        # Handle time_range rendering (for segmented animation)
+        if time_range is not None:
+            start_time, end_time = time_range
+            frames: int | range = range(int(start_time * fps), int(end_time * fps))
+            duration_for_output = end_time - start_time
+        else:
+            frames = self._get_total_frames(fps, total_duration)
+            duration_for_output = total_duration
+
+        total_frames = len(frames) if isinstance(frames, range) else frames
 
         # Set background color based on mode
         if not effective_use_alpha:
@@ -126,7 +137,7 @@ class Animator:
         ani = animation.FuncAnimation(
             fig,
             lambda frame: self._timed_update_frame(frame, fps),
-            frames=total_frames,
+            frames=frames,
             blit=False,
             interval=1000 / fps,
             cache_frame_data=False,
@@ -165,7 +176,7 @@ class Animator:
                 )
 
             # Log video information
-            self._log_video_info(output_path, total_duration, fps, total_frames)
+            self._log_video_info(output_path, duration_for_output, fps, total_frames)
 
         except VideoProcessorError as e:
             print(f"Video processing failed: {e}")
@@ -281,6 +292,66 @@ class Animator:
     @staticmethod
     def _calc_direction(tab_entry: TabEntry) -> str:
         return "↑" if tab_entry.tab > 0 else "↓"
+
+    def _detect_segments(
+        self, entries: List[TabEntry], duration: float, merge_threshold: float = 0.05
+    ) -> List[tuple[float, float, bool]]:
+        """
+        Detect static (no notes) and animated (notes playing) segments.
+
+        Analyzes timeline to find contiguous periods where no notes are active.
+        Adjacent segments of same type are merged if gap < merge_threshold.
+
+        Args:
+            entries: List of TabEntry objects (already flat and adjusted)
+            duration: Total video duration in seconds
+            merge_threshold: Merge segments if gap between them is < this (seconds)
+
+        Returns:
+            List of (start_time, end_time, is_static) tuples, sorted by time.
+            Example: [(0.0, 2.5, True), (2.5, 5.0, False), (5.0, 7.0, True)]
+        """
+        if not entries:
+            # No entries = entire video is static
+            return [(0.0, duration, True)]
+
+        # Find all time boundaries (note starts and ends)
+        boundaries_set: set[float] = {0.0, duration}
+        for entry in entries:
+            boundaries_set.add(entry.time)
+            boundaries_set.add(entry.time + entry.duration)
+
+        # Sort boundaries
+        boundaries = sorted(boundaries_set)
+
+        # Determine if each interval is static or animated
+        segments = []
+        for i in range(len(boundaries) - 1):
+            start_t = boundaries[i]
+            end_t = boundaries[i + 1]
+            mid_t = (start_t + end_t) / 2
+
+            # Check if any note is active at midpoint
+            is_active = any(
+                entry.time <= mid_t <= entry.time + entry.duration for entry in entries
+            )
+            segments.append((start_t, end_t, not is_active))
+
+        # Merge adjacent segments of same type if gap is small
+        merged: list[tuple[float, float, bool]] = []
+        for start, end, is_static in segments:
+            if merged and merged[-1][2] == is_static:
+                # Same type as previous; check if we should merge
+                prev_start, prev_end, prev_static = merged[-1]
+                if start - prev_end < merge_threshold:
+                    # Merge by extending previous segment
+                    merged[-1] = (prev_start, end, is_static)
+                else:
+                    merged.append((start, end, is_static))
+            else:
+                merged.append((start, end, is_static))
+
+        return merged
 
     def _get_total_duration(self) -> float:
         # Use provided audio duration if available (shows harmonica for full video)
