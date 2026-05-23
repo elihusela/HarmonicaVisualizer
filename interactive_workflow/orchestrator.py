@@ -1033,7 +1033,7 @@ class WorkflowOrchestrator:
         from harmonica_pipeline.video_creator_config import ChromaKeyConfig
 
         chroma_key_config = ChromaKeyConfig(
-            bg_color=self.session.config.get("bg_color", "#00FF00"),
+            bg_color=self.session.config.get("bg_color", ChromaKeyConfig().bg_color),
             crf=self.session.config.get("crf", 23),
         )
         config = VideoCreatorConfig(
@@ -1148,7 +1148,7 @@ class WorkflowOrchestrator:
         from harmonica_pipeline.video_creator_config import ChromaKeyConfig
 
         chroma_key_config = ChromaKeyConfig(
-            bg_color=self.session.config.get("bg_color", "#00FF00"),
+            bg_color=self.session.config.get("bg_color", ChromaKeyConfig().bg_color),
             crf=self.session.config.get("crf", 23),
         )
         dummy_harmonica_path = os.path.join(

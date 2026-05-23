@@ -565,7 +565,7 @@ class TestMain:
             50.0,  # chord_threshold
             use_alpha=False,
             crf=23,
-            bg_color="#00FF00",
+            bg_color=None,
         )
 
     @patch("cli.full_pipeline")
@@ -654,7 +654,7 @@ class TestMain:
             50.0,  # chord_threshold
             use_alpha=False,
             crf=23,
-            bg_color="#00FF00",
+            bg_color=None,
         )
 
     @patch("cli.create_video_phase")
@@ -680,7 +680,7 @@ class TestMain:
             50.0,  # chord_threshold
             use_alpha=False,
             crf=23,
-            bg_color="#00FF00",
+            bg_color=None,
         )
 
     @patch("cli.create_video_phase")
@@ -706,7 +706,7 @@ class TestMain:
             50.0,  # chord_threshold
             use_alpha=False,
             crf=23,
-            bg_color="#00FF00",
+            bg_color=None,
         )
 
 

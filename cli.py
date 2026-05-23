@@ -238,8 +238,8 @@ Examples:
     video_parser.add_argument(
         "--bg-color",
         type=str,
-        default="#00FF00",
-        help="Chroma key background color (hex). Default: #00FF00 (green). Only used in chromakey mode.",
+        default=None,
+        help="Chroma key background color (hex). Default: #3bc158 (green). Only used in chromakey mode.",
     )
 
     # alpha-export command (archived ProRes alpha path)
@@ -631,7 +631,7 @@ def create_video_phase(
     chord_threshold: float = 50.0,
     use_alpha: bool = False,
     crf: int = 23,
-    bg_color: str = "#00FF00",
+    bg_color: str | None = None,
 ) -> None:
     """Phase 2: Create video from fixed MIDI."""
     from harmonica_pipeline.video_creator import VideoCreator
@@ -717,7 +717,10 @@ def create_video_phase(
             print(f"🎬 Full tabs: {full_tab_path}")
 
     # Create chromakey config
-    chroma_key_config = ChromaKeyConfig(bg_color=bg_color, crf=crf)
+    default_config = ChromaKeyConfig()
+    chroma_key_config = ChromaKeyConfig(
+        bg_color=bg_color or default_config.bg_color, crf=crf
+    )
 
     # Create configuration object
     config = VideoCreatorConfig(
