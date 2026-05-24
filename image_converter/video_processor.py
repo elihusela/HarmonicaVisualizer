@@ -390,3 +390,109 @@ class VideoProcessor:
                 "fps": 0,
                 "codec": "unknown",
             }
+
+    def concatenate_segments(
+        self,
+        segment_paths: list[str],
+        output_path: str,
+        fps: int = 15,
+        segment_durations: list[float] | None = None,
+    ) -> None:
+        """
+        Concatenate segment videos (mix of video files and PNG frames).
+
+        Uses FFmpeg concat demuxer to join segments with precise timing.
+        PNG frames are converted to video clips before concatenation.
+
+        Args:
+            segment_paths: List of video/image paths to concatenate
+            output_path: Output video path (ProRes format)
+            fps: Frames per second for conversion
+            segment_durations: Optional durations for each segment (for timing)
+
+        Raises:
+            VideoProcessorError: If concatenation fails
+        """
+
+        if not segment_paths:
+            raise VideoProcessorError("No segments to concatenate")
+
+        temp_videos = []
+        try:
+            # Convert any PNG frames to video clips
+            for i, seg_path in enumerate(segment_paths):
+                if seg_path.lower().endswith(".png"):
+                    # Create 1-frame video from PNG with specified duration
+                    duration = segment_durations[i] if segment_durations else 1.0
+                    temp_vid = os.path.join(str(self.temp_dir), f"seg_{i}_video.mov")
+                    frame_count = max(1, int(duration * fps))
+
+                    cmd = [
+                        "ffmpeg",
+                        "-y",
+                        "-loop",
+                        "1",
+                        "-i",
+                        seg_path,
+                        "-c:v",
+                        "prores",
+                        "-profile:v",
+                        "4",
+                        "-vf",
+                        f"fps={fps},scale=-1:1080",
+                        "-vframes",
+                        str(frame_count),
+                        temp_vid,
+                    ]
+                    result = subprocess.run(cmd, capture_output=True, text=True)
+                    if result.returncode != 0:
+                        raise VideoProcessorError(
+                            f"PNG to video conversion failed: {result.stderr}"
+                        )
+                    temp_videos.append(temp_vid)
+                else:
+                    temp_videos.append(seg_path)
+
+            # Create concat file
+            concat_file = os.path.join(str(self.temp_dir), "concat.txt")
+            with open(concat_file, "w") as f:
+                for vid in temp_videos:
+                    f.write(f"file '{vid}'\n")
+
+            # Run concat demuxer
+            cmd = [
+                "ffmpeg",
+                "-y",
+                "-f",
+                "concat",
+                "-safe",
+                "0",
+                "-i",
+                concat_file,
+                "-c:v",
+                "prores",
+                "-profile:v",
+                "4",
+                "-c:a",
+                "aac",
+                output_path,
+            ]
+
+            result = subprocess.run(cmd, capture_output=True, text=True)
+            if result.returncode != 0:
+                raise VideoProcessorError(
+                    f"Segment concatenation failed: {result.stderr}"
+                )
+
+        finally:
+            # Cleanup temp videos (but not original segments)
+            try:
+                os.remove(concat_file)
+            except Exception:
+                pass
+            for temp_vid in temp_videos:
+                if temp_vid not in segment_paths:
+                    try:
+                        os.remove(temp_vid)
+                    except Exception:
+                        pass

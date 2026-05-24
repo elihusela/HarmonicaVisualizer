@@ -353,6 +353,207 @@ class Animator:
 
         return merged
 
+    def animate_with_segmentation(
+        self,
+        all_pages: Dict[str, List[List[Optional[List[TabEntry]]]]],
+        extracted_audio_path: str,
+        output_path: str,
+        fps: int = 15,
+        audio_duration: Optional[float] = None,
+        use_alpha: Optional[bool] = None,
+        chroma_key_config=None,
+    ) -> None:
+        """
+        Generate animation using segment-based compositing for speed optimization.
+
+        Detects static vs animated segments, renders only what's needed, then
+        concatenates the results. Expected 2-3x speedup for videos with rests.
+
+        Args:
+            all_pages: Page structure
+            extracted_audio_path: Audio file path
+            output_path: Output video path
+            fps: Frames per second
+            audio_duration: Total duration
+            use_alpha: Use ProRes alpha mode
+            chroma_key_config: Chroma key configuration
+        """
+        import os
+
+        self._flat_entries = [
+            entry
+            for page in all_pages.values()
+            for line in page
+            for chord in line
+            if chord
+            for entry in chord
+        ]
+        self._flat_entries = adjust_consecutive_identical_notes(self._flat_entries)
+        self._audio_duration = audio_duration
+        total_duration = self._get_total_duration()
+
+        # Detect segments
+        segments = self._detect_segments(self._flat_entries, total_duration)
+
+        # Check if segmentation is worth it (>50% static)
+        static_duration = sum(
+            end - start for start, end, is_static in segments if is_static
+        )
+        if static_duration / total_duration < 0.5:
+            # Not worth segmenting, use standard rendering
+            self.create_animation(
+                all_pages,
+                extracted_audio_path,
+                output_path,
+                fps=fps,
+                audio_duration=audio_duration,
+                use_alpha=use_alpha,
+                chroma_key_config=chroma_key_config,
+            )
+            return
+
+        # Create segment output directory
+        seg_dir = os.path.join(self._temp_dir, "segments")
+        os.makedirs(seg_dir, exist_ok=True)
+
+        segment_videos = []
+        segment_durations = []
+
+        try:
+            for i, (start_time, end_time, is_static) in enumerate(segments):
+                duration = end_time - start_time
+
+                if is_static:
+                    # Extract single frame for static segment
+                    frame_path = self._extract_static_frame(
+                        all_pages, start_time, fps, seg_dir, i
+                    )
+                    segment_videos.append(frame_path)
+                else:
+                    # Render animated segment
+                    seg_video = os.path.join(seg_dir, f"seg_{i}.mov")
+                    self.create_animation(
+                        all_pages,
+                        extracted_audio_path,
+                        seg_video,
+                        fps=fps,
+                        audio_duration=duration,
+                        use_alpha=use_alpha,
+                        chroma_key_config=chroma_key_config,
+                        time_range=(start_time, end_time),
+                    )
+                    segment_videos.append(seg_video)
+
+                segment_durations.append(duration)
+
+            # Concatenate all segments
+            self._video_processor.concatenate_segments(
+                segment_videos,
+                output_path,
+                fps=fps,
+                segment_durations=segment_durations,
+            )
+
+            print(f"✅ Segmented animation saved to {output_path}")
+            print(
+                f"   Rendered {len(segments)} segments ({sum(1 for _, _, s in segments if s)} static)"
+            )
+
+        finally:
+            # Cleanup segment directory
+            import shutil
+
+            try:
+                shutil.rmtree(seg_dir)
+            except Exception:
+                pass
+
+    def _extract_static_frame(
+        self,
+        all_pages: Dict[str, List[List[Optional[List[TabEntry]]]]],
+        time: float,
+        fps: int,
+        output_dir: str,
+        frame_idx: int,
+    ) -> str:
+        """
+        Extract a single frame from a static segment as a representative image.
+
+        Renders one frame at the given time and saves it as PNG for later reuse.
+
+        Args:
+            all_pages: Page structure (used by create_animation)
+            time: Time to extract frame from (seconds)
+            fps: Frames per second
+            output_dir: Directory to save PNG frame
+            frame_idx: Index for naming (e.g., frame_0.png)
+
+        Returns:
+            Path to extracted PNG frame file
+        """
+        import os
+
+        # Create a tiny time range to render just one frame
+        time_range = (time, time + (1 / fps) * 1.5)  # 1.5 frames to ensure coverage
+
+        # Render the frame (saves to temp video path)
+        temp_frame_video = os.path.join(output_dir, f"_temp_frame_{frame_idx}.mp4")
+        original_temp = self._temp_video_path
+        self._temp_video_path = temp_frame_video
+
+        try:
+            # Create dummy audio path (won't be used since we're just extracting video)
+            dummy_audio = os.path.join(output_dir, "_dummy.wav")
+            if not os.path.exists(dummy_audio):
+                # Create a minimal silence WAV (just for video rendering)
+                import wave
+
+                with wave.open(dummy_audio, "wb") as wav_file:
+                    wav_file.setnchannels(1)
+                    wav_file.setsampwidth(2)
+                    wav_file.setframerate(44100)
+                    wav_file.writeframes(b"\x00\x00" * 44100)  # 1 second of silence
+
+            self.create_animation(
+                all_pages,
+                dummy_audio,
+                temp_frame_video,
+                fps=fps,
+                audio_duration=1.0,
+                time_range=time_range,
+            )
+
+            # Extract first frame from the rendered video using ffmpeg
+            frame_png = os.path.join(output_dir, f"frame_{frame_idx}.png")
+            import subprocess
+
+            cmd = [
+                "ffmpeg",
+                "-y",
+                "-i",
+                temp_frame_video,
+                "-vframes",
+                "1",
+                "-f",
+                "image2",
+                frame_png,
+            ]
+            result = subprocess.run(cmd, capture_output=True, text=True)
+            if result.returncode != 0:
+                raise ValueError(f"Failed to extract frame: {result.stderr}")
+
+            return frame_png
+
+        finally:
+            self._temp_video_path = original_temp
+            # Cleanup temp files
+            for f in [temp_frame_video, dummy_audio]:
+                if os.path.exists(f):
+                    try:
+                        os.remove(f)
+                    except Exception:
+                        pass
+
     def _get_total_duration(self) -> float:
         # Use provided audio duration if available (shows harmonica for full video)
         if self._audio_duration is not None:
