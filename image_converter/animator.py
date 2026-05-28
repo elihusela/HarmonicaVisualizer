@@ -399,8 +399,12 @@ class Animator:
         static_duration = sum(
             end - start for start, end, is_static in segments if is_static
         )
+        static_percentage = (static_duration / total_duration) * 100
         if static_duration / total_duration < 0.5:
             # Not worth segmenting, use standard rendering
+            print(
+                f"⏭️  Static content {static_percentage:.1f}% (threshold: 50%) — using standard rendering"
+            )
             self.create_animation(
                 all_pages,
                 extracted_audio_path,
@@ -411,6 +415,8 @@ class Animator:
                 chroma_key_config=chroma_key_config,
             )
             return
+
+        print(f"🔄 Static content {static_percentage:.1f}% — using segment compositing")
 
         # Create segment output directory
         seg_dir = os.path.join(self._temp_dir, "segments")
@@ -454,9 +460,11 @@ class Animator:
                 segment_durations=segment_durations,
             )
 
+            static_count = sum(1 for _, _, s in segments if s)
+            animated_count = len(segments) - static_count
             print(f"✅ Segmented animation saved to {output_path}")
             print(
-                f"   Rendered {len(segments)} segments ({sum(1 for _, _, s in segments if s)} static)"
+                f"   {static_count} static frames + {animated_count} animated segments = {len(segments)} total"
             )
 
         finally:
