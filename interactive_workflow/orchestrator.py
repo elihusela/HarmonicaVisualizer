@@ -724,6 +724,72 @@ class WorkflowOrchestrator:
             )
             return True  # Don't block on validation errors
 
+    def _select_output_duration(self) -> None:
+        """Ask user to limit output video duration to MIDI length.
+
+        This allows trimming the output videos to only the MIDI portion
+        when working with longer source videos.
+        """
+        # Check if already selected (resuming session)
+        if self.session.get_data("limit_to_midi_duration") is not None:
+            return
+
+        midi_path = self.session.get_data("generated_midi")
+        if not midi_path or not os.path.exists(midi_path):
+            return  # Can't determine MIDI duration if file missing
+
+        from harmonica_pipeline.midi_processor import MidiProcessor
+
+        try:
+            processor = MidiProcessor(midi_path)
+            midi_duration = processor.get_duration()
+
+            self.console.print(
+                Panel(
+                    f"[cyan]Output Video Duration[/cyan]\n\n"
+                    f"MIDI duration: {midi_duration:.1f} seconds (~{midi_duration/60:.1f} min)\n"
+                    f"Original video length: Full source duration\n\n"
+                    "Would you like to limit both the harmonica and tab videos\n"
+                    "to match the MIDI length? This saves rendering time and\n"
+                    "produces a cleaner final product.\n\n"
+                    "[dim]You can add a small buffer (padding) to show fade-out.[/dim]",
+                    title="⏱️  Video Duration",
+                )
+            )
+
+            if self.auto_approve:
+                # Default: use MIDI length with small buffer in auto-approve mode
+                self.session.set_data("limit_to_midi_duration", True)
+                self.session.set_data("midi_duration", midi_duration)
+                self.console.print(
+                    "[dim]Auto-approve: limiting output to MIDI duration[/dim]"
+                )
+            else:
+                # Ask user
+                use_midi_length = questionary.confirm(
+                    "Limit output to MIDI length?",
+                    default=True,
+                ).ask()
+
+                if use_midi_length:
+                    self.session.set_data("limit_to_midi_duration", True)
+                    self.session.set_data("midi_duration", midi_duration)
+                    self.console.print(
+                        f"[green]✓ Output limited to MIDI duration ({midi_duration:.1f}s)[/green]"
+                    )
+                else:
+                    self.session.set_data("limit_to_midi_duration", False)
+                    self.console.print(
+                        "[yellow]Output will use full source video duration[/yellow]"
+                    )
+
+        except Exception as e:
+            self.console.print(
+                f"[yellow]⚠️  Could not determine MIDI duration: {e}[/yellow]\n"
+                "[dim]Using full source video duration[/dim]"
+            )
+            self.session.set_data("limit_to_midi_duration", False)
+
     def _select_fps(self) -> None:
         """Ask user to select FPS for video generation.
 
@@ -829,6 +895,7 @@ class WorkflowOrchestrator:
                 self._validate_midi()
             else:
                 self.session.set_data("skip_tab_video", True)
+            self._select_output_duration()
             self._select_fps()
             self.session.transition_to(WorkflowState.HARMONICA_REVIEW)
         else:
@@ -842,7 +909,8 @@ class WorkflowOrchestrator:
                 if os.path.exists(tabs_path):
                     self._validate_midi()
 
-                # Select FPS before video generation
+                # Select output duration and FPS before video generation
+                self._select_output_duration()
                 self._select_fps()
 
                 self.session.transition_to(WorkflowState.HARMONICA_REVIEW)
@@ -852,6 +920,7 @@ class WorkflowOrchestrator:
                     # File exists, use it and continue
                     self.console.print("[green]✓ Using existing tab file[/green]")
                     self._validate_midi()
+                    self._select_output_duration()
                     self._select_fps()
                     self.session.transition_to(WorkflowState.HARMONICA_REVIEW)
                 else:
@@ -866,6 +935,7 @@ class WorkflowOrchestrator:
                             "[yellow]⏭️  Skipping tab video generation[/yellow]"
                         )
                         self.session.set_data("skip_tab_video", True)
+                        self._select_output_duration()
                         self._select_fps()
                         self.session.transition_to(WorkflowState.HARMONICA_REVIEW)
                     else:
@@ -1036,6 +1106,12 @@ class WorkflowOrchestrator:
             bg_color=self.session.config.get("bg_color", "#00FF00"),
             crf=self.session.config.get("crf", 23),
         )
+
+        # Get output duration if user selected MIDI length
+        output_duration = None
+        if self.session.get_data("limit_to_midi_duration"):
+            output_duration = self.session.get_data("midi_duration")
+
         config = VideoCreatorConfig(
             video_path=video_path,
             tabs_path=tabs_path,
@@ -1052,6 +1128,7 @@ class WorkflowOrchestrator:
             temp_dir=self.project_temp_dir,
             use_alpha=use_alpha,
             chroma_key=chroma_key_config,
+            output_duration=output_duration,
         )
 
         # Generate harmonica video
@@ -1154,6 +1231,12 @@ class WorkflowOrchestrator:
         dummy_harmonica_path = os.path.join(
             OUTPUTS_DIR, f"{self.session.song_name}_dummy.mov"
         )
+
+        # Get output duration if user selected MIDI length
+        output_duration = None
+        if self.session.get_data("limit_to_midi_duration"):
+            output_duration = self.session.get_data("midi_duration")
+
         config = VideoCreatorConfig(
             video_path=video_path,
             tabs_path=tabs_path,
@@ -1170,6 +1253,7 @@ class WorkflowOrchestrator:
             temp_dir=self.project_temp_dir,
             use_alpha=use_alpha,
             chroma_key=chroma_key_config,
+            output_duration=output_duration,
         )
 
         # Generate tab video
