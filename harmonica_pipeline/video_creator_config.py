@@ -61,6 +61,9 @@ class VideoCreatorConfig:
     )
     use_alpha: bool = False  # True = ProRes with alpha (archived mode)
     chroma_key: ChromaKeyConfig = field(default_factory=ChromaKeyConfig)
+    output_duration: Optional[float] = (
+        None  # Limit output video to this duration (in seconds)
+    )
 
     def __post_init__(self) -> None:
         """Validate configuration after initialization."""
@@ -136,6 +139,7 @@ class VideoCreatorConfig:
         chord_threshold_ms: float = 50.0,
         use_alpha: bool = False,
         chroma_key: Optional[ChromaKeyConfig] = None,
+        output_duration: Optional[float] = None,
     ) -> "VideoCreatorConfig":
         """
         Create configuration from CLI arguments.
@@ -178,4 +182,5 @@ class VideoCreatorConfig:
             chord_threshold_ms=chord_threshold_ms,
             use_alpha=use_alpha,
             chroma_key=chroma_key if chroma_key is not None else ChromaKeyConfig(),
+            output_duration=output_duration,
         )
