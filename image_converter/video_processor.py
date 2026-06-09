@@ -190,6 +190,7 @@ class VideoProcessor:
             "aac",
             "-b:a",
             cfg.audio_bitrate,
+            "-shortest",
             output_path,
         ]
 
