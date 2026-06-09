@@ -139,6 +139,7 @@ class VideoProcessor:
             "copy",
             "-c:a",
             "aac",
+            "-shortest",
             output_path,
         ]
 

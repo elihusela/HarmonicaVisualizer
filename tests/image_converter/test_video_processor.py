@@ -192,6 +192,7 @@ class TestVideoProcessorAudioAdding:
             "copy",
             "-c:a",
             "aac",
+            "-shortest",
             "output.mov",
         ]
 
