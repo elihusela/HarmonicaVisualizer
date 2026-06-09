@@ -790,6 +790,47 @@ class WorkflowOrchestrator:
             )
             self.session.set_data("limit_to_midi_duration", False)
 
+    def _select_output_format(self) -> None:
+        """Ask user to choose video output format: chromakey or alpha.
+
+        Chromakey (H.265 MP4): Smaller file size, green background
+        Alpha (ProRes MOV): Larger file size, transparent background for NLE
+        """
+        # Check if already selected (resuming session)
+        if self.session.config.get("use_alpha") is not None:
+            return
+
+        self.console.print(
+            Panel(
+                "[cyan]Video Output Format[/cyan]\n\n"
+                "[bold]Chromakey[/bold] (Recommended)\n"
+                "  • H.265 MP4 format (~50-200 MB)\n"
+                "  • Green background (NLE-friendly)\n"
+                "  • Faster rendering, smaller files\n\n"
+                "[bold]Alpha Channel[/bold] (Legacy)\n"
+                "  • ProRes 4444 MOV format (~1-4 GB)\n"
+                "  • Transparent background\n"
+                "  • Good for motion graphics editing",
+                title="🎬 Output Format",
+            )
+        )
+
+        if self.auto_approve:
+            # Default: chromakey (smaller, faster)
+            self.session.config["use_alpha"] = False
+            self.console.print("[dim]Auto-approve: using chromakey (H.265 MP4)[/dim]")
+        else:
+            use_alpha = questionary.confirm(
+                "Use alpha channel (ProRes)? [N for chromakey]",
+                default=False,
+            ).ask()
+            self.session.config["use_alpha"] = use_alpha
+
+            if use_alpha:
+                self.console.print("[green]✓ Using ProRes alpha channel output[/green]")
+            else:
+                self.console.print("[green]✓ Using H.265 chromakey output[/green]")
+
     def _select_fps(self) -> None:
         """Ask user to select FPS for video generation.
 
@@ -895,6 +936,7 @@ class WorkflowOrchestrator:
                 self._validate_midi()
             else:
                 self.session.set_data("skip_tab_video", True)
+            self._select_output_format()
             self._select_output_duration()
             self._select_fps()
             self.session.transition_to(WorkflowState.HARMONICA_REVIEW)
@@ -909,7 +951,8 @@ class WorkflowOrchestrator:
                 if os.path.exists(tabs_path):
                     self._validate_midi()
 
-                # Select output duration and FPS before video generation
+                # Select output format, duration and FPS before video generation
+                self._select_output_format()
                 self._select_output_duration()
                 self._select_fps()
 
@@ -920,6 +963,7 @@ class WorkflowOrchestrator:
                     # File exists, use it and continue
                     self.console.print("[green]✓ Using existing tab file[/green]")
                     self._validate_midi()
+                    self._select_output_format()
                     self._select_output_duration()
                     self._select_fps()
                     self.session.transition_to(WorkflowState.HARMONICA_REVIEW)
@@ -935,6 +979,7 @@ class WorkflowOrchestrator:
                             "[yellow]⏭️  Skipping tab video generation[/yellow]"
                         )
                         self.session.set_data("skip_tab_video", True)
+                        self._select_output_format()
                         self._select_output_duration()
                         self._select_fps()
                         self.session.transition_to(WorkflowState.HARMONICA_REVIEW)
