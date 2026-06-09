@@ -36,6 +36,24 @@ class MidiProcessor:
 
         self.midi_path = midi_path
 
+    def get_duration(self) -> float:
+        """
+        Get the total duration of the MIDI file in seconds.
+
+        Returns:
+            Duration in seconds
+
+        Raises:
+            MidiProcessorError: If MIDI file cannot be loaded
+        """
+        try:
+            midi_data = pretty_midi.PrettyMIDI(self.midi_path)
+            return midi_data.get_end_time()
+        except Exception as e:
+            raise MidiProcessorError(
+                f"Failed to get MIDI duration from {self.midi_path}: {e}"
+            )
+
     def load_note_events(self) -> List[Tuple[float, float, int, float, float]]:
         """
         Load note events from the MIDI file.
