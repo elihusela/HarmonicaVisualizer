@@ -115,6 +115,7 @@ class TabPhraseAnimator:
         output_path_base: str,
         fps: Optional[int] = None,
         audio_duration: Optional[float] = None,
+        time_range: Optional[tuple[float, float]] = None,
     ) -> List[PageStatistics]:
         """
         Create animated tab phrase videos for all pages.
@@ -125,6 +126,7 @@ class TabPhraseAnimator:
             output_path_base: Base path for output files (without extension)
             fps: Optional FPS override (uses config default if None)
             audio_duration: Optional total audio duration in seconds (for timing first/last pages)
+            time_range: Optional tuple (start_time, end_time) to only render that segment
 
         Returns:
             List of PageStatistics for each created page
@@ -143,12 +145,30 @@ class TabPhraseAnimator:
         actual_fps = fps or self._config.fps
         self._page_statistics.clear()
 
-        print(f"🎬 Creating tab phrase animations for {len(all_pages)} pages")
+        # Filter pages to time range if specified
+        pages_to_render = all_pages
+        if time_range:
+            start_time, end_time = time_range
+            # Calculate page timings and filter
+            pages_to_render = self._filter_pages_by_time_range(
+                all_pages, start_time, end_time
+            )
+            if not pages_to_render:
+                print(
+                    f"⚠️  No pages found in time range {start_time:.1f}s - {end_time:.1f}s"
+                )
+                return []
+
+        print(f"🎬 Creating tab phrase animations for {len(pages_to_render)} pages")
         print(f"🎵 Audio source: {extracted_audio_path}")
         print(f"📹 Output base: {output_path_base}")
+        if time_range:
+            print(
+                f"⏱️  Time range: {time_range[0]:.1f}s - {time_range[1]:.1f}s (partial render)"
+            )
 
-        total_pages = len(all_pages)
-        for page_idx, (page_name, page) in enumerate(all_pages.items(), start=1):
+        total_pages = len(pages_to_render)
+        for page_idx, (page_name, page) in enumerate(pages_to_render.items(), start=1):
             try:
                 is_first_page = page_idx == 1
                 is_last_page = page_idx == total_pages
@@ -224,6 +244,36 @@ class TabPhraseAnimator:
             ],
             "config": self._config.__dict__,
         }
+
+    def _filter_pages_by_time_range(
+        self,
+        all_pages: Dict[str, List[List[Optional[List[TabEntry]]]]],
+        start_time: float,
+        end_time: float,
+    ) -> Dict[str, List[List[Optional[List[TabEntry]]]]]:
+        """Filter pages to only those that overlap with the time range."""
+        filtered = {}
+        for page_name, page_content in all_pages.items():
+            # Extract all entries from this page
+            page_entries = [
+                entry
+                for line in page_content
+                for chord in line
+                if chord
+                for entry in chord
+            ]
+            if not page_entries:
+                continue
+
+            # Calculate page timing
+            page_start = min(entry.time for entry in page_entries)
+            page_end = max(entry.time + entry.duration for entry in page_entries)
+
+            # Include page if it overlaps with time range
+            if page_end > start_time and page_start < end_time:
+                filtered[page_name] = page_content
+
+        return filtered
 
     def _load_font(self) -> None:
         """

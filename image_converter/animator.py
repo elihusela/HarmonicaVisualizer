@@ -91,6 +91,7 @@ class Animator:
         audio_duration: Optional[float] = None,
         use_alpha: Optional[bool] = None,
         chroma_key_config=None,
+        time_range: Optional[tuple[float, float]] = None,
     ) -> None:
         # Allow per-call override; fall back to instance defaults
         effective_use_alpha = use_alpha if use_alpha is not None else self._use_alpha
@@ -104,6 +105,24 @@ class Animator:
             if chord
             for entry in chord
         ]
+
+        # Store original time range for splicing if partial render
+        self._time_range = time_range
+        self._time_offset = 0.0
+
+        # Filter entries to time range if specified
+        if time_range:
+            start_time, end_time = time_range
+            self._time_offset = start_time
+            # Keep entries that overlap with the time range
+            self._flat_entries = [
+                entry
+                for entry in self._flat_entries
+                if entry.time < end_time and (entry.time + entry.duration) > start_time
+            ]
+            # Adjust times to start from 0
+            for entry in self._flat_entries:
+                entry.time = max(0, entry.time - start_time)
 
         self._flat_entries = adjust_consecutive_identical_notes(self._flat_entries)
         self._audio_duration = audio_duration
