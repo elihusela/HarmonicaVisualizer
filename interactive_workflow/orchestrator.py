@@ -1109,6 +1109,7 @@ class WorkflowOrchestrator:
         from harmonica_pipeline.video_creator_config import VideoCreatorConfig
         from harmonica_pipeline.harmonica_key_registry import get_harmonica_config
         from utils.utils import OUTPUTS_DIR
+        import questionary as q
 
         # Get configuration
         harmonica_key = self.session.config.get("key", "C")
@@ -1131,18 +1132,52 @@ class WorkflowOrchestrator:
         # Get FPS from session (selected after MIDI fixing)
         fps = self.session.get_data("fps", 15)
 
-        self.console.print(
-            Panel(
-                f"[cyan]Generating harmonica animation[/cyan]\n\n"
-                f"Video: {video_path}\n"
-                f"MIDI: {midi_path}\n"
-                f"Key: {harmonica_key}\n"
-                f"FPS: {fps}\n"
-                f"Output: {output_video_path}\n\n"
-                "[dim]This may take 1-2 minutes...[/dim]",
-                title="Harmonica Video Generation",
+        # Ask about parallel generation if tab file exists
+        enable_parallel = False
+        if (
+            tabs_path
+            and os.path.exists(tabs_path)
+            and not self.session.get_data("skip_tab_video")
+        ):
+            enable_parallel = q.confirm(
+                "Generate harmonica and tab videos in parallel? (Faster but uses more CPU)",
+                default=True,
+            ).ask()
+            self.session.set_data("parallel_generation", enable_parallel)
+
+        # Determine what to generate
+        tabs_output_path = None
+        produce_full_tab_video = False
+        if enable_parallel:
+            self.console.print(
+                Panel(
+                    f"[cyan]Generating harmonica and tab animations in parallel[/cyan]\n\n"
+                    f"Video: {video_path}\n"
+                    f"MIDI: {midi_path}\n"
+                    f"Key: {harmonica_key}\n"
+                    f"FPS: {fps}\n"
+                    f"Output: {output_video_path}\n\n"
+                    "[dim]This may take 3-4 minutes (both videos at once)...[/dim]",
+                    title="Parallel Video Generation",
+                )
             )
-        )
+            tabs_ext = ".mov" if use_alpha else ".mp4"
+            tabs_output = f"{self.session.song_name}_full_tabs{tabs_ext}"
+            tabs_output_path = os.path.join(OUTPUTS_DIR, tabs_output)
+            produce_full_tab_video = True
+        else:
+            self.console.print(
+                Panel(
+                    f"[cyan]Generating harmonica animation[/cyan]\n\n"
+                    f"Video: {video_path}\n"
+                    f"MIDI: {midi_path}\n"
+                    f"Key: {harmonica_key}\n"
+                    f"FPS: {fps}\n"
+                    f"Output: {output_video_path}\n\n"
+                    "[dim]This may take 1-2 minutes...[/dim]",
+                    title="Harmonica Video Generation",
+                )
+            )
 
         # Create configuration (using project-specific temp directory)
         from harmonica_pipeline.video_creator_config import ChromaKeyConfig
@@ -1163,10 +1198,10 @@ class WorkflowOrchestrator:
             harmonica_path=harmonica_path,
             midi_path=midi_path,
             output_video_path=output_video_path,
-            tabs_output_path=None,  # No tabs yet
+            tabs_output_path=tabs_output_path,
             produce_tabs=False,
-            produce_full_tab_video=False,
-            only_full_tab_video=False,
+            produce_full_tab_video=produce_full_tab_video,
+            only_full_tab_video=produce_full_tab_video,
             harmonica_key=harmonica_key,
             tab_page_buffer=self.session.config.get("tab_buffer", 0.1),
             fps=fps,
@@ -1176,9 +1211,13 @@ class WorkflowOrchestrator:
             output_duration=output_duration,
         )
 
-        # Generate harmonica video
+        # Generate video(s) - harmonica only or both in parallel
         creator = VideoCreator(config)
-        creator.create(create_harmonica=True, create_tabs=False)
+        creator.create(
+            create_harmonica=True,
+            create_tabs=produce_full_tab_video,
+            parallel=enable_parallel,
+        )
 
         self.console.print(
             f"[green]✓ Harmonica video created: {output_video_path}[/green]"
@@ -1186,6 +1225,14 @@ class WorkflowOrchestrator:
 
         # Save output path to session
         self.session.set_data("harmonica_video", output_video_path)
+
+        # If parallel generation, save tab video path and mark it as already generated
+        if enable_parallel and tabs_output_path:
+            self.session.set_data("tab_video", tabs_output_path)
+            self.session.set_data("tab_video_already_generated", True)
+            self.console.print(
+                f"[green]✓ Tab video also created: {tabs_output_path}[/green]"
+            )
 
         # Open outputs folder for user to review the video
         self._open_folder(OUTPUTS_DIR)
@@ -1221,6 +1268,43 @@ class WorkflowOrchestrator:
                 "[yellow]⏭️  Skipping tab video generation (no tab file)[/yellow]"
             )
             self.session.transition_to(WorkflowState.FINALIZATION)
+            return
+
+        # Check if tab video was already generated in parallel
+        if self.session.get_data("tab_video_already_generated"):
+            from utils.utils import OUTPUTS_DIR
+
+            tab_video_path = self.session.get_data("tab_video")
+            self.console.print(
+                Panel(
+                    f"[cyan]Tab video already generated[/cyan]\n\n"
+                    f"Output: {tab_video_path}\n\n"
+                    "[dim]This was generated in parallel with the harmonica video[/dim]",
+                    title="Tab Video Review",
+                )
+            )
+            # Open outputs folder for user to review the video
+            self._open_folder(OUTPUTS_DIR)
+            # Wait for user approval
+            if (
+                self.auto_approve
+                or questionary.confirm(
+                    "Approve tab video?",
+                    default=True,
+                ).ask()
+            ):
+                self.session.transition_to(WorkflowState.FINALIZATION)
+            else:
+                # User declined - go back to MIDI fixing to adjust timing
+                self.console.print(
+                    "[yellow]⮌ Returning to MIDI fixing step. "
+                    "Fix your MIDI and we'll regenerate the videos.[/yellow]"
+                )
+                # Clear FPS and parallel flag so user can choose again
+                self.session.set_data("fps", None)
+                self.session.set_data("parallel_generation", None)
+                self.session.set_data("tab_video_already_generated", False)
+                self.session.transition_to(WorkflowState.MIDI_FIXING)
             return
 
         from harmonica_pipeline.video_creator import VideoCreator

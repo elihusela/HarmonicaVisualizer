@@ -6,6 +6,7 @@ Creates harmonica animation videos from fixed MIDI files and tab notation.
 
 import os
 import time
+import threading
 from typing import List, Tuple, Optional, Dict, Union
 
 from harmonica_pipeline.midi_processor import MidiProcessor, MidiProcessorError
@@ -235,7 +236,10 @@ class VideoCreator:
             )
 
     def create(
-        self, create_harmonica: bool = True, create_tabs: Optional[bool] = None
+        self,
+        create_harmonica: bool = True,
+        create_tabs: Optional[bool] = None,
+        parallel: bool = False,
     ) -> None:
         """
         Run the complete video creation process.
@@ -243,6 +247,7 @@ class VideoCreator:
         Args:
             create_harmonica: Whether to create harmonica animation (default: True)
             create_tabs: Whether to create tab phrase animations (default: uses self.produce_tabs)
+            parallel: Whether to create both animations in parallel (default: False)
         """
         # Use defaults if not specified
         if create_tabs is None:
@@ -264,17 +269,21 @@ class VideoCreator:
             print("🎯 Using direct MIDI structure (harmonica-only mode)...")
             matched_tabs = self._create_direct_tabs_structure(tabs)
 
-        if create_harmonica:
-            print("🎬 Creating harmonica animation...")
-            self._create_harmonica_animation(matched_tabs)
+        if parallel and create_harmonica and create_tabs and self.tabs_output_path:
+            print("⚡ Creating harmonica and tab animations in parallel...")
+            self._create_animations_parallel(matched_tabs)
         else:
-            print("⏭️  Skipping harmonica animation")
+            if create_harmonica:
+                print("🎬 Creating harmonica animation...")
+                self._create_harmonica_animation(matched_tabs)
+            else:
+                print("⏭️  Skipping harmonica animation")
 
-        if create_tabs and self.tabs_output_path:
-            print("📄 Creating tab phrase animations...")
-            self._create_tab_animations(matched_tabs)
-        elif not create_tabs:
-            print("⏭️  Skipping tab phrase animations")
+            if create_tabs and self.tabs_output_path:
+                print("📄 Creating tab phrase animations...")
+                self._create_tab_animations(matched_tabs)
+            elif not create_tabs:
+                print("⏭️  Skipping tab phrase animations")
 
         print("✅ Video creation complete!")
 
@@ -530,6 +539,46 @@ class VideoCreator:
         )
         duration = time.perf_counter() - start
         print(f"⏱ Harmonica animation completed in {duration:.2f}s")
+
+    def _create_animations_parallel(
+        self, matched_tabs: Dict[str, List[List[Optional[List[TabEntry]]]]]
+    ) -> None:
+        """Create harmonica and tab animations in parallel using threads."""
+        start = time.perf_counter()
+
+        harmonica_error: Optional[Exception] = None
+        tabs_error: Optional[Exception] = None
+
+        def run_harmonica() -> None:
+            nonlocal harmonica_error
+            try:
+                self._create_harmonica_animation(matched_tabs)
+            except Exception as e:
+                harmonica_error = e
+
+        def run_tabs() -> None:
+            nonlocal tabs_error
+            try:
+                self._create_tab_animations(matched_tabs)
+            except Exception as e:
+                tabs_error = e
+
+        harmonica_thread = threading.Thread(target=run_harmonica, daemon=False)
+        tabs_thread = threading.Thread(target=run_tabs, daemon=False)
+
+        harmonica_thread.start()
+        tabs_thread.start()
+
+        harmonica_thread.join()
+        tabs_thread.join()
+
+        duration = time.perf_counter() - start
+        print(f"⏱ Both animations completed in {duration:.2f}s")
+
+        if harmonica_error:
+            raise VideoCreatorError(f"Harmonica animation failed: {harmonica_error}")
+        if tabs_error:
+            raise VideoCreatorError(f"Tab animation failed: {tabs_error}")
 
     def _create_tab_animations(
         self, matched_tabs: Dict[str, List[List[Optional[List[TabEntry]]]]]
