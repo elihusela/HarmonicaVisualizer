@@ -28,11 +28,11 @@ class AnimationConfig:
     """Configuration for tab phrase animation."""
 
     fps: int = 30
-    figure_size: tuple[float, float] = (16, 9)
+    figure_size: tuple[float, float] = (32, 18)
     background_color: str = "#FF00FF"  # Magenta for chroma key (alpha mode)
     font_family: str = "Ploni Round AAA"
     font_file: str = "ploni-round-bold-aaa.ttf"
-    font_size: int = 32
+    font_size: int = 64
     char_spacing: float = 0.08
     line_spacing: float = 0.12
     box_padding: float = 0.05

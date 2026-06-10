@@ -20,11 +20,11 @@ class TestAnimationConfig:
         """Test default AnimationConfig values."""
         config = AnimationConfig()
         assert config.fps == 30
-        assert config.figure_size == (16, 9)
+        assert config.figure_size == (32, 18)
         assert config.background_color == "#FF00FF"
         assert config.font_family == "Ploni Round AAA"
         assert config.font_file == "ploni-round-bold-aaa.ttf"
-        assert config.font_size == 32
+        assert config.font_size == 64
         assert config.char_spacing == 0.08
         assert config.line_spacing == 0.12
         assert config.box_padding == 0.05
@@ -459,7 +459,7 @@ class TestTabPhraseAnimatorMatplotlib:
             )
 
         # Verify matplotlib setup
-        mock_subplots.assert_called_once_with(figsize=(16, 9))  # Default figure size
+        mock_subplots.assert_called_once_with(figsize=(32, 18))  # Default figure size
         mock_ax.axis.assert_called_with("off")
         mock_fig.patch.set_facecolor.assert_called_with(
             "#00FF00"
