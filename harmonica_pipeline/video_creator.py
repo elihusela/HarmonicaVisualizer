@@ -543,42 +543,59 @@ class VideoCreator:
     def _create_animations_parallel(
         self, matched_tabs: Dict[str, List[List[Optional[List[TabEntry]]]]]
     ) -> None:
-        """Create harmonica and tab animations in parallel using threads."""
-        start = time.perf_counter()
+        """Create harmonica and tab animations in parallel using threads.
 
-        harmonica_error: Optional[Exception] = None
-        tabs_error: Optional[Exception] = None
+        Note: Sets matplotlib to non-interactive backend (Agg) to avoid
+        threading issues on macOS where GUI must run on main thread.
+        """
+        import matplotlib
 
-        def run_harmonica() -> None:
-            nonlocal harmonica_error
-            try:
-                self._create_harmonica_animation(matched_tabs)
-            except Exception as e:
-                harmonica_error = e
+        # Save original backend
+        original_backend = matplotlib.get_backend()
+        try:
+            # Set non-interactive backend for threading safety
+            matplotlib.use("Agg")
 
-        def run_tabs() -> None:
-            nonlocal tabs_error
-            try:
-                self._create_tab_animations(matched_tabs)
-            except Exception as e:
-                tabs_error = e
+            start = time.perf_counter()
 
-        harmonica_thread = threading.Thread(target=run_harmonica, daemon=False)
-        tabs_thread = threading.Thread(target=run_tabs, daemon=False)
+            harmonica_error: Optional[Exception] = None
+            tabs_error: Optional[Exception] = None
 
-        harmonica_thread.start()
-        tabs_thread.start()
+            def run_harmonica() -> None:
+                nonlocal harmonica_error
+                try:
+                    self._create_harmonica_animation(matched_tabs)
+                except Exception as e:
+                    harmonica_error = e
 
-        harmonica_thread.join()
-        tabs_thread.join()
+            def run_tabs() -> None:
+                nonlocal tabs_error
+                try:
+                    self._create_tab_animations(matched_tabs)
+                except Exception as e:
+                    tabs_error = e
 
-        duration = time.perf_counter() - start
-        print(f"⏱ Both animations completed in {duration:.2f}s")
+            harmonica_thread = threading.Thread(target=run_harmonica, daemon=False)
+            tabs_thread = threading.Thread(target=run_tabs, daemon=False)
 
-        if harmonica_error:
-            raise VideoCreatorError(f"Harmonica animation failed: {harmonica_error}")
-        if tabs_error:
-            raise VideoCreatorError(f"Tab animation failed: {tabs_error}")
+            harmonica_thread.start()
+            tabs_thread.start()
+
+            harmonica_thread.join()
+            tabs_thread.join()
+
+            duration = time.perf_counter() - start
+            print(f"⏱ Both animations completed in {duration:.2f}s")
+
+            if harmonica_error:
+                raise VideoCreatorError(
+                    f"Harmonica animation failed: {harmonica_error}"
+                )
+            if tabs_error:
+                raise VideoCreatorError(f"Tab animation failed: {tabs_error}")
+        finally:
+            # Restore original backend
+            matplotlib.use(original_backend)
 
     def _create_tab_animations(
         self, matched_tabs: Dict[str, List[List[Optional[List[TabEntry]]]]]
