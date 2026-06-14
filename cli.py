@@ -179,6 +179,12 @@ Examples:
         help="Harmonica key (C, G, BB, etc.). Default: C",
     )
     video_parser.add_argument(
+        "--midi-key",
+        type=str,
+        default=None,
+        help="MIDI key (if different from harmonica key). Transposes MIDI to match. Default: None",
+    )
+    video_parser.add_argument(
         "--harmonica-model",
         default=DEFAULT_HARMONICA_MODEL,
         help="Harmonica image (default: auto-selected based on --key)",
@@ -620,6 +626,7 @@ def create_video_phase(
     video: str,
     tabs: str,
     harmonica_key: str = "C",
+    midi_key: Optional[str] = None,
     harmonica_model: str = DEFAULT_HARMONICA_MODEL,
     produce_tabs: bool = True,
     only_tabs: bool = False,
@@ -697,7 +704,9 @@ def create_video_phase(
     print(f"📹 Video: {video_path}")
     print(f"🎼 MIDI: {midi_path}")
     print(f"📄 Tabs: {tabs_path}")
-    print(f"🎹 Key: {harmonica_key}")
+    print(f"🎹 Harmonica Key: {harmonica_key}")
+    if midi_key:
+        print(f"🎵 MIDI Key: {midi_key} (will transpose to {harmonica_key})")
     print(f"🎭 Model: {harmonica_path}")
     print(f"🎥 Output: {output_video_path}")
     if create_tabs and tabs_output_path:
@@ -721,6 +730,7 @@ def create_video_phase(
         produce_full_tab_video=produce_full_tab_video,
         only_full_tab_video=only_full_tab_video,
         harmonica_key=harmonica_key,
+        midi_key=midi_key,
         tab_page_buffer=tab_page_buffer,
         fix_overlaps=fix_overlaps,
         chord_threshold_ms=chord_threshold,
@@ -771,6 +781,7 @@ def full_pipeline(
         video,
         tabs,
         harmonica_key,
+        None,  # midi_key
         harmonica_model,
         produce_tabs,
         only_tabs,
@@ -1433,6 +1444,7 @@ def main():
                 args.video,
                 args.tabs,
                 args.key,
+                args.midi_key,
                 args.harmonica_model,
                 not args.no_produce_tabs,
                 args.only_tabs,

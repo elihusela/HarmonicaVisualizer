@@ -473,6 +473,7 @@ class TestFullPipeline:
             "test.mp4",
             "tabs.txt",
             "C",  # Default harmonica key
+            None,  # midi_key
             DEFAULT_HARMONICA_MODEL,
             True,
             False,
@@ -509,6 +510,7 @@ class TestFullPipeline:
             "test.mp4",
             "tabs.txt",
             "G",
+            None,  # midi_key
             "custom.png",
             False,
             True,
@@ -554,6 +556,7 @@ class TestMain:
             "test.mp4",
             "tabs.txt",
             "C",  # Default harmonica key
+            None,  # midi_key
             DEFAULT_HARMONICA_MODEL,
             True,
             False,
@@ -643,6 +646,7 @@ class TestMain:
             "test.mp4",
             "tabs.txt",
             "C",  # Default harmonica key
+            None,  # midi_key
             DEFAULT_HARMONICA_MODEL,
             True,
             True,
@@ -669,6 +673,7 @@ class TestMain:
             "test.mp4",
             "tabs.txt",
             "C",  # Default harmonica key
+            None,  # midi_key
             DEFAULT_HARMONICA_MODEL,
             True,
             False,
@@ -695,6 +700,7 @@ class TestMain:
             "test.mp4",
             "tabs.txt",
             "C",  # Default harmonica key
+            None,  # midi_key
             DEFAULT_HARMONICA_MODEL,
             False,
             False,

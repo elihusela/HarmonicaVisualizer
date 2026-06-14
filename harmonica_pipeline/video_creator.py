@@ -118,7 +118,9 @@ class VideoCreator:
             self.midi_processor = MidiProcessor(config.midi_path)
             # Use factory function for consistent MIDI mapping across all consumers
             self.tab_mapper = create_tab_mapper(
-                config.harmonica_key, output_path=self.temp_dir
+                config.harmonica_key,
+                output_path=self.temp_dir,
+                midi_key=config.midi_key,
             )
 
             # Tab text parsing setup (only if tabs file exists)

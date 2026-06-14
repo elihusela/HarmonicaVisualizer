@@ -7,7 +7,7 @@ using a configurable harmonica mapping.
 
 import json
 from pathlib import Path
-from typing import Dict, List, Tuple
+from typing import Dict, List, Tuple, Optional
 
 from tab_converter.models import TabEntry, Tabs, NoteEvent
 
@@ -184,7 +184,9 @@ class TabMapper:
         }
 
 
-def create_tab_mapper(harmonica_key: str, output_path: str = "temp") -> TabMapper:
+def create_tab_mapper(
+    harmonica_key: str, output_path: str = "temp", midi_key: Optional[str] = None
+) -> TabMapper:
     """
     Factory function to create a properly configured TabMapper for a harmonica key.
 
@@ -195,21 +197,54 @@ def create_tab_mapper(harmonica_key: str, output_path: str = "temp") -> TabMappe
     Args:
         harmonica_key: Harmonica key (C, G, A, Bb, etc.)
         output_path: Directory path for JSON debug output (default: "temp")
+        midi_key: Optional MIDI key (if different from harmonica_key, will transpose)
 
     Returns:
         Configured TabMapper instance
 
     Raises:
-        ValueError: If harmonica_key is invalid
+        ValueError: If harmonica_key or midi_key is invalid
     """
     from harmonica_pipeline.harmonica_key_registry import get_harmonica_config
-    from tab_converter.consts import HARMONICA_BEND_MAPPINGS
+    from tab_converter.consts import HARMONICA_BEND_MAPPINGS, KEY_OFFSETS
 
     # Get key configuration (raises ValueError if invalid)
     key_config = get_harmonica_config(harmonica_key)
 
     # Get bend mapping for this key (empty dict if not available)
     bend_mapping = HARMONICA_BEND_MAPPINGS.get(harmonica_key.upper(), {})
+
+    # If midi_key is specified and different, create a transposed mapping
+    if midi_key and midi_key.upper() != harmonica_key.upper():
+        midi_key_normalized = midi_key.upper()
+        harmonica_key_normalized = harmonica_key.upper()
+
+        # Get offset for both keys
+        if midi_key_normalized not in KEY_OFFSETS:
+            raise ValueError(f"Unsupported MIDI key: {midi_key}")
+
+        midi_offset = KEY_OFFSETS[midi_key_normalized]
+        harmonica_offset = KEY_OFFSETS[harmonica_key_normalized]
+
+        # Calculate transposition: we need to shift MIDI notes to account for key difference
+        # If MIDI is in C (offset 0) and target is G (offset 7), we need to shift by +7
+        transpose_amount = harmonica_offset - midi_offset
+
+        # Create transposed mapping: add transpose_amount to each MIDI note
+        transposed_mapping = {
+            midi_note + transpose_amount: hole
+            for midi_note, hole in key_config.midi_mapping.items()
+        }
+        transposed_bend_mapping = {
+            midi_note + transpose_amount: (hole, notation)
+            for midi_note, (hole, notation) in bend_mapping.items()
+        }
+
+        return TabMapper(
+            harmonica_mapping=transposed_mapping,
+            json_outputs_path=output_path,
+            bend_mapping=transposed_bend_mapping,
+        )
 
     return TabMapper(
         harmonica_mapping=key_config.midi_mapping,
