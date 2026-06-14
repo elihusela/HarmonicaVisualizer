@@ -206,7 +206,7 @@ def create_tab_mapper(
         ValueError: If harmonica_key or midi_key is invalid
     """
     from harmonica_pipeline.harmonica_key_registry import get_harmonica_config
-    from tab_converter.consts import HARMONICA_BEND_MAPPINGS, KEY_OFFSETS
+    from tab_converter.consts import HARMONICA_BEND_MAPPINGS
 
     # Get key configuration (raises ValueError if invalid)
     key_config = get_harmonica_config(harmonica_key)
@@ -214,36 +214,20 @@ def create_tab_mapper(
     # Get bend mapping for this key (empty dict if not available)
     bend_mapping = HARMONICA_BEND_MAPPINGS.get(harmonica_key.upper(), {})
 
-    # If midi_key is specified and different, create a transposed mapping
+    # If midi_key is specified and different, use midi_key's mapping instead
     if midi_key and midi_key.upper() != harmonica_key.upper():
         midi_key_normalized = midi_key.upper()
-        harmonica_key_normalized = harmonica_key.upper()
 
-        # Get offset for both keys
-        if midi_key_normalized not in KEY_OFFSETS:
-            raise ValueError(f"Unsupported MIDI key: {midi_key}")
+        # Get configuration for the MIDI key
+        midi_key_config = get_harmonica_config(midi_key_normalized)
+        midi_bend_mapping = HARMONICA_BEND_MAPPINGS.get(midi_key_normalized, {})
 
-        midi_offset = KEY_OFFSETS[midi_key_normalized]
-        harmonica_offset = KEY_OFFSETS[harmonica_key_normalized]
-
-        # Calculate transposition: we need to shift MIDI notes to account for key difference
-        # If MIDI is in C (offset 0) and target is G (offset 7), we need to shift by +7
-        transpose_amount = harmonica_offset - midi_offset
-
-        # Create transposed mapping: add transpose_amount to each MIDI note
-        transposed_mapping = {
-            midi_note + transpose_amount: hole
-            for midi_note, hole in key_config.midi_mapping.items()
-        }
-        transposed_bend_mapping = {
-            midi_note + transpose_amount: (hole, notation)
-            for midi_note, (hole, notation) in bend_mapping.items()
-        }
-
+        # Use the MIDI key's mapping directly
+        # This ensures MIDI notes map to holes according to their actual key
         return TabMapper(
-            harmonica_mapping=transposed_mapping,
+            harmonica_mapping=midi_key_config.midi_mapping,
             json_outputs_path=output_path,
-            bend_mapping=transposed_bend_mapping,
+            bend_mapping=midi_bend_mapping,
         )
 
     return TabMapper(
