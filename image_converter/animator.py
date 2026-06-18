@@ -12,6 +12,7 @@ from image_converter.consts import IN_COLOR, OUT_COLOR, BEND_COLOR
 from image_converter.figure_factory import FigureFactory
 from image_converter.harmonica_layout import HarmonicaLayout
 from image_converter.video_processor import VideoProcessor, VideoProcessorError
+from image_converter.animation_analyzer import AnimationAnalyzer
 from tab_converter.models import TabEntry
 from utils.utils import TEMP_DIR
 from typing import Optional as OptionalType
@@ -66,6 +67,7 @@ class Animator:
         temp_dir: OptionalType[str] = None,
         use_alpha: bool = False,
         chroma_key_config=None,
+        enable_static_optimization: bool = True,
     ):
         self._frame_timings: List[float] = []
         self._harmonica_layout = harmonica_layout
@@ -81,6 +83,7 @@ class Animator:
         self._video_processor = VideoProcessor(self._temp_dir)
         self._use_alpha = use_alpha
         self._chroma_key_config = chroma_key_config
+        self._enable_static_optimization = enable_static_optimization
 
     def create_animation(
         self,
@@ -92,6 +95,7 @@ class Animator:
         use_alpha: Optional[bool] = None,
         chroma_key_config=None,
         time_range: Optional[tuple[float, float]] = None,
+        force_full_render: bool = False,
     ) -> None:
         # Allow per-call override; fall back to instance defaults
         effective_use_alpha = use_alpha if use_alpha is not None else self._use_alpha
@@ -129,6 +133,31 @@ class Animator:
 
         total_duration = self._get_total_duration()
         total_frames = self._get_total_frames(fps, total_duration)
+
+        # Check if static optimization should apply
+        if (
+            self._enable_static_optimization
+            and not force_full_render
+            and self._flat_entries
+        ):
+            analyzer = AnimationAnalyzer(self._flat_entries, fps=fps)
+            if analyzer.should_optimize(total_duration, min_speedup_percent=10.0):
+                stats = analyzer.get_animation_statistics(total_duration)
+                speedup = stats["speed_improvement_estimate"]
+                print(
+                    f"⚡ Static optimization enabled: ~{speedup:.0f}% speedup "
+                    f"({stats['animated_duration']:.1f}s of {total_duration:.1f}s)"
+                )
+                self._render_with_static_optimization(
+                    analyzer=analyzer,
+                    extracted_audio_path=extracted_audio_path,
+                    output_path=output_path,
+                    total_duration=total_duration,
+                    fps=fps,
+                    effective_use_alpha=effective_use_alpha,
+                    effective_chroma_cfg=effective_chroma_cfg,
+                )
+                return
 
         # Set background color based on mode
         if not effective_use_alpha:
@@ -361,3 +390,315 @@ class Animator:
         except Exception as e:
             print(f"⚠️  Warning: Could not retrieve video info: {e}")
             print(f"✅ Video saved to: {video_path}\n")
+
+    def _render_with_static_optimization(
+        self,
+        analyzer: AnimationAnalyzer,
+        extracted_audio_path: str,
+        output_path: str,
+        total_duration: float,
+        fps: int,
+        effective_use_alpha: bool,
+        effective_chroma_cfg,
+    ) -> None:
+        """Render only animated segment and compose with static frames.
+
+        Splits video into [static_start] + [animated] + [static_end] and only
+        renders the middle segment, dramatically speeding up render time for
+        videos with sparse notes.
+
+        Args:
+            analyzer: AnimationAnalyzer with animation boundaries
+            extracted_audio_path: Path to audio file
+            output_path: Final output video path
+            total_duration: Total video duration
+            fps: Frames per second
+            effective_use_alpha: Whether to use alpha channel output
+            effective_chroma_cfg: Chroma key config if applicable
+        """
+        _, anim_start, anim_end = analyzer.analyze_animation_range()
+        anim_duration = anim_end - anim_start
+
+        # Create empty harmonica frame (no notes)
+        empty_frame_path = self._create_empty_harmonica_frame(fps)
+
+        # Render only the animated segment
+        try:
+            # Temporarily update flat_entries to only animated range
+            original_entries = self._flat_entries.copy()
+            self._flat_entries = [
+                entry
+                for entry in original_entries
+                if entry.time < anim_end and (entry.time + entry.duration) > anim_start
+            ]
+            # Adjust times to segment start
+            for entry in self._flat_entries:
+                entry.time = max(0, entry.time - anim_start)
+
+            # Render animated segment
+            segment_path = (
+                self._temp_dir + f"segment_{anim_start:.2f}_{anim_end:.2f}.mp4"
+            )
+            self._render_segment_video(
+                extracted_audio_path,
+                segment_path,
+                anim_duration,
+                fps,
+                effective_use_alpha,
+                effective_chroma_cfg,
+            )
+
+            # Compose segments: static_start + animated + static_end
+            self._compose_optimized_video(
+                empty_frame_path,
+                segment_path,
+                anim_start,
+                anim_end,
+                total_duration,
+                extracted_audio_path,
+                output_path,
+                fps,
+                effective_use_alpha,
+                effective_chroma_cfg,
+            )
+
+            # Log video info
+            self._log_video_info(
+                output_path,
+                total_duration,
+                fps,
+                int(total_duration * fps),
+            )
+
+        finally:
+            # Restore original entries
+            self._flat_entries = original_entries
+
+    def _create_empty_harmonica_frame(self, fps: int) -> str:
+        """Create a video of empty harmonica (no notes).
+
+        Returns:
+            Path to the empty frame video file
+        """
+        import subprocess
+
+        empty_frame_path = self._temp_dir + "empty_harmonica_frame.png"
+
+        # Render one frame with empty harmonica
+        self._clear_frame_objects()
+        assert self._ax is not None
+
+        # Create figure with just empty harmonica (no notes)
+        fig, ax = self._figure_factory.create()
+        # Note: just the background, no notes added
+
+        # Save as image
+        fig.savefig(empty_frame_path, dpi=100, bbox_inches="tight")
+        plt.close(fig)
+
+        # Convert to video using ffmpeg image2pipe
+        video_path = self._temp_dir + "empty_harmonica.mp4"
+
+        # Use image2 demuxer with loop filter for duration
+        cmd = [
+            "ffmpeg",
+            "-y",
+            "-loop",
+            "1",
+            "-i",
+            empty_frame_path,
+            "-c:v",
+            "libx264",
+            "-t",
+            "1",  # 1 second duration (will be extended via tpad)
+            "-pix_fmt",
+            "yuv420p",
+            video_path,
+        ]
+
+        subprocess.run(cmd, check=True, capture_output=True)
+        return video_path
+
+    def _render_segment_video(
+        self,
+        extracted_audio_path: str,
+        output_path: str,
+        segment_duration: float,
+        fps: int,
+        effective_use_alpha: bool,
+        effective_chroma_cfg,
+    ) -> None:
+        """Render only the animated segment video.
+
+        Args:
+            extracted_audio_path: Path to audio
+            output_path: Output video path
+            segment_duration: Duration of segment
+            fps: Frames per second
+            effective_use_alpha: Whether to use alpha
+            effective_chroma_cfg: Chroma config
+        """
+        # Set background color
+        if not effective_use_alpha:
+            from harmonica_pipeline.video_creator_config import ChromaKeyConfig
+
+            cfg = effective_chroma_cfg or ChromaKeyConfig()
+            try:
+                self._figure_factory._config.background_color = cfg.bg_color
+            except AttributeError:
+                pass
+
+        fig, self._ax = self._figure_factory.create()
+
+        total_frames = int(segment_duration * fps)
+
+        ani = animation.FuncAnimation(
+            fig,
+            lambda frame: self._timed_update_frame(frame, fps),
+            frames=total_frames,
+            blit=False,
+            interval=1000 / fps,
+            cache_frame_data=False,
+        )
+
+        ani.save(self._temp_video_path, fps=fps, writer="ffmpeg")
+
+        # Post-process video
+        try:
+            if effective_use_alpha:
+                self._video_processor.process_animation_to_video(
+                    self._temp_video_path,
+                    extracted_audio_path,
+                    output_path,
+                    cleanup_temp=True,
+                )
+            else:
+                from harmonica_pipeline.video_creator_config import ChromaKeyConfig
+
+                cfg = effective_chroma_cfg or ChromaKeyConfig()
+                self._video_processor.process_animation_to_chromakey_video(
+                    self._temp_video_path,
+                    extracted_audio_path,
+                    output_path,
+                    chroma_key_config=cfg,
+                    cleanup_temp=True,
+                )
+        except VideoProcessorError as e:
+            print(f"Video processing failed: {e}")
+            raise
+
+    def _compose_optimized_video(
+        self,
+        empty_frame_video: str,
+        segment_video: str,
+        anim_start: float,
+        anim_end: float,
+        total_duration: float,
+        extracted_audio_path: str,
+        output_path: str,
+        fps: int,
+        effective_use_alpha: bool,
+        effective_chroma_cfg,
+    ) -> None:
+        """Compose three segments into final video using ffmpeg concat.
+
+        Concatenates: [static_start] + [animated] + [static_end]
+
+        Args:
+            empty_frame_video: Path to empty harmonica frame video
+            segment_video: Path to animated segment video
+            anim_start: Start time of animation
+            anim_end: End time of animation
+            total_duration: Total video duration
+            extracted_audio_path: Path to audio file
+            output_path: Final output path
+            fps: Frames per second
+            effective_use_alpha: Whether to use alpha
+            effective_chroma_cfg: Chroma config
+        """
+        import subprocess
+
+        # Calculate segment durations
+        static_start_duration = anim_start
+        static_end_duration = max(0.0, total_duration - anim_end)
+
+        # Create concat demuxer file
+        concat_file = self._temp_dir + "concat_list.txt"
+        with open(concat_file, "w") as f:
+            # Static start (if any)
+            if static_start_duration > 0.01:
+                # Extend empty frame to start duration using tpad
+                start_video = self._temp_dir + "static_start.mp4"
+                cmd = [
+                    "ffmpeg",
+                    "-y",
+                    "-i",
+                    empty_frame_video,
+                    "-vf",
+                    f"tpad=stop_mode=clone:stop_duration={static_start_duration}",
+                    "-c:v",
+                    "libx264",
+                    "-pix_fmt",
+                    "yuv420p",
+                    start_video,
+                ]
+                subprocess.run(cmd, check=True, capture_output=True)
+                f.write(f"file '{start_video}'\n")
+
+            # Animated segment
+            f.write(f"file '{segment_video}'\n")
+
+            # Static end (if any)
+            if static_end_duration > 0.01:
+                end_video = self._temp_dir + "static_end.mp4"
+                cmd = [
+                    "ffmpeg",
+                    "-y",
+                    "-i",
+                    empty_frame_video,
+                    "-vf",
+                    f"tpad=stop_mode=clone:stop_duration={static_end_duration}",
+                    "-c:v",
+                    "libx264",
+                    "-pix_fmt",
+                    "yuv420p",
+                    end_video,
+                ]
+                subprocess.run(cmd, check=True, capture_output=True)
+                f.write(f"file '{end_video}'\n")
+
+        # Use concat demuxer to stitch videos
+        concat_output = self._temp_dir + "concat_output.mp4"
+        cmd = [
+            "ffmpeg",
+            "-y",
+            "-f",
+            "concat",
+            "-safe",
+            "0",
+            "-i",
+            concat_file,
+            "-c",
+            "copy",
+            concat_output,
+        ]
+        subprocess.run(cmd, check=True, capture_output=True)
+
+        # Add audio and final processing
+        cmd = [
+            "ffmpeg",
+            "-y",
+            "-i",
+            concat_output,
+            "-i",
+            extracted_audio_path,
+            "-c:v",
+            "copy",
+            "-c:a",
+            "aac",
+            "-shortest",
+            output_path,
+        ]
+        subprocess.run(cmd, check=True, capture_output=True)
+
+        print(f"✅ Optimized video composed: {output_path}")
