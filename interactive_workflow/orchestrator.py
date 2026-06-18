@@ -1472,6 +1472,11 @@ class WorkflowOrchestrator:
                     )
                     if os.path.exists(chroma_tab):
                         zf.write(chroma_tab, os.path.basename(chroma_tab))
+                if os.path.exists(self.session.input_tabs):
+                    zf.write(
+                        self.session.input_tabs,
+                        os.path.basename(self.session.input_tabs),
+                    )
 
             self.console.print(f"[green]✓ Created ZIP: {zip_path}.zip[/green]")
 
