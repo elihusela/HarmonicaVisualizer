@@ -750,3 +750,197 @@ class VideoCreator:
             return duration
         except Exception as e:
             raise VideoCreatorError(f"Failed to get audio duration: {e}")
+
+    def render_harmonica_segment(
+        self,
+        start_time: float,
+        end_time: float,
+        output_path: str,
+    ) -> str:
+        """Render only a specific time segment of the harmonica animation.
+
+        Used for partial re-render workflow: when user fixes a note, re-render
+        only the affected time window instead of the entire video.
+
+        Args:
+            start_time: Start time of segment (seconds)
+            end_time: End time of segment (seconds)
+            output_path: Path for output segment video
+
+        Returns:
+            Path to rendered segment video
+
+        Raises:
+            VideoCreatorError: If rendering fails
+        """
+        print(f"🎬 Rendering harmonica segment: {start_time:.2f}s - {end_time:.2f}s")
+
+        # Load MIDI and convert to tabs (same as full render)
+        note_events = self._load_midi_note_events()
+        tabs = self._note_events_to_tabs(note_events)
+
+        # Create structure (text-based or direct)
+        if self.tabs_text_parser:
+            matched_tabs = self._create_text_based_structure(tabs)
+        else:
+            matched_tabs = self._create_direct_tabs_structure(tabs)
+
+        # Render with time_range to limit to segment
+        try:
+            video_duration = self._get_audio_duration(self.extracted_audio_path)
+            self.animator.create_animation(
+                matched_tabs,
+                self.extracted_audio_path,
+                output_path,
+                fps=self.fps,
+                audio_duration=video_duration,
+                time_range=(start_time, end_time),
+                force_full_render=False,  # Allow static optimization
+            )
+            return output_path
+        except Exception as e:
+            raise VideoCreatorError(f"Failed to render harmonica segment: {e}")
+
+    def render_tab_segment(
+        self,
+        start_time: float,
+        end_time: float,
+        output_path: str,
+    ) -> str:
+        """Render only a specific time segment of the tab animation.
+
+        Used for partial re-render workflow: when user fixes tab notation,
+        re-render only the affected time window.
+
+        Args:
+            start_time: Start time of segment (seconds)
+            end_time: End time of segment (seconds)
+            output_path: Path for output segment video
+
+        Returns:
+            Path to rendered segment video
+
+        Raises:
+            VideoCreatorError: If tab rendering is not configured
+        """
+        if not self.tabs_output_path:
+            raise VideoCreatorError(
+                "Tab rendering not configured (tabs_output_path is None)"
+            )
+
+        print(f"📄 Rendering tab segment: {start_time:.2f}s - {end_time:.2f}s")
+
+        # Load MIDI and convert to tabs
+        note_events = self._load_midi_note_events()
+        tabs = self._note_events_to_tabs(note_events)
+
+        # Create structure
+        if self.tabs_text_parser:
+            matched_tabs = self._create_text_based_structure(tabs)
+        else:
+            matched_tabs = self._create_direct_tabs_structure(tabs)
+
+        # Render tab animator with time_range
+        try:
+            video_duration = self._get_audio_duration(self.extracted_audio_path)
+            self.tab_phrase_animator.create_animations(
+                matched_tabs,
+                self.extracted_audio_path,
+                output_path,
+                fps=self.fps,
+                audio_duration=video_duration,
+                time_range=(start_time, end_time),
+            )
+            return output_path
+        except Exception as e:
+            raise VideoCreatorError(f"Failed to render tab segment: {e}")
+
+    def splice_harmonica_fix(
+        self,
+        original_video_path: str,
+        start_time: float,
+        end_time: float,
+        output_path: str,
+    ) -> str:
+        """Splice a fixed harmonica segment back into the original video.
+
+        Args:
+            original_video_path: Path to original harmonica video
+            start_time: Start time of fixed segment
+            end_time: End time of fixed segment
+            output_path: Path for output spliced video
+
+        Returns:
+            Path to spliced video
+        """
+        from utils.video_splicer import splice_video_segment, VideoSplicerError
+
+        print(f"🔧 Splicing harmonica fix: {start_time:.2f}s - {end_time:.2f}s")
+
+        try:
+            # Create temp segment for the fix
+            assert self.config.temp_dir is not None
+            temp_segment = self.config.temp_dir + "harmonica_fix_segment.mov"
+
+            # Render the fixed segment
+            self.render_harmonica_segment(start_time, end_time, temp_segment)
+
+            # Splice into original
+            splice_video_segment(
+                original_video_path,
+                temp_segment,
+                start_time,
+                end_time,
+                output_path,
+            )
+
+            print(f"✅ Harmonica fix spliced: {output_path}")
+            return output_path
+
+        except VideoSplicerError as e:
+            raise VideoCreatorError(f"Failed to splice harmonica fix: {e}")
+
+    def splice_tab_fix(
+        self,
+        original_video_path: str,
+        start_time: float,
+        end_time: float,
+        output_path: str,
+    ) -> str:
+        """Splice a fixed tab segment back into the original video.
+
+        Args:
+            original_video_path: Path to original tab video
+            start_time: Start time of fixed segment
+            end_time: End time of fixed segment
+            output_path: Path for output spliced video
+
+        Returns:
+            Path to spliced video
+        """
+        from utils.video_splicer import splice_video_segment, VideoSplicerError
+
+        print(f"🔧 Splicing tab fix: {start_time:.2f}s - {end_time:.2f}s")
+
+        try:
+            # Create temp segment for the fix
+            assert self.config.temp_dir is not None
+            temp_segment = self.config.temp_dir + "tab_fix_segment.mov"
+
+            # Render the fixed segment
+            self.render_tab_segment(start_time, end_time, temp_segment)
+
+            # Splice into original
+            splice_video_segment(
+                original_video_path,
+                temp_segment,
+                start_time,
+                end_time,
+                output_path,
+            )
+
+            print(f"✅ Tab fix spliced: {output_path}")
+            return output_path
+
+        except VideoSplicerError as e:
+            raise VideoCreatorError(f"Failed to splice tab fix: {e}")
