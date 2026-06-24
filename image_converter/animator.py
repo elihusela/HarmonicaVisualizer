@@ -135,9 +135,12 @@ class Animator:
         total_frames = self._get_total_frames(fps, total_duration)
 
         # Check if static optimization should apply
+        # Note: Static optimization is incompatible with alpha/ProRes mode due to codec
+        # mismatch in concat. For alpha mode, always do full render.
         if (
             self._enable_static_optimization
             and not force_full_render
+            and not effective_use_alpha
             and self._flat_entries
         ):
             analyzer = AnimationAnalyzer(self._flat_entries, fps=fps)
@@ -435,9 +438,10 @@ class Animator:
             for entry in self._flat_entries:
                 entry.time = max(0, entry.time - anim_start)
 
-            # Render animated segment
+            # Render animated segment (use .mov for alpha, .mp4 for chromakey)
+            ext = ".mov" if effective_use_alpha else ".mp4"
             segment_path = (
-                self._temp_dir + f"segment_{anim_start:.2f}_{anim_end:.2f}.mp4"
+                self._temp_dir + f"segment_{anim_start:.2f}_{anim_end:.2f}{ext}"
             )
             self._render_segment_video(
                 extracted_audio_path,

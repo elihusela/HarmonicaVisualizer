@@ -26,3 +26,6 @@ video-files/
 
 # Debug files
 debug_*.py
+
+# Stem separation outputs (large audio files)
+stems/
