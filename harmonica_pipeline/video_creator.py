@@ -636,12 +636,15 @@ class VideoCreator:
             audio_duration = self._get_audio_duration(self.extracted_audio_path)
 
             # Generate full tab video path (.mov for compositor intermediate)
-            full_tab_output_mov = self.tabs_output_path.replace(
-                "_tabs.mov", "_full_tabs.mov"
-            )
-            if full_tab_output_mov == self.tabs_output_path:
-                # If replacement didn't work, append _full
-                full_tab_output_mov = self.tabs_output_path.replace(".mov", "_full.mov")
+            # Check if path already has _full_tabs (from parallel generation)
+            if "_full_tabs" in self.tabs_output_path:
+                # Path already has _full_tabs, just ensure it's .mov for compositor
+                full_tab_output_mov = self.tabs_output_path.replace(".mp4", ".mov")
+            else:
+                # Path is _tabs.mov, needs conversion to _full_tabs.mov
+                full_tab_output_mov = self.tabs_output_path.replace(
+                    "_tabs.mov", "_full_tabs.mov"
+                )
 
             try:
                 self.full_tab_compositor.generate(

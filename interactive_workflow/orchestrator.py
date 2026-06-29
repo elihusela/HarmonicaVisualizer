@@ -1431,6 +1431,7 @@ class WorkflowOrchestrator:
         """
         import shutil
         from pathlib import Path
+        from utils.utils import OUTPUTS_DIR
 
         self.console.print(
             Panel(
@@ -1449,6 +1450,19 @@ class WorkflowOrchestrator:
         # Get video paths from session
         harmonica_video = self.session.get_data("harmonica_video")
         tab_video = self.session.get_data("tab_video")
+
+        # Try to find tab video if path doesn't exist (handles filename mismatches)
+        if tab_video and not os.path.exists(tab_video):
+            # Search for *_full_tabs.mp4 or *_full_tabs.mov
+            outputs_dir = Path(OUTPUTS_DIR)
+            for pattern in [
+                f"{self.session.song_name}_full_tabs.mp4",
+                f"{self.session.song_name}_full_tabs.mov",
+            ]:
+                candidates = list(outputs_dir.glob(pattern))
+                if candidates:
+                    tab_video = str(candidates[0])
+                    break
 
         if harmonica_video or tab_video:
             self.console.print(f"[dim]Creating ZIP: {zip_path}.zip[/dim]")
