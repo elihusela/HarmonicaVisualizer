@@ -1558,8 +1558,8 @@ class WorkflowOrchestrator:
                     "[cyan]Export from Final Cut Pro[/cyan]\n\n"
                     "[bold]1.[/bold] Check for trailing clips (Timeline Index should match original duration)\n"
                     "[bold]2.[/bold] Set In/Out to the actual content range\n"
-                    "[bold]3.[/bold] File → Share → and export to:[/bold]\n"
-                    f"[bold]    final-cut/exports/{self.session.song_name}_final.mov[/bold]\n\n"
+                    "[bold]3.[/bold] File → Share → and export to:\n"
+                    f"    final-cut/exports/{self.session.song_name}_final.mov\n\n"
                     "[dim]Once exported, press Enter here to continue.[/dim]",
                     title="Export Required",
                 )

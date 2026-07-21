@@ -120,7 +120,7 @@ def _build_fcpxml(
     # Build resources section
     resources = ET.SubElement(root, "resources")
 
-    # Format resource (project resolution) - minimal valid attributes only
+    # Format resource (project resolution)
     format_elem = ET.SubElement(resources, "format")
     format_elem.set("id", "r1")
     format_elem.set("name", "FFVideoFormat1080p")
@@ -128,31 +128,21 @@ def _build_fcpxml(
     format_elem.set("width", str(width))
     format_elem.set("height", str(height))
 
-    # Media resources (references to video files) - minimal valid structure
-    # Use asset element with file-source sub-element for proper FCP validation
+    # Media resources using proper asset structure with src attribute
     media_1 = ET.SubElement(resources, "asset")
     media_1.set("id", "r2")
     media_1.set("name", f"{os.path.basename(original_video_path)}")
-    media_1.set("hasAudio", "true")
-    media_1.set("hasVideo", "true")
-    file_source_1 = ET.SubElement(media_1, "file-source")
-    file_source_1.set("path", orig_abs)
+    media_1.set("src", orig_abs)
 
     media_2 = ET.SubElement(resources, "asset")
     media_2.set("id", "r3")
     media_2.set("name", f"{os.path.basename(harmonica_video_path)}")
-    media_2.set("hasAudio", "true")
-    media_2.set("hasVideo", "true")
-    file_source_2 = ET.SubElement(media_2, "file-source")
-    file_source_2.set("path", harmonica_abs)
+    media_2.set("src", harmonica_abs)
 
     media_3 = ET.SubElement(resources, "asset")
     media_3.set("id", "r4")
     media_3.set("name", f"{os.path.basename(tabs_video_path)}")
-    media_3.set("hasAudio", "true")
-    media_3.set("hasVideo", "true")
-    file_source_3 = ET.SubElement(media_3, "file-source")
-    file_source_3.set("path", tabs_abs)
+    media_3.set("src", tabs_abs)
 
     # Build library section
     library = ET.SubElement(root, "library")
