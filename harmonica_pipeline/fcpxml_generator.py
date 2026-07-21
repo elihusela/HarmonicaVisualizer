@@ -78,6 +78,8 @@ def generate_fcpxml(
     <asset id="r2" name="{os.path.basename(original_video_path)}" src="{orig_url}" duration="{duration_str}" hasVideo="1" hasAudio="1" audioChannels="2" audioRate="48k"/>
     <asset id="r3" name="{os.path.basename(harmonica_video_path)}" src="{harmonica_url}" duration="{duration_str}" hasVideo="1" hasAudio="0"/>
     <asset id="r4" name="{os.path.basename(tabs_video_path)}" src="{tabs_url}" duration="{duration_str}" hasVideo="1" hasAudio="0"/>
+    <effect id="r5" name="Shapes" uid="Cloud:301988DA-DE3C-4D8D-B3ED-EB4B7DC02880"/>
+    <effect id="r6" name="Basic Title" uid=".../Titles.localized/Bumper:Opener.localized/Basic Title.localized/Basic Title.moti"/>
   </resources>
   <library>
     <event name="{song_name}">
@@ -87,6 +89,38 @@ def generate_fcpxml(
             <asset-clip ref="r2" offset="0s" start="0s" duration="{duration_str}">
               <asset-clip ref="r3" lane="1" offset="0s" start="0s" duration="{duration_str}"/>
               <asset-clip ref="r4" lane="2" offset="0s" start="0s" duration="{duration_str}"/>
+              <video ref="r5" lane="10" offset="0s" name="Shapes - Rectangle" start="0s" duration="{duration_str}">
+                <param name="Fill Color" key="9999/3336460347/988455508/988455699/2/353/113/111" value="0 0 0"/>
+                <param name="Shape" key="9999/988461322/100/988461395/2/100" value="4 (Rectangle)"/>
+                <param name="Outline" key="9999/988461322/100/988464485/2/100" value="0"/>
+                <param name="Fill" key="9999/988461322/100/988464517/2/100" value="1"/>
+                <param name="Roundness" key="9999/988461322/100/988467054/2/100" value="0.02975"/>
+                <param name="Outline Width" key="9999/988461322/100/988467855/2/100" value="0.288384"/>
+                <adjust-transform position="0 -13.0593" scale="1.06062 1.8388"/>
+                <adjust-blend amount="0.95"/>
+              </video>
+              <title ref="r6" lane="11" offset="0s" name="Title 1" start="0s" duration="3s">
+                <param name="Position" key="9999/999166631/999166633/1/100/101" value="1.0375 350.261"/>
+                <param name="Flatten" key="9999/999166631/999166633/2/351" value="1"/>
+                <param name="Alignment" key="9999/999166631/999166633/2/354/999169573/401" value="1 (Center)"/>
+                <text>
+                  <text-style ref="ts1">{song_name}</text-style>
+                </text>
+                <text-style-def id="ts1">
+                  <text-style font="Gveret Levin" fontSize="63" fontFace="Regular" fontColor="1 1 1 1" strokeColor="0 0 0 1" strokeWidth="-1.5" alignment="center"/>
+                </text-style-def>
+              </title>
+              <title ref="r6" lane="12" offset="0s" name="Title 2" start="0s" duration="3s">
+                <param name="Position" key="9999/999166631/999166633/1/100/101" value="1.0415 116.088"/>
+                <param name="Flatten" key="9999/999166631/999166633/2/351" value="1"/>
+                <param name="Alignment" key="9999/999166631/999166633/2/354/999169573/401" value="1 (Center)"/>
+                <text>
+                  <text-style ref="ts2">טאבים למפוחית</text-style>
+                </text>
+                <text-style-def id="ts2">
+                  <text-style font="Instagram Sans" fontSize="63" fontColor="1 1 1 1" bold="1" strokeColor="0 0 0 1" strokeWidth="-1.5" alignment="center"/>
+                </text-style-def>
+              </title>
             </asset-clip>
           </spine>
         </sequence>
