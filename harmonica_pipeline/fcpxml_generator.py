@@ -120,37 +120,39 @@ def _build_fcpxml(
     # Build resources section
     resources = ET.SubElement(root, "resources")
 
-    # Format resource (project resolution)
+    # Format resource (project resolution) - minimal valid attributes only
     format_elem = ET.SubElement(resources, "format")
     format_elem.set("id", "r1")
     format_elem.set("name", "FFVideoFormat1080p")
     format_elem.set("frameDuration", frame_duration)
     format_elem.set("width", str(width))
     format_elem.set("height", str(height))
-    format_elem.set("xyResolution", "72")
-    format_elem.set("anamorphic", "false")
-    format_elem.set("colorSpace", "1-1-1 (Rec. 709)")
-    format_elem.set("fieldsType", "progressive")
-    format_elem.set("fullRange", "false")
 
-    # Media resources (references to video files)
-    media_1 = ET.SubElement(resources, "media")
+    # Media resources (references to video files) - minimal valid structure
+    # Use asset element with file-source sub-element for proper FCP validation
+    media_1 = ET.SubElement(resources, "asset")
     media_1.set("id", "r2")
     media_1.set("name", f"{os.path.basename(original_video_path)}")
-    media_1.set("path", orig_abs)
-    media_1.set("conforms", "true")
+    media_1.set("hasAudio", "true")
+    media_1.set("hasVideo", "true")
+    file_source_1 = ET.SubElement(media_1, "file-source")
+    file_source_1.set("path", orig_abs)
 
-    media_2 = ET.SubElement(resources, "media")
+    media_2 = ET.SubElement(resources, "asset")
     media_2.set("id", "r3")
     media_2.set("name", f"{os.path.basename(harmonica_video_path)}")
-    media_2.set("path", harmonica_abs)
-    media_2.set("conforms", "true")
+    media_2.set("hasAudio", "true")
+    media_2.set("hasVideo", "true")
+    file_source_2 = ET.SubElement(media_2, "file-source")
+    file_source_2.set("path", harmonica_abs)
 
-    media_3 = ET.SubElement(resources, "media")
+    media_3 = ET.SubElement(resources, "asset")
     media_3.set("id", "r4")
     media_3.set("name", f"{os.path.basename(tabs_video_path)}")
-    media_3.set("path", tabs_abs)
-    media_3.set("conforms", "true")
+    media_3.set("hasAudio", "true")
+    media_3.set("hasVideo", "true")
+    file_source_3 = ET.SubElement(media_3, "file-source")
+    file_source_3.set("path", tabs_abs)
 
     # Build library section
     library = ET.SubElement(root, "library")
@@ -260,9 +262,9 @@ def _add_clip_to_track(
     if duration:
         clip.set("duration", duration)
 
-    # Reference to media
-    media_ref = ET.SubElement(clip, "media-ref")
-    media_ref.set("id", ref_id)
+    # Reference to asset (media)
+    asset_ref = ET.SubElement(clip, "asset-ref")
+    asset_ref.set("id", ref_id)
 
     return clip
 
@@ -288,9 +290,9 @@ def _add_audio_clip_to_track(
     clip.set("name", clip_name)
     clip.set("offset", offset)
 
-    # Reference to media
-    media_ref = ET.SubElement(clip, "media-ref")
-    media_ref.set("id", ref_id)
+    # Reference to asset (media)
+    asset_ref = ET.SubElement(clip, "asset-ref")
+    asset_ref.set("id", ref_id)
 
     return clip
 
