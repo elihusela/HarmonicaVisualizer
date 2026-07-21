@@ -380,24 +380,37 @@ class WorkflowOrchestrator:
 
     def _step_initialize(self) -> None:
         """Initialize workflow - determine next step."""
+        from pathlib import Path
+
         from utils.utils import MIDI_DIR, OUTPUTS_DIR
 
         # Check if both harmonica and tabs videos already exist - offer shortcut to Final Cut
-        use_alpha = self.filename_config.__dict__.get("use_alpha", False)
-        harmonica_ext = ".mov" if use_alpha else ".mp4"
-        tabs_ext = ".mov" if use_alpha else ".mp4"
-        harmonica_video = os.path.join(
-            OUTPUTS_DIR, f"{self.session.song_name}_harmonica{harmonica_ext}"
-        )
-        tabs_video = os.path.join(
-            OUTPUTS_DIR, f"{self.session.song_name}_full_tabs{tabs_ext}"
-        )
+        # Try both .mp4 (chromakey) and .mov (alpha) extensions
+        outputs_dir = Path(OUTPUTS_DIR)
+        harmonica_video = None
+        tabs_video = None
 
-        if (
-            os.path.exists(harmonica_video)
-            and os.path.exists(tabs_video)
-            and not self.auto_approve
-        ):
+        # Look for harmonica video (either .mp4 or .mov)
+        for pattern in [
+            f"{self.session.song_name}_harmonica.mp4",
+            f"{self.session.song_name}_harmonica.mov",
+        ]:
+            candidates = list(outputs_dir.glob(pattern))
+            if candidates:
+                harmonica_video = str(candidates[0])
+                break
+
+        # Look for tabs video (either .mp4 or .mov)
+        for pattern in [
+            f"{self.session.song_name}_full_tabs.mp4",
+            f"{self.session.song_name}_full_tabs.mov",
+        ]:
+            candidates = list(outputs_dir.glob(pattern))
+            if candidates:
+                tabs_video = str(candidates[0])
+                break
+
+        if harmonica_video and tabs_video and not self.auto_approve:
             skip = questionary.confirm(
                 "Both harmonica and tabs videos already exist. Skip to Final Cut Pro assembly?",
                 default=False,
