@@ -1520,7 +1520,7 @@ class WorkflowOrchestrator:
                 )
                 duration_seconds = 480
 
-            # Generate FCPXML
+            # Generate FCPXML (creates both English and Hebrew variants in one file)
             fcpxml_path = generate_fcpxml(
                 song_name=self.session.song_name,
                 original_video_path=video_path,
