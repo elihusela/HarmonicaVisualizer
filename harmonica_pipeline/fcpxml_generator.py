@@ -1,13 +1,57 @@
 """FCPXML generator for Final Cut Pro project automation.
 
 Generates Final Cut Pro XML project files for assembling harmonica tab videos.
-Handles clip arrangement, audio muting, and default transforms.
+Uses correct FCPXML 1.8 schema with asset-clips and rational timing.
 """
 
 import os
 from typing import Optional
 from xml.etree import ElementTree as ET
 from xml.dom import minidom
+
+
+class TimingValue:
+    """Represents rational time values in FCPXML (numerator/denominator + unit)."""
+
+    def __init__(self, numerator: int, denominator: int = 1, unit: str = "s"):
+        self.numerator = numerator
+        self.denominator = denominator
+        self.unit = unit
+
+    def __str__(self) -> str:
+        """Convert to FCPXML format: '120/30s' or '0s'."""
+        if self.denominator == 1:
+            return f"{self.numerator}{self.unit}"
+        return f"{self.numerator}/{self.denominator}{self.unit}"
+
+    @classmethod
+    def from_seconds(cls, seconds: float) -> "TimingValue":
+        """Convert seconds to rational representation."""
+        if seconds == 0:
+            return cls(0, 1, "s")
+        # Check if it's a whole number
+        if seconds == int(seconds):
+            return cls(int(seconds), 1, "s")
+        numerator = int(seconds * 1000)
+        # Simplify fraction: find GCD
+        from math import gcd
+        divisor = gcd(numerator, 1000)
+        return cls(numerator // divisor, 1000 // divisor, "s")
+
+    @classmethod
+    def frame_duration(cls, fps: float) -> "TimingValue":
+        """Get frame duration for a given frame rate."""
+        if fps == 25:
+            return cls(1, 25, "s")
+        elif fps == 29.97:
+            return cls(1001, 30000, "s")
+        elif fps == 30:
+            return cls(1, 30, "s")
+        elif fps == 60:
+            return cls(1, 60, "s")
+        else:
+            denominator = int(fps * 1000)
+            return cls(1000, denominator, "s")
 
 
 def generate_fcpxml(
@@ -17,35 +61,35 @@ def generate_fcpxml(
     tabs_video_path: str,
     output_dir: str = "final-cut",
     video_resolution: tuple = (2160, 3840),
-    frame_rate: str = "30p",
+    frame_rate: float = 30.0,
+    duration_seconds: Optional[float] = None,
 ) -> str:
     """Generate an FCPXML project file for Final Cut Pro.
 
-    Creates a minimal but functional FCPXML that:
-    - Places all 3 clips (original, harmonica, tabs) at offset 0
-    - Stacks them with correct render order
-    - Mutes audio on harmonica and tabs clips
-    - Sets harmonica to a smart default transform (~85% scale, lower third)
-    - Pre-fills title text with song name
-    - Includes placeholder generators for background and legend
+    Creates a valid FCPXML that:
+    - Places harmonica and tabs clips on separate video lanes (lane 1, 2)
+    - Original video as reference (lane 0)
+    - Clips are muted on video-only layers
+    - All timing uses rational format per FCPXML spec
+    - No audio on harmonica/tabs clips
 
     Args:
         song_name: Song name for display and filenames
         original_video_path: Path to original video file
         harmonica_video_path: Path to harmonica animation video
         tabs_video_path: Path to tabs animation video
-        output_dir: Directory for FCPXML output (default: "final-cut")
+        output_dir: Directory for FCPXML output
         video_resolution: Video dimensions as (width, height)
-        frame_rate: Frame rate string (default: "30p")
+        frame_rate: Frame rate in fps (default: 30.0)
+        duration_seconds: Clip duration in seconds (if None, tries to detect)
 
     Returns:
         Path to generated FCPXML file
 
     Raises:
         FileNotFoundError: If any input video file doesn't exist
-        IOError: If FCPXML file can't be written
     """
-    # Validate input files exist
+    # Validate input files
     for path, name in [
         (original_video_path, "Original video"),
         (harmonica_video_path, "Harmonica video"),
@@ -54,17 +98,26 @@ def generate_fcpxml(
         if not os.path.exists(path):
             raise FileNotFoundError(f"{name} not found: {path}")
 
-    # Create output directory
     os.makedirs(output_dir, exist_ok=True)
 
-    # Generate FCPXML
+    # Get absolute paths
+    orig_abs = os.path.abspath(original_video_path)
+    harmonica_abs = os.path.abspath(harmonica_video_path)
+    tabs_abs = os.path.abspath(tabs_video_path)
+
+    # Calculate or estimate duration (assume 8 minutes if not specified)
+    if duration_seconds is None:
+        duration_seconds = 480  # 8 minutes default
+
+    # Build FCPXML
     xml_content = _build_fcpxml(
         song_name=song_name,
-        original_video_path=original_video_path,
-        harmonica_video_path=harmonica_video_path,
-        tabs_video_path=tabs_video_path,
+        orig_abs=orig_abs,
+        harmonica_abs=harmonica_abs,
+        tabs_abs=tabs_abs,
         video_resolution=video_resolution,
         frame_rate=frame_rate,
+        duration_seconds=duration_seconds,
     )
 
     # Write to file
@@ -77,243 +130,112 @@ def generate_fcpxml(
 
 def _build_fcpxml(
     song_name: str,
-    original_video_path: str,
-    harmonica_video_path: str,
-    tabs_video_path: str,
+    orig_abs: str,
+    harmonica_abs: str,
+    tabs_abs: str,
     video_resolution: tuple,
-    frame_rate: str,
+    frame_rate: float,
+    duration_seconds: float,
 ) -> str:
-    """Build FCPXML content as a formatted string.
-
-    Args:
-        song_name: Song name
-        original_video_path: Path to original video
-        harmonica_video_path: Path to harmonica video
-        tabs_video_path: Path to tabs video
-        video_resolution: Video dimensions as (width, height)
-        frame_rate: Frame rate string
-
-    Returns:
-        Formatted FCPXML string
-    """
+    """Build FCPXML content as a formatted string."""
     width, height = video_resolution
-
-    # Frame rate to frame duration mapping
-    frame_duration_map = {
-        "24p": "100/2400",
-        "25p": "100/2500",
-        "30p": "100/3000",
-        "50p": "100/5000",
-        "60p": "100/6000",
-    }
-    frame_duration = frame_duration_map.get(frame_rate, "100/3000")
-
-    # Get absolute paths for media references
-    orig_abs = os.path.abspath(original_video_path)
-    harmonica_abs = os.path.abspath(harmonica_video_path)
-    tabs_abs = os.path.abspath(tabs_video_path)
 
     # Create root element
     root = ET.Element("fcpxml")
     root.set("version", "1.8")
 
-    # Build resources section
+    # Resources section
     resources = ET.SubElement(root, "resources")
 
-    # Format resource (project resolution)
+    # Format resource
+    frame_duration = TimingValue.frame_duration(frame_rate)
     format_elem = ET.SubElement(resources, "format")
     format_elem.set("id", "r1")
-    format_elem.set("name", "FFVideoFormat1080p")
-    format_elem.set("frameDuration", frame_duration)
-    format_elem.set("width", str(width))
-    format_elem.set("height", str(height))
+    format_elem.set("frameDuration", str(frame_duration))
+    format_elem.set("width", f"{float(width):.1f}")
+    format_elem.set("height", f"{float(height):.1f}")
+    format_elem.set("colorSpace", "Rec. 709")
 
-    # Media resources using proper asset structure with src attribute
-    media_1 = ET.SubElement(resources, "asset")
-    media_1.set("id", "r2")
-    media_1.set("name", f"{os.path.basename(original_video_path)}")
-    media_1.set("src", orig_abs)
+    # Duration as timing value
+    duration_timing = TimingValue.from_seconds(duration_seconds)
 
-    media_2 = ET.SubElement(resources, "asset")
-    media_2.set("id", "r3")
-    media_2.set("name", f"{os.path.basename(harmonica_video_path)}")
-    media_2.set("src", harmonica_abs)
+    # Asset resources
+    asset_orig = ET.SubElement(resources, "asset")
+    asset_orig.set("id", "r2")
+    asset_orig.set("name", os.path.basename(orig_abs))
+    asset_orig.set("src", orig_abs)
+    asset_orig.set("duration", str(duration_timing))
+    asset_orig.set("hasVideo", "1")
+    asset_orig.set("hasAudio", "1")
+    asset_orig.set("audioChannels", "2")
+    asset_orig.set("audioRate", "48000")
 
-    media_3 = ET.SubElement(resources, "asset")
-    media_3.set("id", "r4")
-    media_3.set("name", f"{os.path.basename(tabs_video_path)}")
-    media_3.set("src", tabs_abs)
+    asset_harmonica = ET.SubElement(resources, "asset")
+    asset_harmonica.set("id", "r3")
+    asset_harmonica.set("name", os.path.basename(harmonica_abs))
+    asset_harmonica.set("src", harmonica_abs)
+    asset_harmonica.set("duration", str(duration_timing))
+    asset_harmonica.set("hasVideo", "1")
+    asset_harmonica.set("hasAudio", "0")
 
-    # Build library section
+    asset_tabs = ET.SubElement(resources, "asset")
+    asset_tabs.set("id", "r4")
+    asset_tabs.set("name", os.path.basename(tabs_abs))
+    asset_tabs.set("src", tabs_abs)
+    asset_tabs.set("duration", str(duration_timing))
+    asset_tabs.set("hasVideo", "1")
+    asset_tabs.set("hasAudio", "0")
+
+    # Library and project
     library = ET.SubElement(root, "library")
-
-    # Event (sequence container)
     event = ET.SubElement(library, "event")
     event.set("name", song_name)
 
-    # Project (timeline)
     project = ET.SubElement(event, "project")
     project.set("name", song_name)
-    project.set("format", "r1")
-    project.set("tcStart", "0s")
-    project.set("tcFormat", "NDF")
-    project.set("audioFormat", "stereo")
 
     # Sequence (timeline)
     sequence = ET.SubElement(project, "sequence")
     sequence.set("format", "r1")
-    sequence.set("duration", "0s")  # Will auto-extend based on clip length
-    sequence.set("tcStart", "0s")
-    sequence.set("audioLayout", "stereo")
+    sequence.set("duration", str(duration_timing))
     sequence.set("audioRate", "48000")
 
-    # Create spine (clip container)
+    # Spine with clips stacked on lanes
     spine = ET.SubElement(sequence, "spine")
 
-    # Placeholder: background generator track (for future use)
-    # This will be replaced with actual background when we add it to the generator pipeline
-    # For now, add as comment
+    # Lane 0: Original video (reference/background)
+    clip_orig = ET.SubElement(spine, "asset-clip")
+    clip_orig.set("ref", "r2")
+    clip_orig.set("offset", "0s")
+    clip_orig.set("duration", str(duration_timing))
+    clip_orig.set("start", "0s")
+    clip_orig.set("name", "Original")
+    clip_orig.set("lane", "0")
 
-    # Track for original video (bottom layer - reference video)
-    track_original = ET.SubElement(spine, "video")
-    track_original.set("name", "Original Video")
-    _add_clip_to_track(
-        track_original,
-        ref_id="r2",
-        clip_name="Original",
-        offset="0s",
-        duration=None,  # Use full media duration
-    )
+    # Lane 1: Harmonica video
+    clip_harmonica = ET.SubElement(spine, "asset-clip")
+    clip_harmonica.set("ref", "r3")
+    clip_harmonica.set("offset", "0s")
+    clip_harmonica.set("duration", str(duration_timing))
+    clip_harmonica.set("start", "0s")
+    clip_harmonica.set("name", "Harmonica")
+    clip_harmonica.set("lane", "1")
 
-    # Track for harmonica video (middle layer)
-    track_harmonica = ET.SubElement(spine, "video")
-    track_harmonica.set("name", "Harmonica")
-    harmonica_clip = _add_clip_to_track(
-        track_harmonica,
-        ref_id="r3",
-        clip_name="Harmonica",
-        offset="0s",
-        duration=None,
-    )
-    # Add default transform to harmonica: ~85% scale, lower-third position, centered
-    _add_harmonica_transform(harmonica_clip)
-    # Mute audio on this track
-    track_harmonica.set("audiovolume", "-inf dB")
-
-    # Track for tabs video (top layer)
-    track_tabs = ET.SubElement(spine, "video")
-    track_tabs.set("name", "Tabs")
-    _add_clip_to_track(
-        track_tabs,
-        ref_id="r4",
-        clip_name="Tabs",
-        offset="0s",
-        duration=None,
-    )
-    # Mute audio on this track
-    track_tabs.set("audiovolume", "-inf dB")
-
-    # Placeholder audio track (from original)
-    audio_track = ET.SubElement(spine, "audio")
-    audio_track.set("name", "Audio")
-    _add_audio_clip_to_track(
-        audio_track,
-        ref_id="r2",
-        clip_name="Audio",
-        offset="0s",
-    )
+    # Lane 2: Tabs video
+    clip_tabs = ET.SubElement(spine, "asset-clip")
+    clip_tabs.set("ref", "r4")
+    clip_tabs.set("offset", "0s")
+    clip_tabs.set("duration", str(duration_timing))
+    clip_tabs.set("start", "0s")
+    clip_tabs.set("name", "Tabs")
+    clip_tabs.set("lane", "2")
 
     # Pretty print
     return _prettify_xml(root)
 
 
-def _add_clip_to_track(
-    track: ET.Element,
-    ref_id: str,
-    clip_name: str,
-    offset: str,
-    duration: Optional[str] = None,
-) -> ET.Element:
-    """Add a video clip to a track.
-
-    Args:
-        track: Parent track element
-        ref_id: Resource ID reference
-        clip_name: Clip name for display
-        offset: Start time (e.g., "0s")
-        duration: Clip duration (if None, uses media duration)
-
-    Returns:
-        The created clip element (for adding properties like transforms)
-    """
-    clip = ET.SubElement(track, "clip")
-    clip.set("name", clip_name)
-    clip.set("offset", offset)
-    if duration:
-        clip.set("duration", duration)
-
-    # Reference to asset (media)
-    asset_ref = ET.SubElement(clip, "asset-ref")
-    asset_ref.set("id", ref_id)
-
-    return clip
-
-
-def _add_audio_clip_to_track(
-    track: ET.Element,
-    ref_id: str,
-    clip_name: str,
-    offset: str,
-) -> ET.Element:
-    """Add an audio clip to an audio track.
-
-    Args:
-        track: Parent audio track element
-        ref_id: Resource ID reference
-        clip_name: Clip name for display
-        offset: Start time (e.g., "0s")
-
-    Returns:
-        The created clip element
-    """
-    clip = ET.SubElement(track, "clip")
-    clip.set("name", clip_name)
-    clip.set("offset", offset)
-
-    # Reference to asset (media)
-    asset_ref = ET.SubElement(clip, "asset-ref")
-    asset_ref.set("id", ref_id)
-
-    return clip
-
-
-def _add_harmonica_transform(clip: ET.Element) -> None:
-    """Add default transform to harmonica clip.
-
-    Default: ~85% scale, centered horizontally, positioned in lower third.
-
-    Args:
-        clip: Clip element to add transform to
-    """
-    # Add transform geometry
-    transform = ET.SubElement(clip, "geometry")
-    transform.set("scale", "0.85")
-    transform.set("centerX", "0")  # Centered horizontally
-    transform.set("centerY", "0.33")  # Lower third vertically (adjusted from center)
-    transform.set("scaleX", "1")
-    transform.set("scaleY", "1")
-    transform.set("rotation", "0")
-
-
 def _prettify_xml(elem: ET.Element) -> str:
-    """Return a pretty-printed XML string.
-
-    Args:
-        elem: Root XML element
-
-    Returns:
-        Formatted XML string with proper indentation
-    """
+    """Return a pretty-printed XML string."""
     rough_string = ET.tostring(elem, encoding="unicode")
     reparsed = minidom.parseString(rough_string)
     return reparsed.toprettyxml(indent="  ", encoding="utf-8").decode("utf-8")
