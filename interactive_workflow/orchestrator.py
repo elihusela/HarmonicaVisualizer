@@ -380,8 +380,35 @@ class WorkflowOrchestrator:
 
     def _step_initialize(self) -> None:
         """Initialize workflow - determine next step."""
-        from utils.utils import MIDI_DIR
+        from utils.utils import MIDI_DIR, OUTPUTS_DIR
 
+        # Check if both harmonica and tabs videos already exist - offer shortcut to Final Cut
+        use_alpha = self.filename_config.__dict__.get("use_alpha", False)
+        harmonica_ext = ".mov" if use_alpha else ".mp4"
+        tabs_ext = ".mov" if use_alpha else ".mp4"
+        harmonica_video = os.path.join(
+            OUTPUTS_DIR, f"{self.session.song_name}_harmonica{harmonica_ext}"
+        )
+        tabs_video = os.path.join(
+            OUTPUTS_DIR, f"{self.session.song_name}_full_tabs{tabs_ext}"
+        )
+
+        if (
+            os.path.exists(harmonica_video)
+            and os.path.exists(tabs_video)
+            and not self.auto_approve
+        ):
+            skip = questionary.confirm(
+                "Both harmonica and tabs videos already exist. Skip to Final Cut Pro assembly?",
+                default=False,
+            ).ask()
+            if skip:
+                self.session.set_data("harmonica_video", harmonica_video)
+                self.session.set_data("tab_video", tabs_video)
+                self.session.transition_to(WorkflowState.FINAL_CUT_ASSEMBLY)
+                return
+
+        # Check if MIDI already exists
         midi_path = os.path.join(MIDI_DIR, f"{self.session.song_name}_fixed.mid")
         if os.path.exists(midi_path) and not self.auto_approve:
             skip = questionary.confirm(
