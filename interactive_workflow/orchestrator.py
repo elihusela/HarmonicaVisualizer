@@ -41,6 +41,7 @@ class WorkflowOrchestrator:
         "tab-generation": WorkflowState.TAB_GENERATION,
         "harmonica": WorkflowState.HARMONICA_REVIEW,
         "tabs": WorkflowState.TAB_VIDEO_REVIEW,
+        "final-cut": WorkflowState.FINAL_CUT_ASSEMBLY,
         "finalize": WorkflowState.FINALIZATION,
     }
 
@@ -326,7 +327,8 @@ class WorkflowOrchestrator:
         3. MIDI fixing (user DAW step)
         4. Harmonica video generation and review
         5. Full tab video generation and review
-        6. Finalization and cleanup
+        6. Final Cut Pro assembly (generate XML, position overlays, export)
+        7. Finalization and cleanup
         """
         try:
             while not self.session.is_complete() and not self.session.is_error():
@@ -369,6 +371,8 @@ class WorkflowOrchestrator:
             self._step_harmonica_review()
         elif state == WorkflowState.TAB_VIDEO_REVIEW:
             self._step_tab_video_review()
+        elif state == WorkflowState.FINAL_CUT_ASSEMBLY:
+            self._step_final_cut_assembly()
         elif state == WorkflowState.FINALIZATION:
             self._step_finalization()
         else:
@@ -1267,7 +1271,7 @@ class WorkflowOrchestrator:
             self.console.print(
                 "[yellow]⏭️  Skipping tab video generation (no tab file)[/yellow]"
             )
-            self.session.transition_to(WorkflowState.FINALIZATION)
+            self.session.transition_to(WorkflowState.FINAL_CUT_ASSEMBLY)
             return
 
         # Check if tab video was already generated in parallel
@@ -1293,7 +1297,7 @@ class WorkflowOrchestrator:
                     default=True,
                 ).ask()
             ):
-                self.session.transition_to(WorkflowState.FINALIZATION)
+                self.session.transition_to(WorkflowState.FINAL_CUT_ASSEMBLY)
             else:
                 # User declined - go back to MIDI fixing to adjust timing
                 self.console.print(
@@ -1405,7 +1409,7 @@ class WorkflowOrchestrator:
                 default=True,
             ).ask()
         ):
-            self.session.transition_to(WorkflowState.FINALIZATION)
+            self.session.transition_to(WorkflowState.FINAL_CUT_ASSEMBLY)
         else:
             # User declined - ask what they want to do
             action = questionary.select(
@@ -1423,6 +1427,148 @@ class WorkflowOrchestrator:
             else:
                 self.console.print("[yellow]⮌ Regenerating tab video...[/yellow]")
                 self.session.transition_to(WorkflowState.TAB_VIDEO_REVIEW)
+
+    def _step_final_cut_assembly(self) -> None:
+        """Generate FCPXML and wait for Final Cut Pro assembly.
+
+        Generates a Final Cut Pro project XML file with all clips pre-stacked
+        and audio configured, then opens it in Final Cut Pro. User manually
+        positions harmonica and tabs overlays, then exports.
+        """
+        from harmonica_pipeline.fcpxml_generator import generate_fcpxml
+
+        self.console.print(
+            Panel(
+                "[cyan]Preparing Final Cut Pro Project[/cyan]\n\n"
+                "Generating FCPXML with pre-stacked clips...",
+                title="Final Cut Assembly",
+            )
+        )
+
+        # Get paths from session
+        video_path = self.session.input_video
+        harmonica_video = self.session.get_data("harmonica_video")
+        tab_video = self.session.get_data("tab_video")
+
+        # Validate paths exist
+        if not harmonica_video or not os.path.exists(harmonica_video):
+            self.console.print(
+                "[red]✗ Harmonica video not found. Please regenerate it.[/red]"
+            )
+            self.session.transition_to(WorkflowState.HARMONICA_REVIEW)
+            return
+
+        if not tab_video or not os.path.exists(tab_video):
+            self.console.print(
+                "[red]✗ Tab video not found. Please regenerate it.[/red]"
+            )
+            self.session.transition_to(WorkflowState.TAB_VIDEO_REVIEW)
+            return
+
+        try:
+            # Generate FCPXML
+            fcpxml_path = generate_fcpxml(
+                song_name=self.session.song_name,
+                original_video_path=video_path,
+                harmonica_video_path=harmonica_video,
+                tabs_video_path=tab_video,
+                output_dir="final-cut",
+            )
+
+            self.console.print(f"[green]✓ FCPXML generated: {fcpxml_path}[/green]")
+            self.session.set_data("fcpxml_path", fcpxml_path)
+
+            # Open in Final Cut Pro
+            self.console.print(
+                "\n[cyan]Opening Final Cut Pro project...[/cyan]\n"
+                "[dim]The project file should open automatically. If not, open it manually:[/dim]\n"
+                f"[dim]{fcpxml_path}[/dim]"
+            )
+
+            # Try to open with Final Cut Pro
+            try:
+                subprocess.run(["open", fcpxml_path], check=False, timeout=5)
+            except Exception as e:
+                self.console.print(
+                    f"[yellow]Could not auto-open project: {e}[/yellow]\n"
+                    f"[yellow]Please open manually: {fcpxml_path}[/yellow]"
+                )
+
+            # Wait for user to complete assembly
+            self.console.print(
+                Panel(
+                    "[cyan]Final Cut Pro Assembly[/cyan]\n\n"
+                    "[bold]1.[/bold] Position the harmonica overlay in the lower third\n"
+                    "[bold]2.[/bold] Position the tabs block (centered, appropriate location)\n"
+                    "[bold]3.[/bold] When done positioning, press Enter here\n\n"
+                    "[dim]The clips are already time-synced and audio is muted on harmonica/tabs.[/dim]",
+                    title="Manual Assembly Required",
+                )
+            )
+
+            if not self.auto_approve:
+                questionary.confirm(
+                    "Press Enter when you've positioned the harmonica and tabs overlays in Final Cut",
+                    default=True,
+                ).ask()
+
+            # Wait for export
+            self.console.print(
+                Panel(
+                    "[cyan]Export from Final Cut Pro[/cyan]\n\n"
+                    "[bold]1.[/bold] Check for trailing clips (Timeline Index should match original duration)\n"
+                    "[bold]2.[/bold] Set In/Out to the actual content range\n"
+                    "[bold]3.[/bold] File → Share → and export to:[/bold]\n"
+                    f"[bold]    final-cut/exports/{self.session.song_name}_final.mov[/bold]\n\n"
+                    "[dim]Once exported, press Enter here to continue.[/dim]",
+                    title="Export Required",
+                )
+            )
+
+            if not self.auto_approve:
+                questionary.confirm(
+                    "Press Enter once you've exported the final video from Final Cut",
+                    default=True,
+                ).ask()
+
+            # Verify export was created (poll briefly)
+            export_path = os.path.join(
+                "final-cut", "exports", f"{self.session.song_name}_final.mov"
+            )
+            self.console.print(
+                f"\n[dim]Looking for exported video: {export_path}[/dim]"
+            )
+
+            # Poll for file with short timeout
+            max_wait = 10  # seconds
+            poll_interval = 1
+            elapsed = 0
+
+            while elapsed < max_wait:
+                if os.path.exists(export_path):
+                    self.console.print(
+                        f"[green]✓ Found exported video: {export_path}[/green]"
+                    )
+                    self.session.set_data("final_cut_export", export_path)
+                    self.session.transition_to(WorkflowState.FINALIZATION)
+                    return
+
+                elapsed += poll_interval
+                import time
+
+                time.sleep(poll_interval)
+
+            # If we get here, file wasn't found but user confirmed export
+            self.console.print(
+                "[yellow]⚠️  Export file not found yet. Continuing anyway...[/yellow]"
+            )
+            self.session.set_data("final_cut_export", export_path)
+            self.session.transition_to(WorkflowState.FINALIZATION)
+
+        except Exception as e:
+            self.console.print(f"[red]Error generating FCPXML: {e}[/red]")
+            self.session.set_data("error_message", str(e))
+            self.session.transition_to(WorkflowState.ERROR)
 
     def _step_finalization(self) -> None:
         """Finalize workflow - cleanup, ZIP, archive.
