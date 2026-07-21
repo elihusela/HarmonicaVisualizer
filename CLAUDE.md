@@ -12,6 +12,18 @@ python cli.py create-video MySong.mp4 tabs.txt --key G  # Phase 2: MIDI → Vide
 
 See [USAGE.md](USAGE.md) for full CLI reference.
 
+## ⚠️ SAFETY RULE — CRITICAL
+
+**NEVER delete files or directories without explicit user approval first.**
+
+Before any `rm`, `rm -rf`, or similar destructive operation:
+1. **Ask the user** — "I need to delete X. Should I proceed?"
+2. **Wait for approval** — Get explicit "yes" from user
+3. **Show what will be deleted** — List files/dirs to be removed
+4. **Only proceed if approved** — Never assume it's safe
+
+This includes test files, temporary directories, and any paths in the project root. When in doubt, ask.
+
 ## Project Health
 
 - **Tests**: 769 passing, 99% coverage
