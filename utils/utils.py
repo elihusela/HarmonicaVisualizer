@@ -322,3 +322,50 @@ def get_file_info(file_path: str) -> dict:
         }
     except OSError as e:
         raise UtilsError(f"Failed to get file info for '{file_path}': {e}")
+
+
+def get_video_duration(video_path: str) -> float:
+    """Get video duration in seconds using ffprobe.
+
+    Args:
+        video_path: Path to video file
+
+    Returns:
+        Duration in seconds (float)
+
+    Raises:
+        UtilsError: If video file cannot be read or ffprobe fails
+    """
+    import subprocess
+    import json
+
+    if not os.path.exists(video_path):
+        raise UtilsError(f"Video file not found: {video_path}")
+
+    try:
+        result = subprocess.run(
+            [
+                "ffprobe",
+                "-v",
+                "error",
+                "-show_entries",
+                "format=duration",
+                "-of",
+                "default=noprint_wrappers=1:nokey=1:nokey=1",
+                video_path,
+            ],
+            capture_output=True,
+            text=True,
+            timeout=10,
+        )
+
+        if result.returncode != 0:
+            raise UtilsError(f"ffprobe failed: {result.stderr}")
+
+        duration = float(result.stdout.strip())
+        return duration
+
+    except subprocess.TimeoutExpired:
+        raise UtilsError(f"ffprobe timeout reading {video_path}")
+    except (ValueError, AttributeError) as e:
+        raise UtilsError(f"Failed to parse video duration: {e}")

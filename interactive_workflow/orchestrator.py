@@ -1506,6 +1506,20 @@ class WorkflowOrchestrator:
             return
 
         try:
+            # Detect actual video duration
+            from utils.utils import get_video_duration
+
+            try:
+                duration_seconds = get_video_duration(video_path)
+                self.console.print(
+                    f"[dim]Detected video duration: {duration_seconds:.1f}s[/dim]"
+                )
+            except Exception as e:
+                self.console.print(
+                    f"[yellow]Could not detect duration ({e}), using default 480s[/yellow]"
+                )
+                duration_seconds = 480
+
             # Generate FCPXML
             fcpxml_path = generate_fcpxml(
                 song_name=self.session.song_name,
@@ -1513,6 +1527,7 @@ class WorkflowOrchestrator:
                 harmonica_video_path=harmonica_video,
                 tabs_video_path=tab_video,
                 output_dir="final-cut",
+                duration_seconds=duration_seconds,
             )
 
             self.console.print(f"[green]✓ FCPXML generated: {fcpxml_path}[/green]")
