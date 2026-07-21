@@ -2,10 +2,61 @@
 
 Generates minimal FCPXML files for importing into Final Cut Pro.
 Uses nested clip structure (harmonica/tabs nested inside original video).
+All durations expressed as exact frame-count rationals to prevent audio desync.
 """
 
 import os
-from typing import Optional
+import subprocess
+import json
+from typing import Optional, Tuple
+
+
+def _probe_video(video_path: str) -> Tuple[float, int, int]:
+    """Probe video for frame rate and frame count.
+
+    Args:
+        video_path: Path to video file
+
+    Returns:
+        Tuple of (fps, frame_count, rounded_fps_int)
+    """
+    result = subprocess.run(
+        [
+            "ffprobe",
+            "-v",
+            "error",
+            "-select_streams",
+            "v:0",
+            "-show_entries",
+            "stream=r_frame_rate,duration",
+            "-of",
+            "json",
+            video_path,
+        ],
+        capture_output=True,
+        text=True,
+        timeout=10,
+    )
+
+    if result.returncode != 0:
+        raise RuntimeError(f"ffprobe failed on {video_path}: {result.stderr}")
+
+    data = json.loads(result.stdout)
+    stream = data["streams"][0]
+
+    # Parse frame rate (can be rational like "30000/1001")
+    fps_str = stream["r_frame_rate"]
+    if "/" in fps_str:
+        num, den = map(int, fps_str.split("/"))
+        fps = num / den
+    else:
+        fps = float(fps_str)
+
+    # Get duration and calculate frame count
+    duration = float(stream.get("duration", 0))
+    frame_count = round(duration * fps)
+
+    return fps, frame_count, round(fps)
 
 
 def generate_fcpxml(
@@ -63,12 +114,21 @@ def generate_fcpxml(
     harmonica_url = f"file://{harmonica_abs}"
     tabs_url = f"file://{tabs_abs}"
 
-    # Use default duration if not specified
-    if duration_seconds is None:
-        duration_seconds = 480
+    # Probe each video for exact frame count and fps
+    orig_fps, orig_frames, _ = _probe_video(original_video_path)
+    harm_fps, harm_frames, _ = _probe_video(harmonica_video_path)
+    tabs_fps, tabs_frames, _ = _probe_video(tabs_video_path)
 
     width, height = video_resolution
-    duration_str = f"{int(duration_seconds)}s"
+
+    # Express durations as exact rationals (frames/fps with 's' suffix)
+    # This prevents audio desync caused by rounding to whole seconds
+    orig_duration_str = f"{orig_frames}/{int(round(orig_fps))}s"
+    harm_duration_str = f"{harm_frames}/{int(round(harm_fps))}s"
+    tabs_duration_str = f"{tabs_frames}/{int(round(tabs_fps))}s"
+
+    # Sequence duration matches original video's exact duration
+    seq_duration_str = orig_duration_str
 
     def _build_project(project_name: str, ts_suffix: str) -> str:
         """Build a single project with unique text-style IDs."""
@@ -85,11 +145,12 @@ def generate_fcpxml(
             'alignment="center"'
         )
         return f"""      <project name="{project_name}">
-        <sequence format="r1" duration="{duration_str}" audioRate="48k">
+        <sequence format="r1" duration="{seq_duration_str}" audioRate="48k">
           <spine>
-            <asset-clip ref="r2" offset="0s" start="0s" duration="{duration_str}">
+            <asset-clip ref="r2" offset="0s" start="0s" \
+duration="{seq_duration_str}">
               <video ref="r5" lane="1" offset="0s" name="Shapes - Rectangle" \
-start="0s" duration="{duration_str}">
+start="0s" duration="{seq_duration_str}">
                 <param name="Fill Color" \
 key="9999/3336460347/988455508/988455699/2/353/113/111" value="0 0 0"/>
                 <param name="Shape" \
@@ -107,11 +168,11 @@ scale="1.06062 1.8388"/>
                 <adjust-blend amount="0.95"/>
               </video>
               <asset-clip ref="r3" lane="2" offset="0s" start="0s" \
-duration="{duration_str}">
+duration="{seq_duration_str}">
                 <adjust-transform position="0 -23.9472" scale="0.85 0.85"/>
               </asset-clip>
               <asset-clip ref="r4" lane="3" offset="0s" start="0s" \
-duration="{duration_str}">
+duration="{seq_duration_str}">
                 <adjust-transform position="-0.0842787 -12.4764" \
 scale="1.21341 1.21341"/>
               </asset-clip>
@@ -176,12 +237,12 @@ key="9999/999166631/999166633/2/354/999169573/401" value="1 (Center)"/>
     <format id="r1" frameDuration="1/{int(frame_rate)}s" width="{int(width)}" \
 height="{int(height)}" colorSpace="1-1-1 (Rec. 709)"/>
     <asset id="r2" name="{os.path.basename(original_video_path)}" \
-src="{orig_url}" duration="{duration_str}" hasVideo="1" hasAudio="1" \
+src="{orig_url}" duration="{orig_duration_str}" hasVideo="1" hasAudio="1" \
 audioChannels="2" audioRate="48k"/>
     <asset id="r3" name="{os.path.basename(harmonica_video_path)}" \
-src="{harmonica_url}" duration="{duration_str}" hasVideo="1" hasAudio="0"/>
+src="{harmonica_url}" duration="{harm_duration_str}" hasVideo="1" hasAudio="0"/>
     <asset id="r4" name="{os.path.basename(tabs_video_path)}" \
-src="{tabs_url}" duration="{duration_str}" hasVideo="1" hasAudio="0"/>
+src="{tabs_url}" duration="{tabs_duration_str}" hasVideo="1" hasAudio="0"/>
     <effect id="r5" name="Shapes" \
 uid="Cloud:301988DA-DE3C-4D8D-B3ED-EB4B7DC02880"/>
     <effect id="r6" name="Basic Title" \
