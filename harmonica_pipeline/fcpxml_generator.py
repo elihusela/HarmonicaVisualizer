@@ -1,7 +1,7 @@
 """FCPXML generator for Final Cut Pro project automation.
 
 Generates minimal FCPXML files for importing into Final Cut Pro.
-Uses simple, importable structure that FCP normalizes into full library format.
+Uses nested clip structure (harmonica/tabs nested inside original video).
 """
 
 import os
@@ -18,13 +18,13 @@ def generate_fcpxml(
     frame_rate: float = 30.0,
     duration_seconds: Optional[float] = None,
 ) -> str:
-    """Generate a minimal FCPXML project file for Final Cut Pro.
+    """Generate an FCPXML project file for Final Cut Pro.
 
-    Creates a simple, importable FCPXML that:
-    - Stacks 3 clips on lanes 0, 1, 2 (original, harmonica, tabs)
-    - All synchronized at offset 0s
-    - Uses rational timing format
-    - Works with FCP's native import mechanism
+    Creates a valid FCPXML that FCP can import:
+    - Original video as primary clip in spine
+    - Harmonica and tabs nested inside original (on lanes 1, 2)
+    - All clips time-synchronized at offset 0s
+    - Uses absolute file:// URLs for media paths
 
     Args:
         song_name: Song name for display and filenames
@@ -53,47 +53,41 @@ def generate_fcpxml(
 
     os.makedirs(output_dir, exist_ok=True)
 
-    # Get absolute paths first (for validation)
+    # Get absolute paths and convert to file:// URLs
     orig_abs = os.path.abspath(original_video_path)
     harmonica_abs = os.path.abspath(harmonica_video_path)
     tabs_abs = os.path.abspath(tabs_video_path)
 
-    # Calculate relative paths from final-cut/ directory
-    # This assumes standard structure: final-cut/, outputs/, video-files/ all at repo root
-    try:
-        orig_rel = os.path.relpath(orig_abs, output_dir)
-        harmonica_rel = os.path.relpath(harmonica_abs, output_dir)
-        tabs_rel = os.path.relpath(tabs_abs, output_dir)
-    except ValueError:
-        # If relpath fails (different drives on Windows), fall back to absolute
-        orig_rel = orig_abs
-        harmonica_rel = harmonica_abs
-        tabs_rel = tabs_abs
+    orig_url = f"file://{orig_abs}"
+    harmonica_url = f"file://{harmonica_abs}"
+    tabs_url = f"file://{tabs_abs}"
 
     # Use default duration if not specified
     if duration_seconds is None:
         duration_seconds = 480
 
     width, height = video_resolution
+    duration_str = f"{int(duration_seconds)}s"
 
-    # Build FCPXML content
+    # Build FCPXML with nested clip structure
     xml_content = f"""<?xml version="1.0" encoding="utf-8"?>
 <!DOCTYPE fcpxml>
 <fcpxml version="1.8">
   <resources>
-    <format id="r1" frameDuration="1/{int(frame_rate)}s" width="{float(width):.1f}" height="{float(height):.1f}" colorSpace="1-1-1 (Rec. 709)"/>
-    <asset id="r2" name="{os.path.basename(original_video_path)}" src="{orig_rel}" duration="{int(duration_seconds)}s" hasVideo="1" hasAudio="1" audioChannels="2" audioRate="48k"/>
-    <asset id="r3" name="{os.path.basename(harmonica_video_path)}" src="{harmonica_rel}" duration="{int(duration_seconds)}s" hasVideo="1" hasAudio="0"/>
-    <asset id="r4" name="{os.path.basename(tabs_video_path)}" src="{tabs_rel}" duration="{int(duration_seconds)}s" hasVideo="1" hasAudio="0"/>
+    <format id="r1" frameDuration="1/{int(frame_rate)}s" width="{int(width)}" height="{int(height)}" colorSpace="1-1-1 (Rec. 709)"/>
+    <asset id="r2" name="{os.path.basename(original_video_path)}" src="{orig_url}" duration="{duration_str}" hasVideo="1" hasAudio="1" audioChannels="2" audioRate="48k"/>
+    <asset id="r3" name="{os.path.basename(harmonica_video_path)}" src="{harmonica_url}" duration="{duration_str}" hasVideo="1" hasAudio="0"/>
+    <asset id="r4" name="{os.path.basename(tabs_video_path)}" src="{tabs_url}" duration="{duration_str}" hasVideo="1" hasAudio="0"/>
   </resources>
   <library>
     <event name="{song_name}">
       <project name="{song_name}">
-        <sequence format="r1" duration="{int(duration_seconds)}s" audioRate="48k">
+        <sequence format="r1" duration="{duration_str}" audioRate="48k">
           <spine>
-            <asset-clip ref="r2" offset="0s" start="0s" duration="{int(duration_seconds)}s" lane="0"/>
-            <asset-clip ref="r3" offset="0s" start="0s" duration="{int(duration_seconds)}s" lane="1"/>
-            <asset-clip ref="r4" offset="0s" start="0s" duration="{int(duration_seconds)}s" lane="2"/>
+            <asset-clip ref="r2" offset="0s" start="0s" duration="{duration_str}">
+              <asset-clip ref="r3" lane="1" offset="0s" start="0s" duration="{duration_str}"/>
+              <asset-clip ref="r4" lane="2" offset="0s" start="0s" duration="{duration_str}"/>
+            </asset-clip>
           </spine>
         </sequence>
       </project>
