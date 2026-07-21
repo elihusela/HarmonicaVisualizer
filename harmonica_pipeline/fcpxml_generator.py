@@ -70,8 +70,8 @@ def generate_fcpxml(
     width, height = video_resolution
     duration_str = f"{int(duration_seconds)}s"
 
-    def _build_project(project_name: str, legend_ref: str) -> str:
-        """Build a single project with specified legend."""
+    def _build_project(project_name: str) -> str:
+        """Build a single project."""
         ts1_attrs = (
             'font="Gveret Levin" fontSize="30" fontFace="Regular" '
             'fontColor="1 1 1 1" strokeColor="0 0 0 1" strokeWidth="-1.5" '
@@ -113,11 +113,7 @@ duration="{duration_str}">
                 <adjust-transform position="-0.0842787 -12.4764" \
 scale="1.21341 1.21341"/>
               </asset-clip>
-              <ref-clip ref="{legend_ref}" lane="4" offset="0s" \
-name="Legend" duration="{duration_str}">
-                <adjust-transform position="0 0"/>
-              </ref-clip>
-              <title ref="r6" lane="6" offset="0s" name="Title 1" \
+              <title ref="r6" lane="4" offset="0s" name="Title 1" \
 start="0s" duration="3s">
                 <param name="Position" \
 key="9999/999166631/999166633/1/100/101" value="1.0375 350.261"/>
@@ -132,7 +128,7 @@ key="9999/999166631/999166633/2/354/999169573/401" value="1 (Center)"/>
                   <text-style {ts1_attrs}/>
                 </text-style-def>
               </title>
-              <title ref="r6" lane="7" offset="0s" name="Title 2" \
+              <title ref="r6" lane="5" offset="0s" name="Title 2" \
 start="0s" duration="3s">
                 <param name="Position" \
 key="9999/999166631/999166633/1/100/101" value="1.0415 116.088"/>
@@ -195,14 +191,11 @@ src="{r7_src}"/>
 src="{r8_src}"/>
     <effect id="r9" name="Drop Shadow" \
 uid="FxPlug:9C13F991-BC99-4DC8-B150-381D7CCE183B"/>
-    <ref-clip id="r14" name="Tabs Legend - English" \
-duration="{duration_str}"/>
-    <ref-clip id="r15" name="טאבים - Hebrew" duration="{duration_str}"/>
   </resources>
   <library>
     <event name="{song_name}">
-{_build_project(song_name, "r14")}
-{_build_project(f"{song_name}_Hebrew", "r15")}
+{_build_project(song_name)}
+{_build_project(f"{song_name}_Hebrew")}
     </event>
   </library>
 </fcpxml>
