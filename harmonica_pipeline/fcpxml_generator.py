@@ -70,8 +70,10 @@ def generate_fcpxml(
     width, height = video_resolution
     duration_str = f"{int(duration_seconds)}s"
 
-    def _build_project(project_name: str) -> str:
-        """Build a single project."""
+    def _build_project(project_name: str, ts_suffix: str) -> str:
+        """Build a single project with unique text-style IDs."""
+        ts1_id = f"ts1_{ts_suffix}"
+        ts2_id = f"ts2_{ts_suffix}"
         ts1_attrs = (
             'font="Gveret Levin" fontSize="30" fontFace="Regular" '
             'fontColor="1 1 1 1" strokeColor="0 0 0 1" strokeWidth="-1.5" '
@@ -122,9 +124,9 @@ key="9999/999166631/999166633/2/351" value="1"/>
                 <param name="Alignment" \
 key="9999/999166631/999166633/2/354/999169573/401" value="1 (Center)"/>
                 <text>
-                  <text-style ref="ts1">{song_name}</text-style>
+                  <text-style ref="{ts1_id}">{song_name}</text-style>
                 </text>
-                <text-style-def id="ts1">
+                <text-style-def id="{ts1_id}">
                   <text-style {ts1_attrs}/>
                 </text-style-def>
               </title>
@@ -137,9 +139,9 @@ key="9999/999166631/999166633/2/351" value="1"/>
                 <param name="Alignment" \
 key="9999/999166631/999166633/2/354/999169573/401" value="1 (Center)"/>
                 <text>
-                  <text-style ref="ts2">טאבים למפוחית</text-style>
+                  <text-style ref="{ts2_id}">טאבים למפוחית</text-style>
                 </text>
-                <text-style-def id="ts2">
+                <text-style-def id="{ts2_id}">
                   <text-style {ts2_attrs}/>
                 </text-style-def>
               </title>
@@ -194,8 +196,8 @@ uid="FxPlug:9C13F991-BC99-4DC8-B150-381D7CCE183B"/>
   </resources>
   <library>
     <event name="{song_name}">
-{_build_project(song_name)}
-{_build_project(f"{song_name}_Hebrew")}
+{_build_project(song_name, "en")}
+{_build_project(f"{song_name}_Hebrew", "he")}
     </event>
   </library>
 </fcpxml>
