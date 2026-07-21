@@ -70,14 +70,14 @@ def generate_fcpxml(
 <fcpxml version="1.8">
   <resources>
     <format id="r1" frameDuration="1/{int(frame_rate)}s" width="{float(width):.1f}" height="{float(height):.1f}" colorSpace="1-1-1 (Rec. 709)"/>
-    <asset id="r2" name="{os.path.basename(original_video_path)}" src="{orig_abs}" duration="{int(duration_seconds)}s" hasVideo="1" hasAudio="1" audioChannels="2" audioRate="48000"/>
+    <asset id="r2" name="{os.path.basename(original_video_path)}" src="{orig_abs}" duration="{int(duration_seconds)}s" hasVideo="1" hasAudio="1" audioChannels="2" audioRate="48k"/>
     <asset id="r3" name="{os.path.basename(harmonica_video_path)}" src="{harmonica_abs}" duration="{int(duration_seconds)}s" hasVideo="1" hasAudio="0"/>
     <asset id="r4" name="{os.path.basename(tabs_video_path)}" src="{tabs_abs}" duration="{int(duration_seconds)}s" hasVideo="1" hasAudio="0"/>
   </resources>
   <library>
     <event name="{song_name}">
       <project name="{song_name}">
-        <sequence format="r1" duration="{int(duration_seconds)}s" audioRate="48000">
+        <sequence format="r1" duration="{int(duration_seconds)}s" audioRate="48k">
           <spine>
             <asset-clip ref="r2" offset="0s" start="0s" duration="{int(duration_seconds)}s" lane="0"/>
             <asset-clip ref="r3" offset="0s" start="0s" duration="{int(duration_seconds)}s" lane="1"/>
