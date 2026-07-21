@@ -90,7 +90,8 @@ def generate_fcpxml(
               <asset-clip ref="r3" lane="1" offset="0s" start="0s" duration="{duration_str}">
                 <adjust-transform position="0 -23.9472" scale="0.85 0.85"/>
               </asset-clip>
-              <video ref="r5" lane="2" offset="0s" name="Shapes - Rectangle" start="0s" duration="{duration_str}">
+              <asset-clip ref="r4" lane="2" offset="0s" start="0s" duration="{duration_str}"/>
+              <video ref="r5" lane="3" offset="0s" name="Shapes - Rectangle" start="0s" duration="{duration_str}">
                 <param name="Fill Color" key="9999/3336460347/988455508/988455699/2/353/113/111" value="0 0 0"/>
                 <param name="Shape" key="9999/988461322/100/988461395/2/100" value="4 (Rectangle)"/>
                 <param name="Outline" key="9999/988461322/100/988464485/2/100" value="0"/>
@@ -100,7 +101,6 @@ def generate_fcpxml(
                 <adjust-transform position="0 -13.0593" scale="1.06062 1.8388"/>
                 <adjust-blend amount="0.95"/>
               </video>
-              <asset-clip ref="r4" lane="3" offset="0s" start="0s" duration="{duration_str}"/>
               <title ref="r6" lane="4" offset="0s" name="Title 1" start="0s" duration="3s">
                 <param name="Position" key="9999/999166631/999166633/1/100/101" value="1.0375 350.261"/>
                 <param name="Flatten" key="9999/999166631/999166633/2/351" value="1"/>
