@@ -53,10 +53,15 @@ def generate_fcpxml(
 
     os.makedirs(output_dir, exist_ok=True)
 
-    # Get absolute paths
+    # Get absolute paths and convert to file:// URLs
     orig_abs = os.path.abspath(original_video_path)
     harmonica_abs = os.path.abspath(harmonica_video_path)
     tabs_abs = os.path.abspath(tabs_video_path)
+
+    # Convert to file:// URLs for FCP compatibility
+    orig_url = f"file://{orig_abs}"
+    harmonica_url = f"file://{harmonica_abs}"
+    tabs_url = f"file://{tabs_abs}"
 
     # Use default duration if not specified
     if duration_seconds is None:
@@ -70,9 +75,9 @@ def generate_fcpxml(
 <fcpxml version="1.8">
   <resources>
     <format id="r1" frameDuration="1/{int(frame_rate)}s" width="{float(width):.1f}" height="{float(height):.1f}" colorSpace="1-1-1 (Rec. 709)"/>
-    <asset id="r2" name="{os.path.basename(original_video_path)}" src="{orig_abs}" duration="{int(duration_seconds)}s" hasVideo="1" hasAudio="1" audioChannels="2" audioRate="48k"/>
-    <asset id="r3" name="{os.path.basename(harmonica_video_path)}" src="{harmonica_abs}" duration="{int(duration_seconds)}s" hasVideo="1" hasAudio="0"/>
-    <asset id="r4" name="{os.path.basename(tabs_video_path)}" src="{tabs_abs}" duration="{int(duration_seconds)}s" hasVideo="1" hasAudio="0"/>
+    <asset id="r2" name="{os.path.basename(original_video_path)}" src="{orig_url}" duration="{int(duration_seconds)}s" hasVideo="1" hasAudio="1" audioChannels="2" audioRate="48k"/>
+    <asset id="r3" name="{os.path.basename(harmonica_video_path)}" src="{harmonica_url}" duration="{int(duration_seconds)}s" hasVideo="1" hasAudio="0"/>
+    <asset id="r4" name="{os.path.basename(tabs_video_path)}" src="{tabs_url}" duration="{int(duration_seconds)}s" hasVideo="1" hasAudio="0"/>
   </resources>
   <library>
     <event name="{song_name}">
