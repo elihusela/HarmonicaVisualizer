@@ -1562,10 +1562,16 @@ class WorkflowOrchestrator:
             )
 
             if not self.auto_approve:
-                questionary.confirm(
-                    "Press Enter when you've positioned the harmonica and tabs overlays in Final Cut",
-                    default=True,
-                ).ask()
+                done = False
+                while not done:
+                    done = questionary.confirm(
+                        "Press Enter when you've positioned the harmonica and tabs overlays in Final Cut",
+                        default=True,
+                    ).ask()
+                    if not done:
+                        self.console.print(
+                            "[yellow]Not done yet. Go back to Final Cut and continue positioning.[/yellow]"
+                        )
 
             # Wait for export
             self.console.print(
@@ -1581,10 +1587,16 @@ class WorkflowOrchestrator:
             )
 
             if not self.auto_approve:
-                questionary.confirm(
-                    "Press Enter once you've exported the final video from Final Cut",
-                    default=True,
-                ).ask()
+                done = False
+                while not done:
+                    done = questionary.confirm(
+                        "Press Enter once you've exported the final video from Final Cut",
+                        default=True,
+                    ).ask()
+                    if not done:
+                        self.console.print(
+                            "[yellow]Export not complete. Go back to Final Cut and export the video.[/yellow]"
+                        )
 
             # Verify export was created (poll briefly)
             export_path = os.path.join(
