@@ -1549,7 +1549,7 @@ class WorkflowOrchestrator:
                     f"[yellow]Please open manually: {fcpxml_path}[/yellow]"
                 )
 
-            # All done - workflow ends here
+            # All done - transition to complete state
             self.console.print(
                 Panel(
                     "[green]✓ Workflow Complete[/green]\n\n"
@@ -1558,6 +1558,7 @@ class WorkflowOrchestrator:
                     title="Done",
                 )
             )
+            self.session.transition_to(WorkflowState.COMPLETE)
 
         except Exception as e:
             self.console.print(f"[red]Error generating FCPXML: {e}[/red]")
