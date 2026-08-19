@@ -1549,88 +1549,15 @@ class WorkflowOrchestrator:
                     f"[yellow]Please open manually: {fcpxml_path}[/yellow]"
                 )
 
-            # Wait for user to complete assembly
+            # All done - workflow ends here
             self.console.print(
                 Panel(
-                    "[cyan]Final Cut Pro Assembly[/cyan]\n\n"
-                    "[bold]1.[/bold] Position the harmonica overlay in the lower third\n"
-                    "[bold]2.[/bold] Position the tabs block (centered, appropriate location)\n"
-                    "[bold]3.[/bold] When done positioning, press Enter here\n\n"
-                    "[dim]The clips are already time-synced and audio is muted on harmonica/tabs.[/dim]",
-                    title="Manual Assembly Required",
+                    "[green]✓ Workflow Complete[/green]\n\n"
+                    "Final Cut Pro project is ready for editing.\n"
+                    "Position clips and export when finished.",
+                    title="Done",
                 )
             )
-
-            if not self.auto_approve:
-                done = False
-                while not done:
-                    done = questionary.confirm(
-                        "Press Enter when you've positioned the harmonica and tabs overlays in Final Cut",
-                        default=True,
-                    ).ask()
-                    if not done:
-                        self.console.print(
-                            "[yellow]Not done yet. Go back to Final Cut and continue positioning.[/yellow]"
-                        )
-
-            # Wait for export
-            self.console.print(
-                Panel(
-                    "[cyan]Export from Final Cut Pro[/cyan]\n\n"
-                    "[bold]1.[/bold] Check for trailing clips (Timeline Index should match original duration)\n"
-                    "[bold]2.[/bold] Set In/Out to the actual content range\n"
-                    "[bold]3.[/bold] File → Share → and export to:\n"
-                    f"    final-cut/exports/{self.session.song_name}_final.mov\n\n"
-                    "[dim]Once exported, press Enter here to continue.[/dim]",
-                    title="Export Required",
-                )
-            )
-
-            if not self.auto_approve:
-                done = False
-                while not done:
-                    done = questionary.confirm(
-                        "Press Enter once you've exported the final video from Final Cut",
-                        default=True,
-                    ).ask()
-                    if not done:
-                        self.console.print(
-                            "[yellow]Export not complete. Go back to Final Cut and export the video.[/yellow]"
-                        )
-
-            # Verify export was created (poll briefly)
-            export_path = os.path.join(
-                "final-cut", "exports", f"{self.session.song_name}_final.mov"
-            )
-            self.console.print(
-                f"\n[dim]Looking for exported video: {export_path}[/dim]"
-            )
-
-            # Poll for file with short timeout
-            max_wait = 10  # seconds
-            poll_interval = 1
-            elapsed = 0
-
-            while elapsed < max_wait:
-                if os.path.exists(export_path):
-                    self.console.print(
-                        f"[green]✓ Found exported video: {export_path}[/green]"
-                    )
-                    self.session.set_data("final_cut_export", export_path)
-                    self.session.transition_to(WorkflowState.FINALIZATION)
-                    return
-
-                elapsed += poll_interval
-                import time
-
-                time.sleep(poll_interval)
-
-            # If we get here, file wasn't found but user confirmed export
-            self.console.print(
-                "[yellow]⚠️  Export file not found yet. Continuing anyway...[/yellow]"
-            )
-            self.session.set_data("final_cut_export", export_path)
-            self.session.transition_to(WorkflowState.FINALIZATION)
 
         except Exception as e:
             self.console.print(f"[red]Error generating FCPXML: {e}[/red]")
