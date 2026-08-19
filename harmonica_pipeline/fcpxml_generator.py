@@ -71,12 +71,9 @@ def generate_fcpxml(
 ) -> str:
     """Generate an FCPXML project file for Final Cut Pro.
 
-    Creates a valid FCPXML that FCP can import with TWO projects:
-    - One with English legend (r14)
-    - One with Hebrew legend (r15)
-    - Both in the same event, with identical clips/timing
+    Creates a valid FCPXML that FCP can import with one project:
     - Original video as primary clip in spine
-    - Rectangle, harmonica, tabs, titles, legend, image overlay
+    - Rectangle, harmonica, tabs, titles, image overlay
 
     Args:
         song_name: Song name for display and filenames
@@ -130,18 +127,20 @@ def generate_fcpxml(
     # Sequence duration matches original video's exact duration
     seq_duration_str = orig_duration_str
 
-    def _build_project(project_name: str, ts_suffix: str) -> str:
-        """Build a single project with unique text-style IDs."""
-        ts1_id = f"ts1_{ts_suffix}"
-        ts2_id = f"ts2_{ts_suffix}"
+    def _build_project(project_name: str) -> str:
+        """Build the project with pre-stacked clips and title."""
+        ts1_id = "ts1"
+        ts2_id = "ts2"
+        # Main title: Artist - Song (larger, Gveret Levin)
         ts1_attrs = (
-            'font="Gveret Levin" fontSize="30" fontFace="Regular" '
+            'font="Gveret Levin" fontSize="40" fontFace="Regular" '
             'fontColor="1 1 1 1" strokeColor="0 0 0 1" strokeWidth="-1.5" '
             'alignment="center"'
         )
+        # Brand label: טאבים למפוחית (smaller, Instagram Sans Bold)
         ts2_attrs = (
-            'font="Instagram Sans" fontSize="30" fontColor="1 1 1 1" '
-            'bold="1" strokeColor="0 0 0 1" strokeWidth="-1.5" '
+            'font="Instagram Sans" fontSize="24" fontFace="Bold" '
+            'fontColor="1 1 1 1" strokeColor="0 0 0 1" strokeWidth="-1.5" '
             'alignment="center"'
         )
         return f"""      <project name="{project_name}">
@@ -149,6 +148,14 @@ def generate_fcpxml(
           <spine>
             <asset-clip ref="r2" offset="0s" start="0s" \
 duration="{seq_duration_str}">
+              <adjust-transform>
+                <param name="scale">
+                  <keyframeAnimation>
+                    <keyframe time="0s" value="1.08 1.08"/>
+                    <keyframe time="{seq_duration_str}" value="1 1"/>
+                  </keyframeAnimation>
+                </param>
+              </adjust-transform>
               <video ref="r5" lane="1" offset="0s" name="Shapes - Rectangle" \
 start="0s" duration="{seq_duration_str}">
                 <param name="Fill Color" \
@@ -176,32 +183,21 @@ duration="{seq_duration_str}">
                 <adjust-transform position="-0.0842787 -12.4764" \
 scale="1.21341 1.21341"/>
               </asset-clip>
-              <title ref="r6" lane="4" offset="0s" name="Title 1" \
+              <title ref="r6" lane="4" offset="0s" name="Song Title" \
 start="0s" duration="3s">
                 <param name="Position" \
-key="9999/999166631/999166633/1/100/101" value="1.0375 350.261"/>
+key="9999/999166631/999166633/1/100/101" value="1.0375 280.261"/>
                 <param name="Flatten" \
 key="9999/999166631/999166633/2/351" value="1"/>
                 <param name="Alignment" \
 key="9999/999166631/999166633/2/354/999169573/401" value="1 (Center)"/>
                 <text>
-                  <text-style ref="{ts1_id}">{song_name}</text-style>
+                  <text-style ref="{ts1_id}">artist - {song_name}</text-style>
+                  <text-style ref="{ts2_id}">&#10;טאבים למפוחית</text-style>
                 </text>
                 <text-style-def id="{ts1_id}">
                   <text-style {ts1_attrs}/>
                 </text-style-def>
-              </title>
-              <title ref="r6" lane="5" offset="0s" name="Title 2" \
-start="0s" duration="3s">
-                <param name="Position" \
-key="9999/999166631/999166633/1/100/101" value="1.0415 116.088"/>
-                <param name="Flatten" \
-key="9999/999166631/999166633/2/351" value="1"/>
-                <param name="Alignment" \
-key="9999/999166631/999166633/2/354/999169573/401" value="1 (Center)"/>
-                <text>
-                  <text-style ref="{ts2_id}">טאבים למפוחית</text-style>
-                </text>
                 <text-style-def id="{ts2_id}">
                   <text-style {ts2_attrs}/>
                 </text-style-def>
@@ -257,8 +253,7 @@ uid="FxPlug:9C13F991-BC99-4DC8-B150-381D7CCE183B"/>
   </resources>
   <library>
     <event name="{song_name}">
-{_build_project(song_name, "en")}
-{_build_project(f"{song_name}_Hebrew", "he")}
+{_build_project(song_name)}
     </event>
   </library>
 </fcpxml>
