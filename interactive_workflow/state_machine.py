@@ -24,6 +24,7 @@ class WorkflowState(Enum):
     - TAB_GENERATION: Generate tabs from MIDI (optional, if no tab file exists)
     - HARMONICA_REVIEW: Waiting for user to approve harmonica video
     - TAB_VIDEO_REVIEW: Waiting for user to approve tab video
+    - FINAL_CUT_ASSEMBLY: Generate FCPXML and wait for user to assemble in Final Cut Pro
     - FINALIZATION: Creating final package, cleanup
     - COMPLETE: Workflow finished successfully
     - ERROR: Workflow encountered an error
@@ -36,6 +37,7 @@ class WorkflowState(Enum):
     TAB_GENERATION = "tab_generation"
     HARMONICA_REVIEW = "harmonica_review"
     TAB_VIDEO_REVIEW = "tab_video_review"
+    FINAL_CUT_ASSEMBLY = "final_cut_assembly"
     FINALIZATION = "finalization"
     COMPLETE = "complete"
     ERROR = "error"
@@ -252,6 +254,7 @@ class WorkflowSession:
             WorkflowState.TAB_GENERATION: 45,
             WorkflowState.HARMONICA_REVIEW: 55,
             WorkflowState.TAB_VIDEO_REVIEW: 75,
+            WorkflowState.FINAL_CUT_ASSEMBLY: 85,
             WorkflowState.FINALIZATION: 90,
             WorkflowState.COMPLETE: 100,
             WorkflowState.ERROR: 0,  # Error resets progress
