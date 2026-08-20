@@ -334,20 +334,26 @@ class Animator:
         return "↑" if tab_entry.tab > 0 else "↓"
 
     def _get_total_duration(self) -> float:
-        # Use provided audio duration if available (shows harmonica for full video)
-        if self._audio_duration is not None:
-            return self._audio_duration
+        # Calculate when the last note ends
+        if not self._flat_entries:
+            # No entries: use audio duration or default to 1 second
+            return self._audio_duration if self._audio_duration is not None else 1.0
 
-        # Fallback: Calculate from notes (backwards compatibility)
         max_end_time = max(
             tab.time + (tab.duration or 0.5) for tab in self._flat_entries
         )
         # Add a small buffer to ensure the last note fades out properly
-        return max_end_time + 0.5
+        last_note_with_buffer = max_end_time + 0.2
+
+        # Use audio duration only if it's shorter (don't extend beyond last note)
+        if self._audio_duration is not None:
+            return min(self._audio_duration, last_note_with_buffer)
+
+        return last_note_with_buffer
 
     @staticmethod
     def _get_total_frames(fps: int, total_duration: float) -> int:
-        return int(total_duration * fps)
+        return round(total_duration * fps)
 
     def _log_video_info(
         self, video_path: str, duration: float, fps: int, total_frames: int

@@ -340,16 +340,16 @@ class TabPhraseAnimator:
         else:
             start_time = max(0.0, raw_start - self._config.time_buffer)
 
-        # Last page: end at audio duration (show until end even if notes finish earlier)
+        # Last page: extend to end of notes + buffer, but don't extend beyond audio (avoid blank trailing frames)
         # Other pages: add note_off_buffer to ensure notes have time to turn off
         # (prevents lit notes from being frozen when compositor extends video for gaps)
+        end_time = raw_end + self._config.note_off_buffer
         if is_last_page and audio_duration is not None:
-            end_time = audio_duration
-        else:
-            end_time = raw_end + self._config.note_off_buffer
+            # Cap at audio duration to avoid extending past audio, but don't extend beyond last note
+            end_time = min(audio_duration, end_time)
 
         duration = end_time - start_time
-        total_frames = int(duration * fps)
+        total_frames = round(duration * fps)
 
         # Debug output
         print(f"📊 Page {page_idx} ({page_name}) timing:")

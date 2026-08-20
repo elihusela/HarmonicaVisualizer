@@ -135,13 +135,13 @@ def generate_fcpxml(
         ts1_attrs = (
             'font="Gveret Levin" fontSize="40" fontFace="Regular" '
             'fontColor="1 1 1 1" strokeColor="0 0 0 1" strokeWidth="-1.5" '
-            'alignment="center"'
+            'alignment="center" lineSpacing="5"'
         )
         # Brand label: טאבים למפוחית (smaller, Instagram Sans Bold)
         ts2_attrs = (
             'font="Instagram Sans" fontSize="24" fontFace="Bold" '
             'fontColor="1 1 1 1" strokeColor="0 0 0 1" strokeWidth="-1.5" '
-            'alignment="center"'
+            'alignment="center" lineSpacing="5"'
         )
         return f"""      <project name="{project_name}">
         <sequence format="r1" duration="{seq_duration_str}" audioRate="48k">
